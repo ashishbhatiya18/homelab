@@ -1,0 +1,60 @@
+services:
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:latest
+    container_name: dockerproxy
+    environment:
+      - CONTAINERS=1 # Allow access to viewing containers
+      - POST=0 # Disallow any POST operations (effectively read-only)
+    labels:
+        - traefik.enable=true
+        - traefik.http.routers.dockerproxy.rule=Host(`docker.citrusdental.in`)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Mounted as read-only
+    restart: always
+    networks:
+        - tailscale_bridge
+  watchtower:
+    image: nickfedor/watchtower
+    container_name: watchtower
+    restart: always
+    environment:
+      - WATCHTOWER_UPDATE_ON_START=true
+      - WATCHTOWER_POLL_INTERVAL=300
+      - WATCHTOWER_HTTP_API_METRICS=true
+      - WATCHTOWER_HTTP_API_TOKEN=abcde
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+        - tailscale_bridge
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.watchtower.rule=Host(`watchtower.citrusdental.in`)
+      - traefik.http.services.watchtower.loadbalancer.port=8080
+      - homepage.group=CD Utilities
+      - homepage.name=Watch Tower
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/watchtower.png
+      - homepage.description=Watch Tower for Image Updates
+      - homepage.widget.type=watchtower
+      - homepage.widget.url=https://watchtower.citrusdental.in
+  arcane:
+    image: ghcr.io/getarcaneapp/arcane-headless:latest
+    container_name: arcane
+    restart: always
+    environment:
+      - PUID=1000
+      - PGID=1000
+    env_file: .env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/dietpi/localstack/data/arcane_data:/app/data
+      - /home/dietpi/localstack/stacks:/app/data/projects
+    extra_hosts:
+      - "dock.ab18.in:10.10.10.11"
+    networks:
+      - tailscale_bridge
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.arcane.rule=Host(`dock.citrusdental.in`)
+networks:
+  tailscale_bridge:
+    external: true
