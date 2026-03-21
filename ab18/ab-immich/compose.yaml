@@ -1,0 +1,50 @@
+services:
+  immich-server:
+    image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
+    container_name: immich-server
+    volumes:
+      - nfs-data:/data
+      - /etc/localtime:/etc/localtime:ro
+    networks:
+      - network-layer
+      - default
+    env_file: .env
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.immich.rule=Host(`photos.ab18.in`)
+      - traefik.http.services.immich.loadbalancer.server.port=2283
+      - homepage.group=Utilities
+      - homepage.name=Immich
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/immich.png
+      - homepage.href=https://photos.ab18.in
+      - homepage.description=Immich - Your Photos Library
+    restart: always
+    dns:
+      - 10.10.10.10
+  immich-machine-learning:
+    container_name: immich_machine_learning
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    volumes:
+      - model-cache:/cache
+    restart: always
+    networks:
+      - default
+    env_file: .env
+volumes:
+  nfs-data:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: nfsvers=4,addr=10.10.10.12,rw,nolock,soft
+      device: :/home/dietpi/localstack/data/immich_data
+  model-cache:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: nfsvers=4,addr=10.10.10.12,rw,nolock,soft
+      device: :/home/dietpi/localstack/data/immich_model
+networks:
+  default: null
+  network-layer:
+    name: tailscale_bridge
+    external: true
