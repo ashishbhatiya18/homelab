@@ -1,0 +1,53 @@
+services:
+  esphome:
+    image: esphome/esphome
+    container_name: esphome
+    restart: always
+    networks:
+      - network-layer
+    volumes:
+      - /home/dietpi/localstack/config/esphome:/config
+      - /etc/localtime:/etc/localtime:ro
+    environment:
+      - ESPHOME_DASHBOARD_USE_PING=true
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.esphome.rule=Host(`esphome.ab18.in`)
+      - traefik.http.routers.esphome.middlewares=auth
+      - homepage.group=Local Utilities
+      - homepage.name=ESPHome
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/esphome-alt-light.png
+      - homepage.href=https://esphome.ab18.in
+      - homepage.description=Control ESPHome Devices
+  homeassistant:
+    image: homeassistant/home-assistant:latest
+    container_name: homeassistant
+    restart: always
+    networks:
+      - network-layer
+    volumes:
+      - /home/dietpi/localstack/config/homeassistant:/config
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /run/dbus:/run/dbus:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pgrep -f 'python3 -m homeassistant'
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.ha.rule=Host(`ha.ab18.in`)
+      - traefik.http.services.ha.loadbalancer.server.port=8123
+      - homepage.group=Local Utilities
+      - homepage.name=Home Assistant
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/home-assistant.png
+      - homepage.href=https://ha.ab18.in
+      - homepage.description=Home Assistant
+networks:
+  network-layer:
+    name: tailscale_bridge
+    external: true
