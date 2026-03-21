@@ -1,0 +1,122 @@
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    hostname: ab18-tailscale
+    container_name: tailscale
+    networks:
+      network-layer:
+        ipv4_address: 11.11.11.199
+    restart: always
+    environment:
+      - TS_ROUTES=11.11.11.3/32
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_AUTHKEY_FILE=/run/secrets/ts_auth_key
+    volumes:
+      - /dev/net/tun:/dev/net/tun
+      - /home/dietpi/localstack/config/tailscale:/var/lib/tailscale
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    secrets: 
+      - ts_auth_key
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: always
+    networks:
+      network-layer:
+        ipv4_address: 11.11.11.3
+        aliases:
+          - proxy.ab18.in
+    ports:
+      - 80:80
+      - 443:443/tcp
+      - 443:443/udp
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/dietpi/localstack/config/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /home/dietpi/localstack/config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
+      - /home/dietpi/localstack/config/traefik/acme.json:/etc/acme/acme.json
+    environment:
+      - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.proxy.rule=Host(`proxy.ab18.in`)
+      - traefik.http.routers.proxy.service=api@internal
+    secrets:
+      - cf_dns_api_token
+  whoami:
+    image: traefik/whoami
+    container_name: whoami
+    restart: always
+    networks:
+      - network-layer
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.whoami.rule=Host(`whoami.ab18.in`)
+      - traefik.http.routers.whoami.middlewares=auth
+    depends_on:
+      - traefik
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN_FILE: /run/secrets/cloudflare_tunnel_token
+    networks:
+      network-layer:
+        ipv4_address: 11.11.11.4
+    secrets:
+      - cloudflare_tunnel_token
+  oauth2-proxy:
+    image: bitnami/oauth2-proxy:latest
+    container_name: oauth2-proxy
+    restart: always
+    networks:
+      network-layer:
+        ipv4_address: 11.11.11.5
+    volumes:
+      - /home/dietpi/localstack/config/oauth2-proxy/config.toml:/etc/oauth2-proxy.cfg:ro
+      - /home/dietpi/localstack/config/oauth2-proxy/emails.txt:/etc/emails.txt:ro
+    command:
+      - --config=/etc/oauth2-proxy.cfg
+      - --authenticated-emails-file=/etc/emails.txt
+      - --set-xauthrequest=true
+    dns:
+      - 1.1.1.1
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.auth.rule=(Host(`auth.ab18.in`) || PathPrefix(`/oauth2`))
+      - traefik.http.routers.auth.middlewares=auth-headers
+      - traefik.http.middlewares.auth-headers.headers.stsSeconds=315360000
+      - traefik.http.middlewares.auth-headers.headers.browserXssFilter=true
+      - traefik.http.middlewares.auth-headers.headers.contentTypeNosniff=true
+      - traefik.http.middlewares.auth-headers.headers.forceSTSHeader=true
+      - traefik.http.middlewares.auth-headers.headers.stsIncludeSubdomains=true
+      - traefik.http.middlewares.auth-headers.headers.stsPreload=true
+      - traefik.http.middlewares.auth-headers.headers.frameDeny=true
+      - traefik.http.middlewares.auth.forwardauth.address=http://oauth2-proxy:4180
+      - traefik.http.middlewares.auth.forwardAuth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Access-Token,Authorization
+      - traefik.http.middlewares.auth.forwardAuth.maxResponseBodySize=10485760
+      - homepage.group=Utilities
+      - homepage.name=OAuth2-Proxy
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/oauth2-proxy.png
+      - homepage.href=https://auth.ab18.in
+      - homepage.description=Guardian of services
+networks:
+  network-layer:
+    name: tailscale_bridge
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 11.11.11.0/24
+          gateway: 11.11.11.1
+
+secrets:
+  ts_auth_key:
+    file: /home/dietpi/localstack/secrets/ts_auth_key
+  cloudflare_tunnel_token:
+    file: /home/dietpi/localstack/secrets/cloudflare_tunnel_token
+  cf_dns_api_token:
+    file: /home/dietpi/localstack/secrets/cf_dns_api_token
