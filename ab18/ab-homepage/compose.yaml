@@ -1,0 +1,35 @@
+services:
+  dockerproxy:
+    image: ghcr.io/tecnativa/docker-socket-proxy:latest
+    container_name: dockerproxy
+    environment:
+      - CONTAINERS=1 # Allow access to viewing containers
+      - POST=0
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    restart: always
+    networks:
+      - network-layer
+  homepage:
+    image: ghcr.io/gethomepage/homepage:latest
+    container_name: homepage
+    volumes:
+      - /home/dietpi/localstack/config/homepage:/app/config # Make sure your local config directory exists
+      #- /var/run/docker.sock:/var/run/docker.sock:ro # (optional) For docker integrations
+    environment:
+      HOMEPAGE_ALLOWED_HOSTS: home.ab18.in # required, may need port. See gethomepage.dev/installation/#homepage_allowed_hosts
+      PUID: 1000
+      PGID: 1000
+    networks:
+      - network-layer
+    restart: always
+    dns:
+      - 10.10.10.10
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.home.rule=Host(`home.ab18.in`)
+      - traefik.http.routers.home.middlewares=auth
+networks:
+  network-layer:
+    name: tailscale_bridge
+    external: true
