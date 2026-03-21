@@ -20,6 +20,7 @@ services:
       - traefik.tcp.routers.pg.tls.options=db@file
       - traefik.tcp.routers.pg.entrypoints=websecure
       - traefik.tcp.routers.pg.tls=true
+      - traefik.tcp.routers.pg.tls.certresolver=myresolver
     shm_size: 128mb
   redis:
     image: redis:alpine
