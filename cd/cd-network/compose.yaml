@@ -1,0 +1,105 @@
+services:
+  traefik:
+    image: traefik:latest
+    container_name: traefik
+    restart: always
+    networks:
+      default:
+        ipv4_address: 11.11.11.2
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/dietpi/localstack/config/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - /home/dietpi/localstack/config/traefik/acme.json:/etc/acme/acme.json
+    environment:
+      - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.proxy.rule=Host(`proxy.citrusdental.in`)
+      - traefik.http.routers.proxy.service=api@internal
+      - homepage.group=CD Utilities
+      - homepage.name=Traefik
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/traefik-proxy.png
+      - homepage.href=https://proxy.citrusdental.in
+      - homepage.description=Traefik Reverse Proxy
+      - homepage.widget.type=traefik
+      - homepage.widget.url=https://proxy.citrusdental.in
+    secrets:
+      - cf_dns_api_token
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    networks:
+      default:
+        ipv4_address: 11.11.11.199
+    restart: always
+    environment:
+      - TS_AUTHKEY_FILE=/run/secrets/ts_auth_key
+      - TS_HOSTNAME=pihole-tailscale
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_ROUTES=11.11.11.11/32,11.11.11.2/32
+    volumes:
+      - /home/dietpi/localstack/config/tailscale:/var/lib/tailscale
+    secrets:
+      - ts_auth_key
+
+  pihole:
+    image: pihole/pihole
+    container_name: pihole
+    hostname: pihole
+    networks:
+      pihole:
+        ipv4_address: 10.10.10.10
+      default:
+        ipv4_address: 11.11.11.11
+    restart: always
+    environment:
+      - TZ=Asia/Kolkata
+      - FTLCONF_DNS_REVSERVERS=true,10.10.0.0/24,10.10.10.1,lan
+      - FTLCONF_DNS_DOMAINNEEDED=true
+      - FTLCONF_DNS_BLOCKESNI=false
+      - FTLCONF_DNS_EXPANDHOSTS=true
+      - FTLCONF_DNS_DNSSEC=true
+      - FTLCONF_DNS_SHOWDNSSEC=false
+      - FTLCONF_DNS_UPSTREAMS=1.1.1.1
+      - WEBPASSWORD_FILE=/run/secrets/pihole_web_password
+      - FTLCONF_DATABASE_MAXDBDAYS=3
+      - PIHOLE_UID=1000
+      - PIHOLE_GID=1000
+      - FTLCONF_WEBSERVER_PORT=80
+    cap_add:
+      - CAP_SYS_NICE
+      - CAP_SYS_TIME
+      - NET_ADMIN
+    volumes:
+      - /home/dietpi/localstack/config/pihole:/etc/pihole
+    secrets:
+      - pihole_web_password
+networks:
+  pihole:
+    driver: macvlan
+    driver_opts:
+      parent: eth0
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+          gateway: 10.10.10.1
+          ip_range: 10.10.10.10/32
+  default:
+    driver: bridge
+    name: tailscale_bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 11.11.11.0/24
+          gateway: 11.11.11.1
+
+secrets:
+  ts_auth_key:
+    file: /home/dietpi/localstack/secrets/ts_auth_key
+  cf_dns_api_token:
+    file: /home/dietpi/localstack/secrets/cf_dns_api_token
+  pihole_web_password:
+    file: /home/dietpi/localstack/secrets/pihole_web_password
