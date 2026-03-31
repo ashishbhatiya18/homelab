@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/ashishbhatiya18/citrusdental-admin:main
+    image: ghcr.io/ashishbhatiya18/citrusdental-admin:search
     container_name: admin
     restart: always
     extra_hosts:
