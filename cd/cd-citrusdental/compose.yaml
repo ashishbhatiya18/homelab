@@ -3,6 +3,7 @@ services:
     command: tunnel --no-autoupdate run
     image: cloudflare/cloudflared:latest
     container_name: cloudflare
+    restart: always
     networks:
       - tailscale_bridge
     environment:
@@ -18,6 +19,7 @@ services:
   citrusdental-bfe:
     image: ghcr.io/ashishbhatiya18/citrusdental-bfe:main
     container_name: citrusdental-bfe
+    restart: always
     networks:
       - tailscale_bridge
     env_file: .env
