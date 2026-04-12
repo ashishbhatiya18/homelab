@@ -9,6 +9,7 @@ services:
     ports:
       - 80:80
       - 443:443
+      - "443:443/udp"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /home/dietpi/localstack/config/traefik/traefik.yml:/etc/traefik/traefik.yml
