@@ -9,7 +9,7 @@ services:
       - network-layer
     environment:
       - TZ=Asia/Kolkata
-      - DATABASE_URL="postgresql://ab18:ab18@pg.ab18.in:443/ab18?application_name=vaultwarden&options=-c search_path%3Dvaultwarden"
+      - DATABASE_URL=postgresql://vaultwarden:vaultwarden@pg.ab18.in:443/ab18
     extra_hosts:
       - pg.ab18.in=10.10.10.11
     labels:
