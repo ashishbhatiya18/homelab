@@ -15,7 +15,7 @@ services:
       - traefik.http.services.immich.loadbalancer.server.port=2283
       - traefik.http.routers.immich.middlewares=immich-ratelimit
       - traefik.http.middlewares.immich-ratelimit.ratelimit.average=200
-      - traefik.http.middlewares.immich-ratelimit.ratelimit.burst=50
+      - traefik.http.middlewares.immich-ratelimit.ratelimit.burst=120
       - traefik.http.middlewares.immich-ratelimit.ratelimit.period=1m
       - homepage.group=Utilities
       - homepage.name=Immich
