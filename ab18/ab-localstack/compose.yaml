@@ -30,18 +30,18 @@ services:
       - WATCHTOWER_POLL_INTERVAL=300
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-  otel:
-    image: grafana/otel-lgtm:latest
-    container_name: otel
-    volumes:
-      - /home/dietpi/localstack/data/otel_data:/data
-    restart: always
-    networks:
-      - network-layer
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.otel.rule=Host(`otel.ab18.in`)
-      - traefik.http.services.otel.loadbalancer.server.port=3000
+  # otel:
+  #   image: grafana/otel-lgtm:latest
+  #   container_name: otel
+  #   volumes:
+  #     - /home/dietpi/localstack/data/otel_data:/data
+  #   restart: always
+  #   networks:
+  #     - network-layer
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.otel.rule=Host(`otel.ab18.in`)
+  #     - traefik.http.services.otel.loadbalancer.server.port=3000
 networks:
   network-layer:
     name: tailscale_bridge
