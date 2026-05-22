@@ -11,11 +11,15 @@ services:
       - TZ=Asia/Kolkata
       - DATABASE_URL=postgresql://vaultwarden:vaultwarden@pg.ab18.in:443/ab18
       - WEBSOCKET_ENABLED=true
+      - DOMAIN=https://vault.ab18.in
+      - SESSION_LIFETIME_SECONDS=2592000
     extra_hosts:
       - pg.ab18.in=10.10.10.11
     labels:
       - traefik.enable=true
       - traefik.http.routers.vault.rule=Host(`vault.ab18.in`)
+      - traefik.http.routers.vault.middlewares=vault-headers
+      - traefik.http.middlewares.vault-headers.headers.customrequestheaders.X-Forwarded-Proto=https
       - homepage.group=Utilities
       - homepage.name=VaultWarden
       - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/bitwarden.png
