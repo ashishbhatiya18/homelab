@@ -11,9 +11,9 @@ locals {
   }
 
   presswala_txt_records = {
-    "apex-spf"    = { name = "@", content = "v=spf1 include:_spf.mx.cloudflare.net ~all" }
-    "apex-dmarc"  = { name = "_dmarc", content = "v=DMARC1; p=none; rua=mailto:f79684f9bff14c83a2843656e907596b@dmarc-reports.cloudflare.net" }
-    "dkim-cf2024" = { name = "cf2024-1._domainkey", content = "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiweykoi+o48IOGuP7GR3X0MOExCUDY/BCRHoWBnh3rChl7WhdyCxW3jgq1daEjPPqoi7sJvdg5hEQVsgVRQP4DcnQDVjGMbASQtrY4WmB1VebF+RPJB2ECPsEDTpeiI5ZyUAwJaVX7r6bznU67g7LvFq35yIo4sdlmtZGV+i0H4cpYH9+3JJ78km4KXwaf9xUJCWF6nxeD+qG6Fyruw1Qlbds2r85U9dkNDVAS3gioCvELryh1TxKGiVTkg4wqHTyHfWsp7KD3WQHYJn0RyfJJu6YEmL77zonn7p2SRMvTMP3ZEXibnC9gz3nnhR6wcYL8Q7zXypKTMD58bTixDSJwIDAQAB" }
+    "apex-spf"   = { name = "@", content = "v=spf1 include:_spf.mx.cloudflare.net ~all" }
+    "apex-dmarc" = { name = "_dmarc", content = "v=DMARC1; p=none; rua=mailto:f79684f9bff14c83a2843656e907596b@dmarc-reports.cloudflare.net" }
+    # dkim-cf2024 omitted — managed by Cloudflare Email Routing, cannot be modified via API
   }
 }
 

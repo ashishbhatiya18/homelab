@@ -25,11 +25,11 @@ locals {
   }
 
   cd_txt_records = {
-    "apex-spf"       = { name = "@", content = "v=spf1 include:_spf.mx.cloudflare.net ~all" }
-    "apex-google-1"  = { name = "@", content = "google-site-verification=R_yZ9MXc0dPizBvOwQBKe0k3mk_i3BjHaahaFVWDifU" }
-    "apex-google-2"  = { name = "@", content = "google-site-verification=1ZMX7S28-ltxtskExd9wxMtWSxnpvO2zGOrmsgqaDFc" }
-    "mail-spf"       = { name = "mail", content = "v=spf1 include:mailer91.com ~all" }
-    "dkim-cf2024"    = { name = "cf2024-1._domainkey", content = "v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiweykoi+o48IOGuP7GR3X0MOExCUDY/BCRHoWBnh3rChl7WhdyCxW3jgq1daEjPPqoi7sJvdg5hEQVsgVRQP4DcnQDVjGMbASQtrY4WmB1VebF+RPJB2ECPsEDTpeiI5ZyUAwJaVX7r6bznU67g7LvFq35yIo4sdlmtZGV+i0H4cpYH9+3JJ78km4KXwaf9xUJCWF6nxeD+qG6Fyruw1Qlbds2r85U9dkNDVAS3gioCvELryh1TxKGiVTkg4wqHTyHfWsp7KD3WQHYJn0RyfJJu6YEmL77zonn7p2SRMvTMP3ZEXibnC9gz3nnhR6wcYL8Q7zXypKTMD58bTixDSJwIDAQAB" }
+    "apex-spf"      = { name = "@", content = "v=spf1 include:_spf.mx.cloudflare.net ~all" }
+    "apex-google-1" = { name = "@", content = "google-site-verification=R_yZ9MXc0dPizBvOwQBKe0k3mk_i3BjHaahaFVWDifU" }
+    "apex-google-2" = { name = "@", content = "google-site-verification=1ZMX7S28-ltxtskExd9wxMtWSxnpvO2zGOrmsgqaDFc" }
+    "mail-spf"      = { name = "mail", content = "v=spf1 include:mailer91.com ~all" }
+    # dkim-cf2024 omitted — managed by Cloudflare Email Routing, cannot be modified via API
     "dkim-spaceship" = { name = "spaceship._domainkey.mail", content = "v=DKIM1;k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCW2UxfSdaD6l2YHlbGetsh0naUlhBYNrPFziLUKNsw1VTtk/UOM5j9zDQpEHbn9jTGiNooKjVU/i4uWBNEi3jn4409W/yeQeqF4/ye/ZYUCuZscGn+9OBHuDye9FwOz7SVnAnJpA0WxWOFZrrk2zepaweOytLSH1FKGkx2CsbvTwIDAQAB" }
   }
 }
