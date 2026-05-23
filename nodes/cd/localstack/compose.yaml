@@ -36,25 +36,6 @@ services:
       - homepage.description=Watch Tower for Image Updates
       - homepage.widget.type=watchtower
       - homepage.widget.url=https://watchtower.citrusdental.in
-  arcane:
-    image: ghcr.io/getarcaneapp/arcane-headless:latest
-    container_name: arcane
-    restart: always
-    environment:
-      - PUID=1000
-      - PGID=1000
-    env_file: /home/dietpi/localstack/secrets/cd-localstack.env
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - /home/dietpi/localstack/data/arcane_data:/app/data
-      - /home/dietpi/localstack/stacks:/app/data/projects
-    extra_hosts:
-      - "dock.ab18.in:10.10.10.11"
-    networks:
-      - tailscale_bridge
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.arcane.rule=Host(`dock.citrusdental.in`)
 networks:
   tailscale_bridge:
     external: true
