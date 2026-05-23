@@ -7,7 +7,7 @@ services:
     restart: always
     labels:
       - traefik.enable=true
-      - traefik.http.routers.pdf.rule=Host(`pdf.ab18.in`) || Host(`pdf`)
+      - traefik.http.routers.pdf.rule=Host(`pdf.ab18.in`)
       - traefik.http.routers.pdf.middlewares=auth
       - homepage.group=Utilities
       - homepage.name=Stirling PDF
