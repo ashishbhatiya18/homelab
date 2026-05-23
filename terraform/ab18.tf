@@ -5,13 +5,9 @@
 # ---------------------------------------------------------------------------
 
 locals {
-  # Subdomains that get a proxied CNAME → tunnel.
-  # Keep this list in sync with nodes/ab/network/cloudflared/config.yml ingress rules.
   ab18_hostnames = toset([
     "auth",
-    "dock",
     "draw",
-    "hub",
     "pad",
     "pdf",
     "photos",
@@ -25,6 +21,32 @@ locals {
 resource "cloudflare_zero_trust_tunnel_cloudflared" "ab" {
   account_id = var.account_id
   name       = "ab18-localstack"
+  config_src = "cloudflare"
+
+  lifecycle {
+    ignore_changes = [config_src]
+  }
+}
+
+# Tunnel ingress config — managed here so routing rules are in git
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "ab" {
+  account_id = var.account_id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.ab.id
+
+  config = {
+    ingress = concat(
+      [for hostname in sort(tolist(local.ab18_hostnames)) : {
+        hostname = "${hostname}.ab18.in"
+        service  = "https://traefik:443"
+        origin_request = {
+          no_tls_verify      = true
+          origin_server_name = "${hostname}.ab18.in"
+          http_host_header   = "${hostname}.ab18.in"
+        }
+      }],
+      [{ service = "http_status:404" }]
+    )
+  }
 }
 
 # DNS — one proxied CNAME per subdomain pointing at the tunnel
