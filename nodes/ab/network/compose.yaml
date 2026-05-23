@@ -61,10 +61,7 @@ services:
     container_name: cloudflared
     restart: always
     command: tunnel --no-autoupdate run
-    environment:
-      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflared_token
-    secrets:
-      - cloudflared_token
+    env_file: /home/dietpi/localstack/secrets/ab-cloudflared.env
     networks:
       network-layer:
         ipv4_address: 11.11.11.4
@@ -113,5 +110,3 @@ secrets:
     file: /home/dietpi/localstack/secrets/ts_auth_key
   cf_dns_api_token:
     file: /home/dietpi/localstack/secrets/cf_dns_api_token
-  cloudflared_token:
-    file: /home/dietpi/localstack/secrets/cloudflared_token

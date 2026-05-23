@@ -4,7 +4,7 @@
 ## Stacks
 | Stack | Services | Secrets needed |
 |---|---|---|
-| `network` | tailscale, traefik, whoami, cloudflared, oauth2-proxy | `ts_auth_key`, `cf_dns_api_token`, `cloudflared_token` |
+| `network` | tailscale, traefik, whoami, cloudflared, oauth2-proxy | `ts_auth_key`, `cf_dns_api_token`, `ab-cloudflared.env` |
 | `data` | postgres, redis | `ab-data.env` |
 | `immich` | immich-server, immich_machine_learning | `ab-immich.env` |
 | `kopia` | kopia | `ab-kopia.env` |
@@ -124,7 +124,9 @@ echo "your-cf-dns-api-token" > cf_dns_api_token
 # Cloudflare tunnel token — get it from the dashboard or CLI:
 #   cloudflared tunnel token ab18-localstack
 # The tunnel and its ingress rules are managed by Terraform (terraform/ab18.tf).
-echo "your-tunnel-token" > cloudflared_token
+cat > ab-cloudflared.env <<'EOF'
+TUNNEL_TOKEN=your-tunnel-token
+EOF
 ```
 
 > **Note:** Tunnel ingress routing is fully managed in `terraform/ab18.tf` via
@@ -257,7 +259,7 @@ EOF
 ### 3m — Set permissions
 
 ```sh
-chmod 600 ts_auth_key cf_dns_api_token cloudflared_token \
+chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
           ab-data.env ab-immich.env ab-kopia.env ab-localstack.env \
           ab-vaultwarden.env ab-media.env ab-filebrowser.env \
           ab-syncthing.env ab-rustpad.env ab-excalidraw.env \
@@ -270,7 +272,7 @@ chmod 600 ts_auth_key cf_dns_api_token cloudflared_token \
 /home/dietpi/localstack/secrets/
   ts_auth_key
   cf_dns_api_token
-  cloudflared_token
+  ab-cloudflared.env
   ab-data.env
   ab-immich.env
   ab-kopia.env
@@ -398,7 +400,7 @@ rustpad
 | `Permission denied (publickey)` on clone | Deploy key not added | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
 | `network tailscale_bridge not found` | networks.sh not run | `bash nodes/ab/networks.sh` |
 | Traefik fails to start | `acme.json` missing or wrong permissions | `touch acme.json && chmod 600 acme.json` |
-| cloudflared `tunnel not found` | Wrong token in `cloudflared_token` secret | Re-fetch token with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
+| cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
 | oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values, mark skip-worktree |
 | Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
 | Vaultwarden fails to connect to DB | `DATABASE_URL` password mismatch | Must match password used in `CREATE ROLE vaultwarden` |
