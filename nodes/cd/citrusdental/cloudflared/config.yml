@@ -1,0 +1,12 @@
+# Cloudflare Tunnel ingress configuration for cd node (citrusdental.in).
+# tunnel ID and credentials-file are required when running in config-file mode.
+# Get credentials JSON: Zero Trust → Networks → Tunnels → cd tunnel → Configure → Download credentials
+tunnel: 328126d9-3836-45e3-8a75-ee9f5085aaa0
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  - hostname: "*.citrusdental.in"
+    service: https://traefik:443
+
+  # Catch-all — required, must be last
+  - service: http_status:404
