@@ -8,8 +8,7 @@ services:
     volumes:
       - ./config/esphome:/config
       - /etc/localtime:/etc/localtime:ro
-    environment:
-      - ESPHOME_DASHBOARD_USE_PING=true
+    env_file: /home/dietpi/localstack/secrets/ab-homeautomation.env
     labels:
       - traefik.enable=true
       - traefik.http.routers.esphome.rule=Host(`esphome.ab18.in`)

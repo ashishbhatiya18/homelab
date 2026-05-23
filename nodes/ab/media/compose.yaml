@@ -14,11 +14,7 @@ services:
       - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jellyfin.png
       - homepage.href=https://jelly.ab18.in
       - homepage.description=Media Server
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Asia/Kolkata
-      - UMASK_SET=022
+    env_file: /home/dietpi/localstack/secrets/ab-media.env
     volumes:
       - /home/dietpi/movies:/data/movies:ro
       - /home/dietpi/music:/data/music:ro

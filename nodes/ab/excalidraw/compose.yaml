@@ -6,8 +6,7 @@ services:
     stdin_open: true
     healthcheck:
       disable: true
-    environment:
-      - NODE_ENV=production
+    env_file: /home/dietpi/localstack/secrets/ab-excalidraw.env
     networks:
       - network-layer
     labels:

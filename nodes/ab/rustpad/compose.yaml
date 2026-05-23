@@ -15,10 +15,7 @@ services:
       - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/etherpad.png
       - homepage.href=https://pad.ab18.in
       - homepage.description=Online NotePad
-    environment:
-      - EXPIRY_DAYS=30
-      - SQLITE_URI=/data/db.sqlite
-      - RUST_LOG=info
+    env_file: /home/dietpi/localstack/secrets/ab-rustpad.env
     volumes:
       - /home/dietpi/localstack/data/rustpad_data:/data
 networks:

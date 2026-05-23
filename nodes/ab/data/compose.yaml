@@ -6,10 +6,6 @@ services:
     restart: always
     volumes:
       - /home/dietpi/localstack/data/pg_data:/var/lib/postgresql/data
-    environment:
-      DB_USERNAME: immich
-      DB_DATABASE_NAME: photos
-      POSTGRES_INITDB_ARGS: --data-checksums
     env_file: /home/dietpi/localstack/secrets/ab-data.env
     networks:
       - data-layer

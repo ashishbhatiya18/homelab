@@ -6,10 +6,7 @@ services:
     networks:
       - network-layer
     restart: always
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Asia/Kolkata
+    env_file: /home/dietpi/localstack/secrets/ab-syncthing.env
     volumes:
       - ./config:/config
       - /home/dietpi/music:/music

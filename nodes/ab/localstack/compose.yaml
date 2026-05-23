@@ -3,9 +3,7 @@ services:
     image: nickfedor/watchtower
     container_name: watchtower
     restart: always
-    environment:
-      - WATCHTOWER_UPDATE_ON_START=true
-      - WATCHTOWER_POLL_INTERVAL=300
+    env_file: /home/dietpi/localstack/secrets/ab-localstack.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
   # otel:

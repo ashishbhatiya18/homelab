@@ -13,3 +13,8 @@ docker network inspect tailscale_bridge >/dev/null 2>&1 || \
     tailscale_bridge
 
 echo "[networks] tailscale_bridge ready"
+
+docker network inspect data-layer >/dev/null 2>&1 || \
+  docker network create data-layer
+
+echo "[networks] data-layer ready"

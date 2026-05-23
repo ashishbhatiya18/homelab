@@ -4,21 +4,48 @@
 ## Stacks
 | Stack | Services | Secrets needed |
 |---|---|---|
-| `network` | tailscale, traefik, whoami, cloudflared, oauth2-proxy | `ts_auth_key`, `cf_dns_api_token`, `cloudflared-credentials.json` |
-| `data` | postgres, redis, mariadb | `ab-data.env` |
-| `immich` | immich-server, machine-learning | `ab-immich.env` |
+| `network` | tailscale, traefik, whoami, cloudflared, oauth2-proxy | `ts_auth_key`, `cf_dns_api_token`, `cloudflared_token` |
+| `data` | postgres, redis | `ab-data.env` |
+| `immich` | immich-server, immich_machine_learning | `ab-immich.env` |
 | `kopia` | kopia | `ab-kopia.env` |
-| `localstack` | arcane, watchtower | `ab-localstack.env` |
-| `vaultwarden` | vaultwarden | — |
-| `homeautomation` | esphome | — (config gitignored) |
-| `syncthing` | syncthing | — (config gitignored) |
-| `homepage` | dockerproxy, homepage | — |
-| `filebrowser` | filebrowser | — |
-| `media` | jellyfin | — |
-| `bentopdf` | stirling-pdf | — |
-| `dockerhub` | registry | — |
-| `excalidraw` | excalidraw | — |
-| `rustpad` | rustpad | — |
+| `localstack` | watchtower | `ab-localstack.env` |
+| `vaultwarden` | vaultwarden | `ab-vaultwarden.env` |
+| `homeautomation` | esphome | `ab-homeautomation.env` (config gitignored) |
+| `syncthing` | syncthing | `ab-syncthing.env` (config gitignored) |
+| `filebrowser` | filebrowser | `ab-filebrowser.env` |
+| `media` | jellyfin | `ab-media.env` |
+| `bentopdf` | stirlingpdf | — |
+| `excalidraw` | excalidraw | `ab-excalidraw.env` |
+| `rustpad` | rustpad | `ab-rustpad.env` |
+
+## Exposed services (ab18.in)
+
+Tunnel name: `ab18-localstack` · Public ingress is **Terraform-managed** (`terraform/ab18.tf`).
+
+**Public (Cloudflare tunnel → Traefik):**
+
+| Subdomain | Service |
+|---|---|
+| `auth.ab18.in` | oauth2-proxy |
+| `draw.ab18.in` | excalidraw |
+| `pad.ab18.in` | rustpad |
+| `pdf.ab18.in` | stirlingpdf |
+| `photos.ab18.in` | immich-server |
+| `vault.ab18.in` | vaultwarden (Cloudflare cache bypass active) |
+| `whoami.ab18.in` | whoami |
+
+**Internal only (Tailscale → Traefik, not in tunnel):**
+
+| Subdomain | Service |
+|---|---|
+| `backup.ab18.in` | kopia |
+| `esphome.ab18.in` | esphome |
+| `files.ab18.in` | filebrowser |
+| `jelly.ab18.in` | jellyfin |
+| `proxy.ab18.in` | traefik dashboard |
+| `sync.ab18.in` | syncthing |
+| `pg.ab18.in` | postgres (TCP/TLS) |
+| `redis.ab18.in` | redis (TCP/TLS) |
 
 ---
 
@@ -94,38 +121,36 @@ echo "tskey-auth-XXXX" > ts_auth_key
 # Cloudflare DNS API token — Zone:Read + DNS:Edit permissions
 echo "your-cf-dns-api-token" > cf_dns_api_token
 
-# Cloudflare tunnel credentials JSON — from cloudflared on the node
-# Run once to create the tunnel (skip if tunnel already exists):
-#   docker run --rm cloudflare/cloudflared tunnel login
-#   docker run --rm cloudflare/cloudflared tunnel create ab18-localstack
-# Then copy the credentials file:
-cp ~/.cloudflared/<tunnel-id>.json cloudflared-credentials.json
+# Cloudflare tunnel token — get it from the dashboard or CLI:
+#   cloudflared tunnel token ab18-localstack
+# The tunnel and its ingress rules are managed by Terraform (terraform/ab18.tf).
+echo "your-tunnel-token" > cloudflared_token
 ```
 
-Update the tunnel ID in the cloudflared config to match:
-```sh
-nano /home/dietpi/localstack/repo/nodes/ab/network/cloudflared/config.yml
-# set: tunnel: <your-tunnel-id>
-```
+> **Note:** Tunnel ingress routing is fully managed in `terraform/ab18.tf` via
+> `cloudflare_zero_trust_tunnel_cloudflared_config`. Do **not** edit routing rules
+> locally — they are pushed from Terraform.
 
-Mark it so git does not overwrite your edit:
-```sh
-git -C /home/dietpi/localstack/repo \
-  update-index --skip-worktree nodes/ab/network/cloudflared/config.yml
-```
-
-### 3b — Data stack (postgres + mariadb)
+### 3b — Data stack (postgres + redis)
 
 ```sh
 cat > ab-data.env <<'EOF'
-POSTGRES_USER=immich
+DB_USERNAME=immich
+DB_DATABASE_NAME=photos
+POSTGRES_INITDB_ARGS=--data-checksums
 POSTGRES_PASSWORD=your-pg-password
-POSTGRES_DB=immich
-MYSQL_ROOT_PASSWORD=your-mysql-root-password
-MYSQL_DATABASE=your-db
-MYSQL_USER=your-user
-MYSQL_PASSWORD=your-mysql-password
 EOF
+```
+
+### 3b.1 — Provision Vaultwarden postgres user/database
+
+Vaultwarden connects as `vaultwarden@pg.ab18.in:443/ab18`. After the data stack is running, create the role and database:
+
+```sh
+docker exec -it postgres psql -U immich -d postgres -c "
+  CREATE ROLE vaultwarden WITH LOGIN PASSWORD 'your-vaultwarden-db-password';
+  CREATE DATABASE ab18 OWNER vaultwarden;
+"
 ```
 
 ### 3c — Immich stack
@@ -135,7 +160,7 @@ cat > ab-immich.env <<'EOF'
 DB_HOSTNAME=postgres
 DB_USERNAME=immich
 DB_PASSWORD=your-pg-password
-DB_DATABASE_NAME=immich
+DB_DATABASE_NAME=photos
 REDIS_HOSTNAME=redis
 EOF
 ```
@@ -144,22 +169,99 @@ EOF
 
 ```sh
 cat > ab-kopia.env <<'EOF'
+KOPIA_DATADIR=/home/dietpi/localstack/data/kopia
 KOPIA_PASSWORD=your-kopia-repository-password
-# Add any other Kopia vars (S3 credentials, etc.)
 EOF
 ```
 
-### 3e — Localstack stack (Arcane)
+### 3e — Localstack stack (watchtower)
 
 ```sh
-touch ab-localstack.env   # add vars if Arcane needs any
+cat > ab-localstack.env <<'EOF'
+WATCHTOWER_UPDATE_ON_START=true
+WATCHTOWER_POLL_INTERVAL=300
+EOF
 ```
 
-### 3f — Set permissions
+### 3f — Vaultwarden stack
 
 ```sh
-chmod 600 ts_auth_key cf_dns_api_token cloudflared-credentials.json \
-          ab-data.env ab-immich.env ab-kopia.env ab-localstack.env
+cat > ab-vaultwarden.env <<'EOF'
+TZ=Asia/Kolkata
+DATABASE_URL=postgresql://vaultwarden:your-vaultwarden-db-password@pg.ab18.in:443/ab18
+WEBSOCKET_ENABLED=true
+DOMAIN=https://vault.ab18.in
+SESSION_LIFETIME_SECONDS=2592000
+EOF
+```
+
+### 3g — Media stack (jellyfin)
+
+```sh
+cat > ab-media.env <<'EOF'
+PUID=1000
+PGID=1000
+TZ=Asia/Kolkata
+UMASK_SET=022
+EOF
+```
+
+### 3h — Filebrowser stack
+
+```sh
+cat > ab-filebrowser.env <<'EOF'
+PUID=1000
+PGID=1000
+TZ=Asia/Kolkata
+FB_AUTH_HEADER=X-Auth-Request-User
+FB_AUTH_METHOD=proxy
+EOF
+```
+
+### 3i — Syncthing stack
+
+```sh
+cat > ab-syncthing.env <<'EOF'
+PUID=1000
+PGID=1000
+TZ=Asia/Kolkata
+EOF
+```
+
+### 3j — Rustpad stack
+
+```sh
+cat > ab-rustpad.env <<'EOF'
+EXPIRY_DAYS=30
+SQLITE_URI=/data/db.sqlite
+RUST_LOG=info
+EOF
+```
+
+### 3k — Excalidraw stack
+
+```sh
+cat > ab-excalidraw.env <<'EOF'
+NODE_ENV=production
+EOF
+```
+
+### 3l — Homeautomation stack (esphome)
+
+```sh
+cat > ab-homeautomation.env <<'EOF'
+ESPHOME_DASHBOARD_USE_PING=true
+EOF
+```
+
+### 3m — Set permissions
+
+```sh
+chmod 600 ts_auth_key cf_dns_api_token cloudflared_token \
+          ab-data.env ab-immich.env ab-kopia.env ab-localstack.env \
+          ab-vaultwarden.env ab-media.env ab-filebrowser.env \
+          ab-syncthing.env ab-rustpad.env ab-excalidraw.env \
+          ab-homeautomation.env
 ```
 
 ### Complete secrets layout
@@ -168,11 +270,18 @@ chmod 600 ts_auth_key cf_dns_api_token cloudflared-credentials.json \
 /home/dietpi/localstack/secrets/
   ts_auth_key
   cf_dns_api_token
-  cloudflared-credentials.json
+  cloudflared_token
   ab-data.env
   ab-immich.env
   ab-kopia.env
   ab-localstack.env
+  ab-vaultwarden.env
+  ab-media.env
+  ab-filebrowser.env
+  ab-syncthing.env
+  ab-rustpad.env
+  ab-excalidraw.env
+  ab-homeautomation.env
   gitops-agent.env          ← created by install-agent.sh
 ```
 
@@ -206,7 +315,7 @@ git -C /home/dietpi/localstack/repo \
 bash /home/dietpi/localstack/repo/nodes/ab/networks.sh
 
 # Verify
-docker network ls | grep tailscale_bridge
+docker network ls | grep -E "tailscale_bridge|data-layer"
 ```
 
 ---
@@ -266,18 +375,16 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
 Expected running containers:
 ```
 tailscale, traefik, whoami, cloudflared, oauth2-proxy
-postgres, redis, mariadb
-immich-server, immich-machine-learning
+postgres, redis
+immich-server, immich_machine_learning
 kopia
-arcane, watchtower
+watchtower
 vaultwarden
 esphome
 syncthing
-dockerproxy, homepage
 filebrowser
 jellyfin
-stirling-pdf
-registry
+stirlingpdf
 excalidraw
 rustpad
 ```
@@ -291,9 +398,10 @@ rustpad
 | `Permission denied (publickey)` on clone | Deploy key not added | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
 | `network tailscale_bridge not found` | networks.sh not run | `bash nodes/ab/networks.sh` |
 | Traefik fails to start | `acme.json` missing or wrong permissions | `touch acme.json && chmod 600 acme.json` |
-| cloudflared `tunnel not found` | Tunnel ID mismatch in config.yml | Update tunnel ID and re-run `docker compose up -d cloudflared` |
+| cloudflared `tunnel not found` | Wrong token in `cloudflared_token` secret | Re-fetch token with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
 | oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values, mark skip-worktree |
-| Immich fails to connect to DB | Wrong `DB_PASSWORD` in `ab-immich.env` | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
+| Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
+| Vaultwarden fails to connect to DB | `DATABASE_URL` password mismatch | Must match password used in `CREATE ROLE vaultwarden` |
 | ESPHome config missing | `homeautomation/config/esphome/` not restored | Restore from backup — this dir is gitignored |
 | Syncthing won't start | `syncthing/config/` not present | Restore from backup — this dir is gitignored |
 | Agent not deploying a stack | Syntax error in compose | `docker compose -f nodes/ab/<stack>/compose.yaml config` |
