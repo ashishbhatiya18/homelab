@@ -36,25 +36,6 @@ services:
       - traefik.tcp.routers.redis.rule=HostSNI(`redis.ab18.in`)
       - traefik.tcp.routers.redis.entrypoints=websecure
       - traefik.tcp.routers.redis.tls=true
-  mysql:
-    image: linuxserver/mariadb
-    container_name: mysql
-    restart: always
-    environment:
-      PUID: 1000
-      PGID: 1000
-      TZ: Asia/Kolkata
-    env_file: /home/dietpi/localstack/secrets/ab-data.env
-    volumes:
-      - /home/dietpi/localstack/data/mysql_data:/config
-    networks:
-      - data-layer
-      - network-layer
-    labels:
-      - traefik.enable=true
-      - traefik.tcp.routers.mysql.rule=HostSNI(`mysql.ab18.in`)
-      - traefik.tcp.routers.mysql.entrypoints=websecure
-      - traefik.tcp.routers.mysql.tls=true
 networks:
   data-layer:
     external: true
