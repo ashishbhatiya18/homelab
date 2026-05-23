@@ -4,7 +4,7 @@ services:
     container_name: kopia
     restart: always
     # Setup the server that provides the web gui
-    command:
+    entrypoint:
       - sh
       - -c
       - |
