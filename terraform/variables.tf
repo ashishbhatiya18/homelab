@@ -32,3 +32,4 @@ variable "zone_id_presswala" {
   description = "Zone ID for presswala.store"
   type        = string
 }
+
