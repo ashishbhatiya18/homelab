@@ -99,9 +99,8 @@ echo "your-pihole-password" > secrets/pihole_web_password
 ### 3b — Citrusdental stack secrets
 
 ```sh
-# Cloudflare tunnel credentials JSON — from Zero Trust → Networks → Tunnels → cd tunnel → Configure → Download credentials
-# Save the downloaded JSON file as:
-cp /path/to/328126d9-3836-45e3-8a75-ee9f5085aaa0.json secrets/cd-cloudflared-credentials.json
+# Cloudflare tunnel token — from Zero Trust → Networks → Tunnels → citrusdental.in → Configure → Run token
+echo "eyJhXXXX..." > secrets/cloudflare_tunnel_token
 
 # api service env vars
 mkdir -p secrets/api
@@ -136,7 +135,7 @@ touch secrets/cd-localstack.env
 ### 3d — Set permissions
 
 ```sh
-chmod 600 secrets/cd-cloudflared-credentials.json \
+chmod 600 secrets/cloudflare_tunnel_token \
           secrets/ts_auth_key \
           secrets/cf_dns_api_token \
           secrets/pihole_web_password \
@@ -154,7 +153,7 @@ The full secrets layout:
   ts_auth_key
   cf_dns_api_token
   pihole_web_password
-  cd-cloudflared-credentials.json
+  cloudflare_tunnel_token
   cd-localstack.env
   api/
     env

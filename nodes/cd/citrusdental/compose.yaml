@@ -35,22 +35,27 @@ services:
     networks:
       - tailscale_bridge
   cloudflared:
-    command: --config /etc/cloudflared/config.yml tunnel --no-autoupdate run
+    command: tunnel --no-autoupdate run
     image: cloudflare/cloudflared:latest
     container_name: cloudflare
     restart: always
     networks:
       - tailscale_bridge
-    volumes:
-      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
-      - /home/dietpi/localstack/secrets/cd-cloudflared-credentials.json:/etc/cloudflared/credentials.json:ro
+    environment:
+      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
     labels:
       - homepage.group=CD Utilities
       - homepage.name=Cloudflare Tunnel
       - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png
       - homepage.description=Cloudflare Tunnel
       - homepage.widget.type=cloudflared
+    secrets:
+      - cloudflare_tunnel_token
 
 networks:
   tailscale_bridge:
     external: true
+
+secrets:
+  cloudflare_tunnel_token:
+    file: /home/dietpi/localstack/secrets/cloudflare_tunnel_token

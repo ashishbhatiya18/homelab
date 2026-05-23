@@ -38,7 +38,28 @@ locals {
 resource "cloudflare_zero_trust_tunnel_cloudflared" "cd" {
   account_id = var.account_id
   name       = "citrusdental.in"
-  config_src = "local"
+  config_src = "cloudflare"
+}
+
+# Tunnel ingress config — managed here so routing rules are in git
+resource "cloudflare_zero_trust_tunnel_cloudflared_config" "cd" {
+  account_id = var.account_id
+  tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.cd.id
+
+  config = {
+    ingress = [
+      {
+        hostname = "*.citrusdental.in"
+        service  = "https://traefik:443"
+        origin_request = {
+          no_tls_verify = true
+        }
+      },
+      {
+        service = "http_status:404"
+      }
+    ]
+  }
 }
 
 # DNS — tunnel CNAMEs
