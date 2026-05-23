@@ -1,0 +1,60 @@
+# Node-local directories — never commit these
+secrets/
+data/
+
+# Configs that must never be committed to a public repo
+# TLS private keys / certificates
+nodes/**/config/traefik/acme*.json
+nodes/**/config/traefik/*.key
+nodes/**/config/traefik/*.pem
+
+# Tailscale node identity and auth state
+nodes/**/config/tailscale/
+
+# Syncthing — entire config dir is the mount point (contains private keys and indexes)
+nodes/ab/syncthing/config/
+nodes/cd/syncthing/config/
+
+# ESPHome (contains WiFi PSKs and device API keys)
+nodes/**/config/esphome/
+
+# Firefox profile (contains private keys in ssl/)
+nodes/**/config/firefox/
+
+# Home Assistant sensitive files
+nodes/**/config/homeassistant/secrets.yaml
+nodes/**/config/homeassistant/.storage/
+nodes/**/config/homeassistant/backups/
+nodes/**/config/homeassistant/*.db
+nodes/**/config/homeassistant/*.db-shm
+nodes/**/config/homeassistant/*.db-wal
+nodes/**/config/homeassistant/*.log
+nodes/**/config/homeassistant/*.log.*
+nodes/**/config/homeassistant/.cloud/
+nodes/**/config/homeassistant/.local/
+nodes/**/config/homeassistant/deps/
+nodes/**/config/homeassistant/core
+nodes/**/config/homeassistant/tts/
+nodes/**/config/homeassistant/image/
+
+# Pi-hole databases and runtime state
+nodes/**/config/pihole/*.db
+nodes/**/config/pihole/*.db-shm
+nodes/**/config/pihole/*.db-wal
+nodes/**/config/pihole/gravity_backups/
+nodes/**/config/pihole/config_backups/
+nodes/**/config/pihole/listsCache/
+nodes/**/config/pihole/migration_backup/
+nodes/**/config/pihole/dhcp.leases
+nodes/**/config/pihole/cli_pw
+
+# Cloudflare / third-party OAuth tokens
+nodes/**/config/citrusdental-bfe/
+
+# Terraform secrets and generated files
+terraform/*.tfvars
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/*.tfstate
+terraform/*.tfstate.backup
+terraform/*.tfplan

@@ -1,0 +1,34 @@
+services:
+  syncthing:
+    image: lscr.io/linuxserver/syncthing:latest
+    container_name: syncthing
+    hostname: sync.ab18.in
+    networks:
+      - network-layer
+    restart: always
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Kolkata
+    volumes:
+      - ./config:/config
+      - /home/dietpi/music:/music
+      - /home/dietpi/movies:/movies
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.syncthing.rule=Host(`sync.ab18.in`)
+      - traefik.http.services.syncthing.loadbalancer.server.port=8384
+      - traefik.tcp.routers.syncthing.rule=HostSNI(`sync.ab18.in`)
+      - traefik.tcp.routers.syncthing.entrypoints=websecure
+      - traefik.tcp.routers.syncthing.tls=true
+      - traefik.tcp.services.syncthing_tcp.loadbalancer.server.port=22000
+      - homepage.group=Local Utilities
+      - homepage.name=SyncThing
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/syncthing.png
+      - homepage.href=https://sync.ab18.in
+      - homepage.description=Synchronize files across systems
+#      - traefik.http.routers.syncthing.middlewares=auth
+networks:
+  network-layer:
+    name: tailscale_bridge
+    external: true

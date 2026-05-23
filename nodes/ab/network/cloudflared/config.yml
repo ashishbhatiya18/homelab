@@ -1,0 +1,13 @@
+# Cloudflare Tunnel ingress configuration.
+# tunnel ID and credentials-file are required when running in config-file mode.
+# Get your tunnel ID from: cloudflared tunnel list
+tunnel: 0a2e8420-e3cb-4cb0-99c7-d36181d4e01b
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+
+  - hostname: "*.ab18.in"
+    service: https://traefik:443
+
+  # Catch-all — required, must be last
+  - service: http_status:404

@@ -1,0 +1,61 @@
+services:
+  api:
+    image: ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
+    container_name: api
+    platform: linux/amd64
+    restart: always
+    depends_on:
+      - peripheral
+    env_file:
+      - /home/dietpi/localstack/secrets/api/env
+    volumes:
+      - /home/dietpi/localstack/data/cdstack_data:/app/files:ro
+    networks:
+      - tailscale_bridge
+    extra_hosts:
+      - "pg.ab18.in:10.10.10.11"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.api.rule=Host(`api.citrusdental.in`)
+      - traefik.http.routers.api.middlewares=api-ratelimit
+      - traefik.http.middlewares.api-ratelimit.ratelimit.average=60
+      - traefik.http.middlewares.api-ratelimit.ratelimit.burst=20
+      - traefik.http.middlewares.api-ratelimit.ratelimit.period=1m
+  peripheral:
+    image: ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
+    container_name: peripheral
+    platform: linux/amd64
+    restart: always
+    env_file:
+      - /home/dietpi/localstack/secrets/peripheral/env
+    volumes:
+      - /home/dietpi/localstack/secrets/peripheral/gauth/token.json:/app/token.json
+      - /home/dietpi/localstack/secrets/peripheral/gauth/credentials.json:/app/credentials.json
+      - /home/dietpi/localstack/secrets/peripheral/slack/token.txt:/app/slack_token.txt
+    networks:
+      - tailscale_bridge
+  cloudflared:
+    command: tunnel --no-autoupdate run
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflare
+    restart: always
+    networks:
+      - tailscale_bridge
+    environment:
+      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
+    labels:
+      - homepage.group=CD Utilities
+      - homepage.name=Cloudflare Tunnel
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png
+      - homepage.description=Cloudflare Tunnel
+      - homepage.widget.type=cloudflared
+    secrets:
+      - cloudflare_tunnel_token
+
+networks:
+  tailscale_bridge:
+    external: true
+
+secrets:
+  cloudflare_tunnel_token:
+    file: /home/dietpi/localstack/secrets/cloudflare_tunnel_token

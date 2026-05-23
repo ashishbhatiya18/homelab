@@ -1,0 +1,28 @@
+[Unit]
+Description=GitOps agent — syncs Docker Compose stacks from git
+Documentation=https://github.com/YOUR_ORG/localstack
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+User=dietpi
+Group=dietpi
+
+# Node-specific config (GITOPS_NODE_PREFIX=ab18 or cd)
+EnvironmentFile=/home/dietpi/localstack/secrets/gitops-agent.env
+
+ExecStart=/home/dietpi/localstack/repo/scripts/gitops-agent.sh
+Restart=on-failure
+RestartSec=30
+
+# Give git/docker enough time on startup
+TimeoutStartSec=120
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=gitops-agent
+
+[Install]
+WantedBy=multi-user.target

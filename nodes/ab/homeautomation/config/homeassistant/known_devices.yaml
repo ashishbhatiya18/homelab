@@ -1,0 +1,245 @@
+
+eth0:
+  name: eth0,
+  mac: ETH0,
+  icon:
+  picture:
+  track: true
+
+502b730997f0:
+  name: 502b730997f0
+  mac: 50:2B:73:09:97:F0
+  icon:
+  picture:
+  track: true
+
+b827eb7b9f87:
+  name: b827eb7b9f87
+  mac: B8:27:EB:7B:9F:87
+  icon:
+  picture:
+  track: true
+
+3ca6f64c1321:
+  name: 3ca6f64c1321
+  mac: 3C:A6:F6:4C:13:21
+  icon:
+  picture:
+  track: true
+
+38f9d396438f:
+  name: 38f9d396438f
+  mac: 38:F9:D3:96:43:8F
+  icon:
+  picture:
+  track: true
+
+4417930ff77a:
+  name: 4417930ff77a
+  mac: 44:17:93:0F:F7:7A
+  icon:
+  picture:
+  track: true
+
+7ef730875e56:
+  name: 7ef730875e56
+  mac: 7E:F7:30:87:5E:56
+  icon:
+  picture:
+  track: true
+
+30fd387b8745:
+  name: 30fd387b8745
+  mac: 30:FD:38:7B:87:45
+  icon:
+  picture:
+  track: true
+
+docker0:
+  name: docker0,
+  mac: DOCKER0,
+  icon:
+  picture:
+  track: true
+
+0242ac110002:
+  name: 0242ac110002
+  mac: 02:42:AC:11:00:02
+  icon:
+  picture:
+  track: true
+
+0242ac110003:
+  name: 0242ac110003
+  mac: 02:42:AC:11:00:03
+  icon:
+  picture:
+  track: true
+
+0242ac110004:
+  name: 0242ac110004
+  mac: 02:42:AC:11:00:04
+  icon:
+  picture:
+  track: true
+
+0242ac110005:
+  name: 0242ac110005
+  mac: 02:42:AC:11:00:05
+  icon:
+  picture:
+  track: true
+
+341cf07882f5:
+  name: 341cf07882f5
+  mac: 34:1C:F0:78:82:F5
+  icon:
+  picture:
+  track: true
+
+a2a35ffc080c:
+  name: a2a35ffc080c
+  mac: A2:A3:5F:FC:08:0C
+  icon:
+  picture:
+  track: true
+
+4293183564a3:
+  name: 4293183564a3
+  mac: 42:93:18:35:64:A3
+  icon:
+  picture:
+  track: true
+
+'346895089563':
+  name: '346895089563'
+  mac: 34:68:95:08:95:63
+  icon:
+  picture:
+  track: true
+
+62f9f1a38361:
+  name: 62f9f1a38361
+  mac: 62:F9:F1:A3:83:61
+  icon:
+  picture:
+  track: true
+
+00fc8bcbdd09:
+  name: 00fc8bcbdd09
+  mac: 00:FC:8B:CB:DD:09
+  icon:
+  picture:
+  track: true
+
+8058f84c35a4:
+  name: 8058f84c35a4
+  mac: 80:58:F8:4C:35:A4
+  icon:
+  picture:
+  track: true
+
+02424b64d030:
+  name: 02424b64d030
+  mac: 02:42:4B:64:D0:30
+  icon:
+  picture:
+  track: true
+
+0242ac110006:
+  name: 0242ac110006
+  mac: 02:42:AC:11:00:06
+  icon:
+  picture:
+  track: true
+
+0242faf115d0:
+  name: 0242faf115d0
+  mac: 02:42:FA:F1:15:D0
+  icon:
+  picture:
+  track: true
+
+0242ac140002:
+  name: 0242ac140002
+  mac: 02:42:AC:14:00:02
+  icon:
+  picture:
+  track: true
+
+0242ac140003:
+  name: 0242ac140003
+  mac: 02:42:AC:14:00:03
+  icon:
+  picture:
+  track: true
+
+0242ab064e21:
+  name: 0242ab064e21
+  mac: 02:42:AB:06:4E:21
+  icon:
+  picture:
+  track: true
+
+0242ac150002:
+  name: 0242ac150002
+  mac: 02:42:AC:15:00:02
+  icon:
+  picture:
+  track: true
+
+0242ac150003:
+  name: 0242ac150003
+  mac: 02:42:AC:15:00:03
+  icon:
+  picture:
+  track: true
+
+02427a6c636a:
+  name: 02427a6c636a
+  mac: 02:42:7A:6C:63:6A
+  icon:
+  picture:
+  track: true
+
+0242ac160002:
+  name: 0242ac160002
+  mac: 02:42:AC:16:00:02
+  icon:
+  picture:
+  track: true
+
+0242ac160004:
+  name: 0242ac160004
+  mac: 02:42:AC:16:00:04
+  icon:
+  picture:
+  track: true
+
+0242ac160003:
+  name: 0242ac160003
+  mac: 02:42:AC:16:00:03
+  icon:
+  picture:
+  track: true
+
+0242b8adac1e:
+  name: 0242b8adac1e
+  mac: 02:42:B8:AD:AC:1E
+  icon:
+  picture:
+  track: true
+
+024298f7ca92:
+  name: 024298f7ca92
+  mac: 02:42:98:F7:CA:92
+  icon:
+  picture:
+  track: true
+
+0242ba8ccfac:
+  name: 0242ba8ccfac
+  mac: 02:42:BA:8C:CF:AC
+  icon:
+  picture:
+  track: true

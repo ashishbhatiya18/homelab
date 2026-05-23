@@ -1,0 +1,43 @@
+- id: '1734339971405'
+  alias: Disable Pi-hole Blocking
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: pi_hole_disable
+  - entity_id: input_boolean.pihole_blocking
+    to: 'off'
+    trigger: state
+  conditions: []
+  actions:
+  - action: script.pi_hole_disable
+    data: {}
+  mode: single
+- id: '1734339971406'
+  alias: Enable Pi-hole Blocking
+  description: ''
+  triggers:
+  - trigger: event
+    event_type: pi_hole_enable
+  - entity_id: input_boolean.pihole_blocking
+    to: 'off'
+    trigger: state
+  conditions: []
+  actions:
+  - action: script.pi_hole_enable
+    data: {}
+  mode: single
+- id: '1743059124535'
+  alias: Pihole-custom-start
+  description: ''
+  triggers:
+  - trigger: state
+    entity_id:
+    - input_boolean.pihole_blocking
+    to: 'on'
+  conditions: []
+  actions:
+  - action: rest_command.pihole_set_blocking
+    metadata: {}
+    data:
+      api_url:
+  mode: single

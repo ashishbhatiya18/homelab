@@ -1,0 +1,18 @@
+[Unit]
+Description=Pre-create Docker networks before any stack or agent starts
+After=docker.service
+Before=gitops-agent.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+
+# Same env file as the agent — provides GITOPS_NODE (ab or cd)
+EnvironmentFile=/home/dietpi/localstack/secrets/gitops-agent.env
+
+# sh -c so $GITOPS_NODE is expanded from the environment at runtime
+ExecStart=/bin/sh -c 'exec /home/dietpi/localstack/repo/nodes/$GITOPS_NODE/networks.sh'
+
+[Install]
+WantedBy=multi-user.target

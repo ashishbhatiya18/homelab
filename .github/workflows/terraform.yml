@@ -1,0 +1,72 @@
+name: Terraform (Cloudflare)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+  pull_request:
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+
+jobs:
+  terraform:
+    name: ${{ github.event_name == 'pull_request' && 'Plan' || 'Plan & Apply' }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform
+
+    env:
+      TF_VAR_cloudflare_api_token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      TF_VAR_account_id: ${{ vars.CF_ACCOUNT_ID }}
+      TF_VAR_zone_id_ab18: ${{ vars.CF_ZONE_ID_AB18 }}
+      TF_VAR_zone_id_cd: ${{ vars.CF_ZONE_ID_CD }}
+      TF_VAR_zone_id_nikview: ${{ vars.CF_ZONE_ID_NIKVIEW }}
+      TF_VAR_zone_id_presswala: ${{ vars.CF_ZONE_ID_PRESSWALA }}
+
+      # HCP Terraform remote state — set TF_CLOUD_TOKEN in repo secrets,
+      # and fill in org/workspace in terraform/main.tf backend block.
+      TF_TOKEN_app_terraform_io: ${{ secrets.TF_CLOUD_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~1.9"
+
+      - name: Init
+        run: terraform init
+
+      - name: Format check
+        run: terraform fmt -check -recursive
+
+      - name: Validate
+        run: terraform validate
+
+      - name: Plan
+        id: plan
+        run: terraform plan -out=tfplan -detailed-exitcode
+        continue-on-error: true  # exitcode 2 = changes present, not an error
+
+      - name: Post plan summary to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const output = `#### Terraform Plan \`${{ steps.plan.outcome }}\`
+            > Run \`terraform apply\` will happen automatically on merge to main.`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: output
+            });
+
+      - name: Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
+

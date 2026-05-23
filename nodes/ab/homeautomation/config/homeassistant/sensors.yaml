@@ -1,0 +1,20 @@
+- platform: rest
+  resource: https://api.kuvera.in/api/v5/portfolio/returns.json
+  name: kuvera_investment
+  state_class: measurement
+  unit_of_measurement: INR
+  headers:
+    Authorization: !secret KUVERA_TOKEN
+  json_attributes_path: '$.data'
+  json_attributes:
+  - invested
+  - current_value
+  - current_xirr
+  - current_gain
+  - one_day_gain
+  - one_day_gain_percent
+  - current_gain_percent
+  - mutual_funds
+  - epf
+  - indian_equities
+  value_template: "{{value_json.data.invested}}"

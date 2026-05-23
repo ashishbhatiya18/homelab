@@ -1,0 +1,12 @@
+sensor:
+  - state_topic: "mac/battery"
+    expire_after: 90
+    name: Mac Battery
+    unit_of_measurement: "%"
+    device_class: battery
+  - state_topic: "mac2/battery"
+    expire_after: 90
+    name: Mac2 Battery
+    unit_of_measurement: "%"
+    device_class: battery
+    value_template: '{{value_json.battery}}'

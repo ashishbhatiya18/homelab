@@ -1,0 +1,43 @@
+pi_hole_disable:
+  sequence:
+    # - action: rest_command.pihole_login
+    #   data:
+    #     api_url: !secret pi_hole_api_url
+    #     # password: !secret pi_hole_password
+    #   response_variable: response
+    # - condition: template
+    #   value_template: "{{ response['status'] == 200 }}"
+    # - variables:
+    #     sid: "{{ response['content']['session']['sid'] }}"
+    - action: rest_command.pihole_set_blocking
+      data:
+        api_url: !secret pi_hole_api_url
+        # sid: "{{ sid }}"
+        blocking: "false"
+        timer: "300" # can be "null" for permanent
+    # - action: rest_command.pihole_logout
+    #   data:
+    #     api_url: !secret pi_hole_api_url
+    #     sid: "{{ sid }}"
+
+pi_hole_enable:
+  sequence:
+    # - action: rest_command.pihole_login
+    #   data:
+    #     # password: !secret pi_hole_password
+    #     api_url: !secret pi_hole_api_url
+    #   response_variable: response
+    # - condition: template
+    #   value_template: "{{ response['status'] == 200 }}"
+    # - variables:
+    #     sid: "{{ response['content']['session']['sid'] }}"
+    - action: rest_command.pihole_set_blocking
+      data:
+        api_url: !secret pi_hole_api_url
+        # sid: "{{ sid }}"
+        blocking: "true"
+        timer: "null"
+    # - action: rest_command.pihole_logout
+    #   data:
+    #     api_url: !secret pi_hole_api_url
+    #     sid: "{{ sid }}"

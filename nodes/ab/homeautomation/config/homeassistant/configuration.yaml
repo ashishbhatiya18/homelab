@@ -1,0 +1,165 @@
+# Configure a default setup of Home Assistant (frontend, api, etc)
+default_config:
+# config_editor:
+#device_tracker:
+#  - platform: arpscan_tracker
+#    interval_seconds: 15
+#    consider_home: 60
+#    track_new_devices: true
+
+bluetooth:
+
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 172.22.0.0/16
+
+recorder:
+  auto_purge: true
+  purge_keep_days: 3
+  commit_interval: 10
+
+yahoofinance:
+  symbols:
+    - PYPL
+
+frontend:
+  themes: !include_dir_merge_named themes
+
+# logger:
+    # default: warning
+#python_script:
+
+# Text to speech
+# tts:
+#   - platform: google_translate
+
+# sensor:
+#   - platform: systemmonitor
+#     resources:
+#       - type: processor_temperature
+#       - type: last_boot
+#       - type: load_15m
+#       - type: memory_use_percent
+#       - type: processor_use
+#       - type: disk_use_percent
+#   - platform: mqtt
+#     state_topic: "mac/battery"
+#     expire_after: 120
+#     name: Mac Battery
+#     unit_of_measurement: "%"
+#     device_class: battery
+#   - platform: mqtt
+#     state_topic: "mac2/battery"
+#     expire_after: 120
+#     name: Mac2 Battery
+#     unit_of_measurement: "%"
+#     device_class: battery
+#   - platform: command_line
+#     name: Speaker Battery
+#     command: "echo STATUS | nc host.docker.internal 1234"
+#     unit_of_measurement: "%"
+#     value_template: '{{ value | int(base=16) }}'
+  # - platform: mqtt
+  #   state_topic: "raspberrypi/cputemp"
+  #   expire_after: 120
+  #   name: Raspberry Pi CPU Temperature
+  #   unit_of_measurement: "°C"
+  #   device_class: temperature
+
+#  - platform: command_line
+#    name: Speaker Battery
+#    command: "/tool/bin/gatttool -b 88:C6:26:F6:32:03 --char-read --uuid=0x2A19 | xargs | tail -c3"
+#    unit_of_measurement: "%"
+#    value_template: '{{ value | int(base=16) }}'
+#switch:
+#  - platform: command_line
+#    switches:
+#      speaker_status:
+#        command_on: "/tool/bin/gatttool -b 88:C6:26:F6:32:03 --char-write-req --handle=0x0003 --value=38F9D39C239401"
+#        command_off: "/tool/bin/gatttool -b 88:C6:26:F6:32:03 --char-write-req --handle=0x0003 --value=38F9D39C239402"
+#        friendly_name: Speaker
+
+# switch:
+#   - platform: telnet
+#     switches:
+#       projector:
+#         resource: host.docker.internal
+#         port: 1234
+#         command_on: "START:"
+#         command_off: "STOP:"
+#         timeout: 5
+
+#binary_sensor:
+#  - platform: ping
+#    host: 192.168.1.48
+#    name: "Mac Online"
+#    count: 2
+#    scan_interval: 5
+
+group: !include groups.yaml
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
+sensor: !include sensors.yaml
+mqtt: !include mqtt.yaml
+template: !include template.yaml
+#camera:
+#  - platform: ffmpeg
+#    name: CCTV
+#    input: rtsp://administration:admin@123@192.168.1.54:554/stream1
+
+monitor_docker:
+  - name: Docker
+    containers_exclude:
+      - homeassistant
+    monitored_conditions:
+      - containers_total
+      - containers_running
+      - containers_stopped
+      - images
+      - status
+      - uptime
+      - memory
+      - version
+      - state
+
+
+command_line:
+  sensor:
+    command: 'cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq'
+    name: CPU Freq
+    unit_of_measurement: MHz
+    value_template: "{{ value | multiply(0.001) }}"
+    scan_interval: 2
+
+rest_command:
+  # pihole_login:
+  #   url: '{{ api_url }}/auth'
+  #   method: POST
+  #   payload: '{ "password" : "{{ password }}" }'
+  #   content_type:  'application/json; charset=utf-8'
+  #   verify_ssl: false
+  # pihole_logout:
+  #   url: '{{ api_url }}/auth'
+  #   method: DELETE
+  #   verify_ssl: false
+  #   headers:
+  #     sid: "{{ sid }}"
+  pihole_set_blocking:
+    url: '{{ api_url }}/dns/blocking'
+    method: POST
+    payload: '{ "blocking" : {{ blocking }}, "timer" : {{ timer }} }'
+    content_type:  'application/json; charset=utf-8'
+    verify_ssl: false
+    # headers:
+    #   sid: "{{ sid }}"
+
+input_boolean:
+  pihole_blocking:
+    name: Pi-Hole Blocking
+    initial: on
+    icon: mdi:block-helper
+
+
+config_editor:
