@@ -19,7 +19,7 @@ services:
     secrets: 
       - ts_auth_key
   traefik:
-    image: traefik:3.6.10
+    image: traefik:latest
     container_name: traefik
     restart: always
     networks:
