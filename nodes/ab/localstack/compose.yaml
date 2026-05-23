@@ -6,6 +6,8 @@ services:
     env_file: /home/dietpi/localstack/secrets/ab-localstack.env
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
   # otel:
   #   image: grafana/otel-lgtm:latest
   #   container_name: otel
