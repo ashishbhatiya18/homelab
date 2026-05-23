@@ -318,7 +318,7 @@ git -C /home/dietpi/localstack/repo \
 bash /home/dietpi/localstack/repo/nodes/ab/networks.sh
 
 # Verify
-docker network ls | grep -E "tailscale_bridge|data-layer"
+docker network ls | grep -E "internal_bridge|data-layer"
 ```
 
 ---
@@ -399,7 +399,7 @@ rustpad
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Permission denied (publickey)` on clone | Deploy key not added | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
-| `network tailscale_bridge not found` | networks.sh not run | `bash nodes/ab/networks.sh` |
+| `network internal_bridge not found` | networks.sh not run | `bash nodes/ab/networks.sh` |
 | Traefik fails to start | `acme.json` missing or wrong permissions | `touch acme.json && chmod 600 acme.json` |
 | cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
 | oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values, mark skip-worktree |

@@ -179,7 +179,7 @@ bash /home/dietpi/localstack/repo/nodes/cd/networks.sh
 
 Verify both are present:
 ```sh
-docker network ls | grep -E "tailscale_bridge|pihole_macvlan"
+docker network ls | grep -E "internal_bridge|pihole_macvlan"
 ```
 
 > **Note:** The macvlan uses `parent=eth0`. If your LAN interface is named differently
@@ -312,7 +312,7 @@ Edit terraform/cloudflare.tf  →  git push main
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `Permission denied (publickey)` on clone | Deploy key not added to repo | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
-| `network tailscale_bridge not found` | networks.sh not run | `bash nodes/cd/networks.sh` |
+| `network internal_bridge not found` | networks.sh not run | `bash nodes/cd/networks.sh` |
 | Traefik fails to start | `acme.json` missing or wrong permissions | `touch ... acme.json && chmod 600 ...` |
 | Pi-hole keeps losing password | pwhash overwritten by git reset | `git update-index --skip-worktree nodes/cd/network/config/pihole/pihole.toml` |
 | macvlan creation fails | Wrong parent interface name | `ip link` to find correct name, edit `networks.sh` |
