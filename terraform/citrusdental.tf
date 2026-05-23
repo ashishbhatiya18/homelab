@@ -38,6 +38,7 @@ locals {
 resource "cloudflare_zero_trust_tunnel_cloudflared" "cd" {
   account_id = var.account_id
   name       = "citrusdental.in"
+  config_src = "cloudflare"
 }
 
 # DNS — tunnel CNAMEs
