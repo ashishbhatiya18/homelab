@@ -37,7 +37,7 @@ locals {
 # Tunnel object
 resource "cloudflare_zero_trust_tunnel_cloudflared" "cd" {
   account_id = var.account_id
-  name       = "citrusdental.in"
+  name       = "cd-localstack"
   config_src = "cloudflare"
 }
 
@@ -49,10 +49,11 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "cd" {
   config = {
     ingress = [
       {
-        hostname = "*.citrusdental.in"
+        hostname = "api.citrusdental.in"
         service  = "https://traefik:443"
         origin_request = {
-          no_tls_verify = true
+          origin_server_name = "api.citrusdental.in"
+          http_host_header   = "api.citrusdental.in"
         }
       },
       {
