@@ -4,8 +4,7 @@ services:
     container_name: traefik
     restart: always
     networks:
-      internal_bridge:
-        ipv4_address: 11.11.11.2
+      - internal_bridge
     ports:
       - 80:80
       - 443:443
@@ -38,8 +37,6 @@ services:
     networks:
       pihole_macvlan:
         ipv4_address: 10.10.10.10
-      internal_bridge:
-        ipv4_address: 11.11.11.11
     environment:
       - TZ=Asia/Kolkata
       - FTLCONF_DNS_REVSERVERS=true,10.10.0.0/24,10.10.10.1,lan
