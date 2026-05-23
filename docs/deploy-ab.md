@@ -172,6 +172,8 @@ EOF
 ```sh
 cat > ab-kopia.env <<'EOF'
 KOPIA_PASSWORD=your-kopia-repository-password
+KOPIA_SERVER_USERNAME=admin
+KOPIA_SERVER_PASSWORD=admin
 EOF
 ```
 

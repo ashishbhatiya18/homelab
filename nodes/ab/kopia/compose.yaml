@@ -5,14 +5,15 @@ services:
     restart: always
     # Setup the server that provides the web gui
     command:
-      - server
-      - start
-      - --disable-csrf-token-checks
-      - --insecure
-      - --address=0.0.0.0:51515
-      - --without-password
-      #- --server-username=admin
-      #- --server-password=admin
+      - sh
+      - -c
+      - |
+        exec kopia server start \
+          --disable-csrf-token-checks \
+          --insecure \
+          --address=0.0.0.0:51515 \
+          --server-username="$$KOPIA_SERVER_USERNAME" \
+          --server-password="$$KOPIA_SERVER_PASSWORD"
     volumes:
       - /home/dietpi/localstack/data/kopia/config:/app/config
       - /home/dietpi/localstack/data/kopia/cache:/app/cache
