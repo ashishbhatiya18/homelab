@@ -171,7 +171,6 @@ EOF
 
 ```sh
 cat > ab-kopia.env <<'EOF'
-KOPIA_DATADIR=/home/dietpi/localstack/data/kopia
 KOPIA_PASSWORD=your-kopia-repository-password
 EOF
 ```

@@ -14,18 +14,14 @@ services:
       #- --server-username=admin
       #- --server-password=admin
     volumes:
-      # Mount local folders needed by kopia
-      - ${KOPIA_DATADIR}/config:/app/config
-      - ${KOPIA_DATADIR}/cache:/app/cache
-      - ${KOPIA_DATADIR}/logs:/app/logs
-      - ${KOPIA_DATADIR}/rclone:/app/rclone
-      # Mount local folders to snapshot
+      - /home/dietpi/localstack/data/kopia/config:/app/config
+      - /home/dietpi/localstack/data/kopia/cache:/app/cache
+      - /home/dietpi/localstack/data/kopia/logs:/app/logs
+      - /home/dietpi/localstack/data/kopia/rclone:/app/rclone
       - /home/dietpi/localstack:/data-ab:ro
       - nfs-data:/data-cd:ro
-      # Mount repository location
-      - /${KOPIA_DATADIR}/repository:/repository
-      # Mount path for browsing mounted snapshots
-      - ${KOPIA_DATADIR}/tmp:/tmp:shared
+      - /home/dietpi/localstack/data/kopia/repository:/repository
+      - /home/dietpi/localstack/data/kopia/tmp:/tmp:shared
     labels:
       - traefik.enable=true
       - traefik.http.routers.kopia.rule=Host(`backup.ab18.in`)
