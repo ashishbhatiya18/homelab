@@ -1,18 +1,4 @@
 services:
-  dockerproxy:
-    image: ghcr.io/tecnativa/docker-socket-proxy:latest
-    container_name: dockerproxy
-    environment:
-      - CONTAINERS=1 # Allow access to viewing containers
-      - POST=0 # Disallow any POST operations (effectively read-only)
-    # labels:
-    #     - traefik.enable=true
-    #     - traefik.http.routers.dockerproxy.rule=Host(`docker.citrusdental.in`)
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro # Mounted as read-only
-    restart: always
-    networks:
-        - tailscale_bridge
   watchtower:
     image: nickfedor/watchtower
     container_name: watchtower
