@@ -1,7 +1,7 @@
 # Cloudflare Tunnel ingress configuration for cd node (citrusdental.in).
 # tunnel ID and credentials-file are required when running in config-file mode.
 # Get credentials JSON: Zero Trust → Networks → Tunnels → cd tunnel → Configure → Download credentials
-tunnel: 600c2f7e-ff12-4d94-a203-320828aafdc9
+tunnel: ba49b407-186d-48f3-8caa-3599fcc25a65
 credentials-file: /etc/cloudflared/credentials.json
 
 ingress:
