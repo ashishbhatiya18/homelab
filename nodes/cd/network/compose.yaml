@@ -4,7 +4,7 @@ services:
     container_name: traefik
     restart: always
     networks:
-      tailscale_bridge:
+      internal_bridge:
         ipv4_address: 11.11.11.2
     ports:
       - 80:80
@@ -30,25 +30,6 @@ services:
     secrets:
       - cf_dns_api_token
 
-  tailscale:
-    image: tailscale/tailscale:latest
-    container_name: tailscale
-    restart: always
-    cap_add:
-      - NET_ADMIN
-    networks:
-      tailscale_bridge:
-        ipv4_address: 11.11.11.199
-    environment:
-      - TS_AUTHKEY_FILE=/run/secrets/ts_auth_key
-      - TS_HOSTNAME=pihole-tailscale
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_ROUTES=11.11.11.11/32,11.11.11.2/32
-    volumes:
-      - ./config/tailscale:/var/lib/tailscale
-    secrets:
-      - ts_auth_key
-
   pihole:
     image: pihole/pihole
     container_name: pihole
@@ -57,7 +38,7 @@ services:
     networks:
       pihole_macvlan:
         ipv4_address: 10.10.10.10
-      tailscale_bridge:
+      internal_bridge:
         ipv4_address: 11.11.11.11
     environment:
       - TZ=Asia/Kolkata
@@ -83,16 +64,14 @@ services:
       - pihole_web_password
 
 networks:
-  tailscale_bridge:
-    name: tailscale_bridge
+  internal_bridge:
+    name: internal_bridge
     external: true
   pihole_macvlan:
     name: pihole_macvlan
     external: true
 
 secrets:
-  ts_auth_key:
-    file: /home/dietpi/localstack/secrets/ts_auth_key
   cf_dns_api_token:
     file: /home/dietpi/localstack/secrets/cf_dns_api_token
   pihole_web_password:

@@ -38,7 +38,7 @@ services:
     env_file: /home/dietpi/localstack/secrets/ab-kopia.env
 networks:
   network-layer:
-    name: tailscale_bridge
+    name: internal_bridge
     external: true
 volumes:
   nfs-data:

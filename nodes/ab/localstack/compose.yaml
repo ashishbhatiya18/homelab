@@ -20,5 +20,5 @@ services:
   #     - traefik.http.services.otel.loadbalancer.server.port=3000
 networks:
   network-layer:
-    name: tailscale_bridge
+    name: internal_bridge
     external: true

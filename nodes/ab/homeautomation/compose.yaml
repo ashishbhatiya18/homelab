@@ -20,5 +20,5 @@ services:
       - homepage.description=Control ESPHome Devices
 networks:
   network-layer:
-    name: tailscale_bridge
+    name: internal_bridge
     external: true

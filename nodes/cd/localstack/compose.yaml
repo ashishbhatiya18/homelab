@@ -11,7 +11,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-        - tailscale_bridge
+        - internal_bridge
     labels:
       - traefik.enable=true
       - traefik.http.routers.watchtower.rule=Host(`watchtower.citrusdental.in`)
@@ -23,5 +23,5 @@ services:
       - homepage.widget.type=watchtower
       - homepage.widget.url=https://watchtower.citrusdental.in
 networks:
-  tailscale_bridge:
+  internal_bridge:
     external: true

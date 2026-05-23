@@ -132,9 +132,7 @@
   #     Array of custom DNS records each one in HOSTS form: "IP HOSTNAME [HOSTNAME ...]"
   hosts = [
     "10.10.10.12 citrusdental.in",
-    "10.10.10.11 ab18.in",
-    "11.11.11.2 citrusdental.in",
-    "11.11.11.3 ab18.in"
+    "10.10.10.11 ab18.in"
   ] ### CHANGED, default = []
 
   # If set, queries for plain names, without dots or domain parts, are never forwarded to

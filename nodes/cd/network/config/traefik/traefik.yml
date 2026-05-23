@@ -21,7 +21,7 @@ ping:
 providers:
   docker:
     exposedByDefault: false
-    network: tailscale_bridge
+    network: internal_bridge
 
 api:
   dashboard: true

@@ -5,12 +5,12 @@
 # of individual stacks does not matter.
 set -euo pipefail
 
-docker network inspect tailscale_bridge >/dev/null 2>&1 || \
+docker network inspect internal_bridge >/dev/null 2>&1 || \
   docker network create \
     --driver bridge \
     --subnet 11.11.11.0/24 \
     --gateway 11.11.11.1 \
-    tailscale_bridge
+    internal_bridge
 
 # Macvlan for pihole — physical interface, survives daemon restarts.
 # parent=eth0 must match the host's LAN interface name.
@@ -23,4 +23,4 @@ docker network inspect pihole_macvlan >/dev/null 2>&1 || \
     -o parent=eth0 \
     pihole_macvlan
 
-echo "[networks] tailscale_bridge and pihole_macvlan ready"
+echo "[networks] internal_bridge and pihole_macvlan ready"

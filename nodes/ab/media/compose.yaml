@@ -22,5 +22,5 @@ services:
       - /home/dietpi/localstack/data/jellyfin_data/cache:/cache
 networks:
   network-layer:
-    name: tailscale_bridge
+    name: internal_bridge
     external: true

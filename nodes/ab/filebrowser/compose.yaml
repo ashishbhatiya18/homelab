@@ -26,5 +26,5 @@ services:
 
 networks:
   network-layer:
-    name: tailscale_bridge
+    name: internal_bridge
     external: true

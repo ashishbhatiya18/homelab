@@ -1,25 +1,4 @@
 services:
-  tailscale:
-    image: tailscale/tailscale:latest
-    hostname: ab18-tailscale
-    container_name: tailscale
-    networks:
-      network-layer:
-        ipv4_address: 11.11.11.199
-    restart: always
-    cap_add:
-      - NET_ADMIN
-    environment:
-      - TS_ROUTES=11.11.11.3/32
-      - TS_STATE_DIR=/var/lib/tailscale
-      - TS_AUTHKEY_FILE=/run/secrets/ts_auth_key
-    volumes:
-      - /dev/net/tun:/dev/net/tun
-      - ./config/tailscale:/var/lib/tailscale
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    secrets:
-      - ts_auth_key
   traefik:
     image: traefik:latest
     container_name: traefik
@@ -104,11 +83,9 @@ services:
       - homepage.description=Guardian of services
 networks:
   network-layer:
-    name: tailscale_bridge
+    name: internal_bridge
     external: true
 
 secrets:
-  ts_auth_key:
-    file: /home/dietpi/localstack/secrets/ts_auth_key
   cf_dns_api_token:
     file: /home/dietpi/localstack/secrets/cf_dns_api_token
