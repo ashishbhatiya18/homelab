@@ -35,7 +35,7 @@ services:
     networks:
       - tailscale_bridge
   cloudflared:
-    command: tunnel --no-autoupdate run --config /etc/cloudflared/config.yml
+    command: --config /etc/cloudflared/config.yml tunnel --no-autoupdate run
     image: cloudflare/cloudflared:latest
     container_name: cloudflare
     restart: always
