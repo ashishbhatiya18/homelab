@@ -33,3 +33,37 @@ variable "zone_id_presswala" {
   type        = string
 }
 
+# ---------------------------------------------------------------------------
+# Tailscale
+# ---------------------------------------------------------------------------
+
+variable "tailscale_oauth_client_id" {
+  description = "Tailscale OAuth client ID — admin console → Settings → OAuth clients"
+  type        = string
+  sensitive   = true
+}
+
+variable "tailscale_oauth_client_secret" {
+  description = "Tailscale OAuth client secret"
+  type        = string
+  sensitive   = true
+}
+
+variable "tailscale_hostname_ab" {
+  description = "Machine name of the ab node in the tailnet (set during `tailscale up --hostname`)"
+  type        = string
+  default     = "dietpi-l"
+}
+
+variable "tailscale_hostname_cd" {
+  description = "Machine name of the cd node in the tailnet"
+  type        = string
+  default     = "dietpi"
+}
+
+variable "tailscale_nodes_registered" {
+  description = "Set to true after both nodes are registered in the tailnet to enable split DNS resources"
+  type        = bool
+  default     = false
+}
+

@@ -7,7 +7,7 @@ services:
       - network-layer
     ports:
       - 80:80
-      - 443:443/tcp
+      - 443:443
       - 443:443/udp
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
@@ -20,6 +20,7 @@ services:
       - traefik.enable=true
       - traefik.http.routers.proxy.rule=Host(`proxy.ab18.in`)
       - traefik.http.routers.proxy.service=api@internal
+      - com.centurylinklabs.watchtower.enable=false
     secrets:
       - cf_dns_api_token
   whoami:
@@ -42,6 +43,8 @@ services:
     env_file: /home/dietpi/localstack/secrets/ab-cloudflared.env
     networks:
       - network-layer
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
   oauth2-proxy:
     image: bitnami/oauth2-proxy:latest
     container_name: oauth2-proxy
