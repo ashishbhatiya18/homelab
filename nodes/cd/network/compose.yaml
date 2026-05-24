@@ -42,11 +42,12 @@ services:
     volumes:
       - tailscale_state:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun
+    entrypoint: ["/bin/sh", "-c", "export TS_AUTHKEY=$(cat /run/secrets/ts_auth_key) && exec /usr/local/bin/containerboot"]
     environment:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=false
       - TS_ACCEPT_DNS=false
-      - TS_AUTHKEY_FILE=/run/secrets/ts_auth_key
+      - TS_AUTH_ONCE=true
     secrets:
       - ts_auth_key
     labels:
