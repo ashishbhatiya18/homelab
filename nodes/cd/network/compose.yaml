@@ -34,6 +34,7 @@ services:
     image: powerdns/dnsdist-19
     container_name: dnsdist
     restart: always
+    network_mode: host
     cap_add:
       - NET_BIND_SERVICE
     labels:
@@ -42,11 +43,6 @@ services:
       - ./config/dnsdist/dnsdist.conf:/etc/dnsdist/dnsdist.conf:ro
     depends_on:
       - pihole
-    networks:
-      pihole_macvlan:
-        ipv4_address: 10.10.10.10
-      dns-net: {}
-
   pihole:
     image: pihole/pihole
     container_name: pihole
@@ -64,8 +60,10 @@ services:
       - homepage.href=https://pihole.citrusdental.in/admin
       - homepage.description=DNS Ad Blocker
     networks:
-      - dns-net
       - internal_bridge
+    ports:
+      - "127.0.0.1:5353:53/udp"
+      - "127.0.0.1:5353:53/tcp"
     environment:
       - TZ=Asia/Kolkata
       - FTLCONF_DNS_REVSERVERS=true,10.10.0.0/24,10.10.10.1,lan
@@ -90,17 +88,10 @@ services:
       - ./config/pihole/dnsmasq.d:/etc/dnsmasq.d
     secrets:
       - pihole_web_password
-
 networks:
   internal_bridge:
     name: internal_bridge
     external: true
-  pihole_macvlan:
-    name: pihole_macvlan
-    external: true
-  dns-net:
-    driver: bridge
-
 secrets:
   cf_dns_api_token:
     file: /home/dietpi/localstack/secrets/cf_dns_api_token
