@@ -46,8 +46,11 @@ services:
       - TS_STATE_DIR=/var/lib/tailscale
       - TS_USERSPACE=false
       - TS_ACCEPT_DNS=false
-    env_file:
-      - /home/dietpi/localstack/secrets/tailscale.env
+      - TS_AUTHKEY_FILE=/run/secrets/ts_auth_key
+    secrets:
+      - ts_auth_key
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
 
   dnsdist:
     image: powerdns/dnsdist-19
@@ -127,3 +130,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/cf_dns_api_token
   pihole_web_password:
     file: /home/dietpi/localstack/secrets/pihole_web_password
+  ts_auth_key:
+    file: /home/dietpi/localstack/secrets/ts_auth_key
