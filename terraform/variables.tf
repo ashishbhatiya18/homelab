@@ -49,21 +49,5 @@ variable "tailscale_oauth_client_secret" {
   sensitive   = true
 }
 
-variable "tailscale_hostname_ab" {
-  description = "Machine name of the ab node in the tailnet (set during `tailscale up --hostname`)"
-  type        = string
-  default     = "dietpi-l"
-}
 
-variable "tailscale_hostname_cd" {
-  description = "Machine name of the cd node in the tailnet"
-  type        = string
-  default     = "dietpi"
-}
-
-variable "tailscale_nodes_registered" {
-  description = "Set to true after both nodes are registered in the tailnet to enable split DNS resources"
-  type        = bool
-  default     = false
-}
 

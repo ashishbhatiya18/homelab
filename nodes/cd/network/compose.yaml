@@ -30,6 +30,23 @@ services:
     secrets:
       - cf_dns_api_token
 
+  dnsdist:
+    image: powerdns/dnsdist-19
+    container_name: dnsdist
+    restart: always
+    cap_add:
+      - NET_BIND_SERVICE
+    labels:
+      - com.centurylinklabs.watchtower.enable=false
+    volumes:
+      - ./config/dnsdist/dnsdist.conf:/etc/dnsdist/dnsdist.conf:ro
+    depends_on:
+      - pihole
+    networks:
+      pihole_macvlan:
+        ipv4_address: 10.10.10.10
+      dns-net: {}
+
   pihole:
     image: pihole/pihole
     container_name: pihole
@@ -37,9 +54,18 @@ services:
     restart: always
     labels:
       - com.centurylinklabs.watchtower.enable=false
+      - traefik.enable=true
+      - traefik.http.routers.pihole.rule=Host(`pihole.citrusdental.in`)
+      - traefik.http.routers.pihole.entrypoints=websecure
+      - traefik.http.services.pihole.loadbalancer.server.port=80
+      - homepage.group=CD Utilities
+      - homepage.name=Pi-hole
+      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/pi-hole.png
+      - homepage.href=https://pihole.citrusdental.in/admin
+      - homepage.description=DNS Ad Blocker
     networks:
-      pihole_macvlan:
-        ipv4_address: 10.10.10.10
+      - dns-net
+      - internal_bridge
     environment:
       - TZ=Asia/Kolkata
       - FTLCONF_DNS_REVSERVERS=true,10.10.0.0/24,10.10.10.1,lan
@@ -54,12 +80,14 @@ services:
       - PIHOLE_UID=1000
       - PIHOLE_GID=1000
       - FTLCONF_WEBSERVER_PORT=80
+      - DNSMASQ_LISTENING=all
     cap_add:
       - CAP_SYS_NICE
       - CAP_SYS_TIME
       - NET_ADMIN
     volumes:
       - ./config/pihole:/etc/pihole
+      - ./config/pihole/dnsmasq.d:/etc/dnsmasq.d
     secrets:
       - pihole_web_password
 
@@ -70,6 +98,8 @@ networks:
   pihole_macvlan:
     name: pihole_macvlan
     external: true
+  dns-net:
+    driver: bridge
 
 secrets:
   cf_dns_api_token:

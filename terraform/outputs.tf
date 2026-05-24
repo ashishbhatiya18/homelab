@@ -27,15 +27,6 @@ output "pages_url_citrusdental_admin" {
   value       = "https://${cloudflare_pages_project.citrusdental_admin.name}.pages.dev"
 }
 
-output "tailscale_ip_ab" {
-  description = "Tailscale IP of the ab node — use this for split DNS and tailscale up --hostname"
-  value       = local.ab_tailscale_ip
-}
-
-output "tailscale_ip_cd" {
-  description = "Tailscale IP of the cd node"
-  value       = local.cd_tailscale_ip
-}
 
 
 output "tailscale_authkey_ab" {
