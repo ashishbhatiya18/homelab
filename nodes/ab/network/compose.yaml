@@ -35,6 +35,25 @@ services:
       - traefik.http.routers.whoami.middlewares=auth
     depends_on:
       - traefik
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: ab-node
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=false
+    env_file:
+      - /home/dietpi/localstack/secrets/tailscale.env
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     container_name: cloudflared
@@ -79,6 +98,9 @@ services:
       - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/oauth2-proxy.png
       - homepage.href=https://auth.ab18.in
       - homepage.description=Guardian of services
+volumes:
+  tailscale_state:
+
 networks:
   network-layer:
     name: internal_bridge

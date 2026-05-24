@@ -30,11 +30,31 @@ services:
     secrets:
       - cf_dns_api_token
 
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: tailscale
+    hostname: cd-node
+    restart: always
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - TS_STATE_DIR=/var/lib/tailscale
+      - TS_USERSPACE=false
+      - TS_ACCEPT_DNS=false
+    env_file:
+      - /home/dietpi/localstack/secrets/tailscale.env
+
   dnsdist:
     image: powerdns/dnsdist-19
     container_name: dnsdist
     restart: always
     network_mode: host
+    user: root
     cap_add:
       - NET_BIND_SERVICE
     labels:
@@ -42,12 +62,19 @@ services:
     volumes:
       - ./config/dnsdist/dnsdist.conf:/etc/dnsdist/dnsdist.conf:ro
     depends_on:
-      - pihole
+      pihole:
+        condition: service_healthy
   pihole:
     image: pihole/pihole
     container_name: pihole
     hostname: pihole
     restart: always
+    healthcheck:
+      test: ["CMD", "dig", "+noall", "+answer", "@127.0.0.1", "-p", "53", "pi.hole"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     labels:
       - com.centurylinklabs.watchtower.enable=false
       - traefik.enable=true
@@ -88,6 +115,9 @@ services:
       - ./config/pihole/dnsmasq.d:/etc/dnsmasq.d
     secrets:
       - pihole_web_password
+volumes:
+  tailscale_state:
+
 networks:
   internal_bridge:
     name: internal_bridge
