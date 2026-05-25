@@ -5,6 +5,8 @@ services:
     restart: always
     volumes:
       - /home/dietpi/localstack/data/vaultwarden_data:/data
+    expose:
+      - "3012"
     networks:
       - network-layer
     env_file: /home/dietpi/localstack/secrets/ab-vaultwarden.env
@@ -15,6 +17,9 @@ services:
       - traefik.http.routers.vault.rule=Host(`vault.ab18.in`)
       - traefik.http.routers.vault.middlewares=vault-headers
       - traefik.http.middlewares.vault-headers.headers.customrequestheaders.X-Forwarded-Proto=https
+      - traefik.http.routers.vault-ws.rule=Host(`vault.ab18.in`) && Path(`/notifications/hub`)
+      - traefik.http.routers.vault-ws.middlewares=vault-headers
+      - traefik.http.services.vault-ws.loadbalancer.server.port=3012
       - homepage.group=Utilities
       - homepage.name=VaultWarden
       - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/bitwarden.png
