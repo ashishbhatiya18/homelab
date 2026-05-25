@@ -83,17 +83,8 @@ services:
       start_period: 30s
     labels:
       - com.centurylinklabs.watchtower.enable=false
-      - traefik.enable=true
-      - traefik.http.routers.pihole.rule=Host(`pihole.citrusdental.in`)
-      - traefik.http.routers.pihole.entrypoints=websecure
-      - traefik.http.services.pihole.loadbalancer.server.port=80
-      - homepage.group=CD Utilities
-      - homepage.name=Pi-hole
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/pi-hole.png
-      - homepage.href=https://pihole.citrusdental.in/admin
-      - homepage.description=DNS Ad Blocker
+      - traefik.enable=false
     networks:
-      internal_bridge: {}
       pihole_macvlan:
         ipv4_address: 10.10.10.10
     ports:
