@@ -94,7 +94,7 @@ services:
       - homepage.description=DNS Ad Blocker
     networks:
       internal_bridge: {}
-      macvlan_lan:
+      pihole_macvlan:
         ipv4_address: 10.10.10.10
     ports:
       - "127.0.0.1:5353:53/udp"
@@ -130,15 +130,9 @@ networks:
   internal_bridge:
     name: internal_bridge
     external: true
-  macvlan_lan:
-    name: macvlan_lan
-    driver: macvlan
-    driver_opts:
-      parent: eth0
-    ipam:
-      config:
-        - subnet: 10.10.10.0/24
-          gateway: 10.10.10.1
+  pihole_macvlan:
+    name: pihole_macvlan
+    external: true
 secrets:
   cf_dns_api_token:
     file: /home/dietpi/localstack/secrets/cf_dns_api_token
