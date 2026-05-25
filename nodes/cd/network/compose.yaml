@@ -12,6 +12,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml
+      - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
       - ./config/traefik/acme.json:/etc/acme/acme.json
     environment:
       - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token

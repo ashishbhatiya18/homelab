@@ -1,4 +1,42 @@
+http:
+  routers:
+    catch-all:
+      rule: "HostRegexp(`.+`)"
+      priority: 1
+      entrypoints:
+        - websecure
+      middlewares:
+        - redirect-to-error
+      service: noop
+      tls:
+        certResolver: myresolver
+        domains:
+          - main: "*.ab18.in"
+            sans:
+              - "ab18.in"
+
+  middlewares:
+    redirect-to-error:
+      redirectRegex:
+        regex: ".*"
+        replacement: "https://error.ab18.in"
+        permanent: false
+
+  services:
+    noop:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:1"
+
 tls:
+  stores:
+    default:
+      defaultGeneratedCert:
+        resolver: myresolver
+        domain:
+          main: "*.ab18.in"
+          sans:
+            - "ab18.in"
   options:
     db:
       #minVersion: "VersionTLS12"

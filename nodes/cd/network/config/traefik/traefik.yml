@@ -22,6 +22,8 @@ providers:
   docker:
     exposedByDefault: false
     network: internal_bridge
+  file:
+    filename: /etc/traefik/traefik_dynamic.yaml
 
 api:
   dashboard: true
