@@ -9,12 +9,12 @@ resource "tailscale_dns_preferences" "main" {
 # Split DNS — forward these domains to dnsdist on the cd node (host network, Tailscale IP)
 resource "tailscale_dns_split_nameservers" "ab18" {
   domain      = "ab18.in"
-  nameservers = ["100.66.183.5"]
+  nameservers = ["100.116.167.96"]
 }
 
 resource "tailscale_dns_split_nameservers" "citrusdental" {
   domain      = "citrusdental.in"
-  nameservers = ["100.66.183.5"]
+  nameservers = ["100.116.167.96"]
 }
 
 
