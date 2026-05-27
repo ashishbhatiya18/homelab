@@ -16,10 +16,12 @@ services:
       - traefik.enable=true
       - traefik.http.routers.vault.rule=Host(`vault.ab18.in`)
       - traefik.http.routers.vault.middlewares=vault-headers
+      - traefik.http.routers.vault.service=vault
       - traefik.http.services.vault.loadbalancer.server.port=80
       - traefik.http.middlewares.vault-headers.headers.customrequestheaders.X-Forwarded-Proto=https
       - traefik.http.routers.vault-ws.rule=Host(`vault.ab18.in`) && Path(`/notifications/hub`)
       - traefik.http.routers.vault-ws.middlewares=vault-headers
+      - traefik.http.routers.vault-ws.service=vault-ws
       - traefik.http.services.vault-ws.loadbalancer.server.port=3012
       - homepage.group=Utilities
       - homepage.name=VaultWarden
