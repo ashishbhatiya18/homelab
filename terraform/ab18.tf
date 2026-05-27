@@ -34,12 +34,16 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "ab" {
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.ab.id
 
   config = {
+    origin_request = {
+      http2_origin  = true
+      no_tls_verify = false
+    }
+
     ingress = concat(
       [for hostname in sort(tolist(local.ab18_hostnames)) : {
         hostname = "${hostname}.ab18.in"
         service  = "https://traefik:443"
         origin_request = {
-          no_tls_verify      = true
           origin_server_name = "${hostname}.ab18.in"
           http_host_header   = "${hostname}.ab18.in"
         }

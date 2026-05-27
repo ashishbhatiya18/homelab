@@ -47,6 +47,11 @@ resource "cloudflare_zero_trust_tunnel_cloudflared_config" "cd" {
   tunnel_id  = cloudflare_zero_trust_tunnel_cloudflared.cd.id
 
   config = {
+    origin_request = {
+      http2_origin  = true
+      no_tls_verify = false
+    }
+
     ingress = [
       {
         hostname = "api.citrusdental.in"
