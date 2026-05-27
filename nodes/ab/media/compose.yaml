@@ -9,11 +9,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.jelly.rule=Host(`jelly.ab18.in`)
       - traefik.http.services.jelly.loadbalancer.server.port=8096
-      - homepage.group=Local Utilities
-      - homepage.name=JellyFin
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/jellyfin.png
-      - homepage.href=https://jelly.ab18.in
-      - homepage.description=Media Server
     env_file: /home/dietpi/localstack/secrets/ab-media.env
     volumes:
       - /home/dietpi/movies:/data/movies:ro

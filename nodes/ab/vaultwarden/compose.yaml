@@ -23,11 +23,6 @@ services:
       - traefik.http.routers.vault-ws.middlewares=vault-headers
       - traefik.http.routers.vault-ws.service=vault-ws
       - traefik.http.services.vault-ws.loadbalancer.server.port=3012
-      - homepage.group=Utilities
-      - homepage.name=VaultWarden
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/bitwarden.png
-      - homepage.href=https://vault.ab18.in
-      - homepage.description=Store your secrets securely
       #- traefik.http.routers.vault.middlewares=auth
 networks:
   network-layer:

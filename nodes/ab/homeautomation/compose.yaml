@@ -13,11 +13,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.esphome.rule=Host(`esphome.ab18.in`)
       - traefik.http.routers.esphome.middlewares=auth
-      - homepage.group=Local Utilities
-      - homepage.name=ESPHome
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/esphome-alt-light.png
-      - homepage.href=https://esphome.ab18.in
-      - homepage.description=Control ESPHome Devices
 networks:
   network-layer:
     name: internal_bridge

@@ -43,12 +43,6 @@ services:
       - internal_bridge
     environment:
       - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
-    labels:
-      - homepage.group=CD Utilities
-      - homepage.name=Cloudflare Tunnel
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/cloudflare-zero-trust.png
-      - homepage.description=Cloudflare Tunnel
-      - homepage.widget.type=cloudflared
     secrets:
       - cloudflare_tunnel_token
 

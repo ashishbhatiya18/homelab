@@ -17,12 +17,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.watchtower.rule=Host(`watchtower.citrusdental.in`)
       - traefik.http.services.watchtower.loadbalancer.port=8080
-      - homepage.group=CD Utilities
-      - homepage.name=Watch Tower
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/watchtower.png
-      - homepage.description=Watch Tower for Image Updates
-      - homepage.widget.type=watchtower
-      - homepage.widget.url=https://watchtower.citrusdental.in
 networks:
   internal_bridge:
     external: true

@@ -9,11 +9,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.filebrowser.rule=Host(`files.ab18.in`)
       - traefik.http.routers.filebrowser.middlewares=auth
-      - homepage.group=Local Utilities
-      - homepage.name=File Browser
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/filebrowser-quantum.png
-      - homepage.href=https://files.ab18.in
-      - homepage.description=File Manager
     env_file: /home/dietpi/localstack/secrets/ab-filebrowser.env
     volumes:
       # This exposes your localstack directory to the app

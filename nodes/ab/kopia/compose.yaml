@@ -28,11 +28,6 @@ services:
       - traefik.http.routers.kopia.rule=Host(`backup.ab18.in`)
       - traefik.http.services.kopia.loadbalancer.server.port=51515
       - traefik.http.routers.kopia.middlewares=auth
-      - homepage.group=Local Utilities
-      - homepage.name=Kopia
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/kopia.png
-      - homepage.href=https://backup.ab18.in
-      - homepage.description=Backup System
     networks:
       - network-layer
     env_file: /home/dietpi/localstack/secrets/ab-kopia.env

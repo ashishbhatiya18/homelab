@@ -10,11 +10,6 @@ services:
       - traefik.http.routers.pad.rule=Host(`pad.ab18.in`)
       - traefik.http.services.pad.loadbalancer.server.port=3030
       - traefik.http.routers.pad.service=pad
-      - homepage.group=Utilities
-      - homepage.name=RustPad
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/etherpad.png
-      - homepage.href=https://pad.ab18.in
-      - homepage.description=Online NotePad
     env_file: /home/dietpi/localstack/secrets/ab-rustpad.env
     volumes:
       - /home/dietpi/localstack/data/rustpad_data:/data

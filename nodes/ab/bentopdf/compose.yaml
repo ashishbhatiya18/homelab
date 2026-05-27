@@ -9,11 +9,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.pdf.rule=Host(`pdf.ab18.in`)
       - traefik.http.routers.pdf.middlewares=auth
-      - homepage.group=Utilities
-      - homepage.name=Stirling PDF
-      - homepage.icon=https://cdn-icons-png.freepik.com/512/3997/3997635.png?fd=1&filename=pdf_3997635.png
-      - homepage.href=https://pdf.ab18.in
-      - homepage.description=PDF Utility
 networks:
   network-layer:
     name: internal_bridge

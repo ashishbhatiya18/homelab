@@ -19,11 +19,6 @@ services:
       - traefik.tcp.routers.syncthing.entrypoints=websecure
       - traefik.tcp.routers.syncthing.tls=true
       - traefik.tcp.services.syncthing_tcp.loadbalancer.server.port=22000
-      - homepage.group=Local Utilities
-      - homepage.name=SyncThing
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/syncthing.png
-      - homepage.href=https://sync.ab18.in
-      - homepage.description=Synchronize files across systems
 #      - traefik.http.routers.syncthing.middlewares=auth
 networks:
   network-layer:

@@ -13,11 +13,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.draw.rule=Host(`draw.ab18.in`)
       - traefik.http.routers.draw.middlewares=auth
-      - homepage.group=Utilities
-      - homepage.name=Excalidraw
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/excalidraw.png
-      - homepage.href=https://draw.ab18.in
-      - homepage.description=Excalidraw - Drawing board
 networks:
   network-layer:
     name: internal_bridge

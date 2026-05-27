@@ -1,0 +1,9 @@
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    ports:
+      - "10.10.10.11:11434:11434"
+    volumes:
+      - /home/dietpi/localstack/data/ollama_models:/root/.ollama

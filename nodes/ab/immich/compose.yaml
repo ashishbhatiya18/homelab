@@ -17,11 +17,6 @@ services:
       - traefik.http.middlewares.immich-ratelimit.ratelimit.average=200
       - traefik.http.middlewares.immich-ratelimit.ratelimit.burst=120
       - traefik.http.middlewares.immich-ratelimit.ratelimit.period=1m
-      - homepage.group=Utilities
-      - homepage.name=Immich
-      - homepage.icon=https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/png/immich.png
-      - homepage.href=https://photos.ab18.in
-      - homepage.description=Immich - Your Photos Library
     restart: always
     dns:
       - 10.10.10.10
