@@ -50,11 +50,15 @@ fi
 log "Installing systemd units"
 sudo cp "$REPO_DIR/scripts/docker-networks.service" /etc/systemd/system/docker-networks.service
 sudo cp "$REPO_DIR/scripts/gitops-agent.service"    /etc/systemd/system/gitops-agent.service
+sudo cp "$REPO_DIR/scripts/docker-cleanup.service"  /etc/systemd/system/docker-cleanup.service
+sudo cp "$REPO_DIR/scripts/docker-cleanup.timer"    /etc/systemd/system/docker-cleanup.timer
 sudo systemctl daemon-reload
 # docker-networks runs once at boot before the agent; enable but don't start
 # manually — it will be pulled in automatically by gitops-agent.service via Before=
 sudo systemctl enable docker-networks.service
 sudo systemctl enable gitops-agent.service
 sudo systemctl restart gitops-agent.service
+sudo systemctl enable --now docker-cleanup.timer
 
 log "Done. Monitor with: journalctl -u gitops-agent -f"
+log "Cleanup timer status: systemctl status docker-cleanup.timer"
