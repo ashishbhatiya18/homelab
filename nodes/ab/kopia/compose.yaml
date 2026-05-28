@@ -18,7 +18,6 @@ services:
       - /home/dietpi/localstack/data/kopia/logs:/app/logs
       - /home/dietpi/localstack/data/kopia/rclone:/app/rclone
       - /home/dietpi/localstack:/data-ab
-      - nfs-kopia-repo:/repository
       - /home/dietpi/localstack/data/kopia/tmp:/tmp:shared
       - ./scripts/pre-snapshot.sh:/scripts/pre-snapshot.sh:ro
     labels:
@@ -34,10 +33,3 @@ networks:
   network-layer:
     name: internal_bridge
     external: true
-volumes:
-  nfs-kopia-repo:
-    driver: local
-    driver_opts:
-      type: nfs
-      o: nfsvers=4,addr=10.10.10.12,rw,nolock,soft
-      device: :/home/dietpi/localstack/data/kopia-repo
