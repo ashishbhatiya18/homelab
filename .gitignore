@@ -11,9 +11,12 @@ nodes/**/config/traefik/*.pem
 # Tailscale node identity and auth state
 nodes/**/config/tailscale/
 
-# Syncthing — keys live in secrets (symlinked at runtime), indexes are runtime state
+# Syncthing — keys live in secrets (copied at runtime), rest is runtime state
 nodes/**/syncthing/config/*.pem
 nodes/**/syncthing/config/index-v2/
+nodes/**/syncthing/config/syncthing/
+nodes/**/syncthing/config/config.xml.v0
+nodes/**/syncthing/config/syncthing.lock
 
 # ESPHome (contains WiFi PSKs and device API keys)
 nodes/**/config/esphome/
