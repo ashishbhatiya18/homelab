@@ -6,4 +6,5 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 COPY --from=kopia-src /usr/bin/kopia /usr/bin/kopia
 COPY --from=kopia-src /usr/bin/rclone /usr/bin/rclone
+RUN mkdir -p /scripts
 ENTRYPOINT ["/usr/bin/kopia"]

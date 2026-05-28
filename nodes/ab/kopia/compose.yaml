@@ -17,7 +17,7 @@ services:
       - /home/dietpi/localstack/data/kopia/cache:/app/cache
       - /home/dietpi/localstack/data/kopia/logs:/app/logs
       - /home/dietpi/localstack/data/kopia/rclone:/app/rclone
-      - /home/dietpi/localstack:/data-ab:ro
+      - /home/dietpi/localstack:/data-ab
       - nfs-kopia-repo:/repository
       - /home/dietpi/localstack/data/kopia/tmp:/tmp:shared
       - ./scripts/pre-snapshot.sh:/scripts/pre-snapshot.sh:ro
