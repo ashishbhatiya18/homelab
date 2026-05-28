@@ -25,7 +25,7 @@ apply_policy() {
     --add-ignore="data/jellyfin_data/config/cache" \
     --add-ignore="data/jellyfin_data/config/data/transcodes" \
     --add-ignore="data/jellyfin_data/config/log" \
-    --add-ignore="repo/.git" \
+    --add-ignore="repo" \
     /data-ab
 }
 
