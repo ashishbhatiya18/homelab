@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-CONFIG=/app/config/repository.config
+CONFIG="${KOPIA_CONFIG_PATH:-/app/config/repository.config}"
 
 patch_enable_actions() {
   [ -f "$CONFIG" ] || return 0

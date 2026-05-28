@@ -27,6 +27,10 @@ services:
       - traefik.http.routers.kopia.middlewares=auth
     networks:
       - network-layer
+    environment:
+      - KOPIA_CONFIG_PATH=/app/config/repository.config
+      - KOPIA_CACHE_DIRECTORY=/app/cache
+      - KOPIA_LOG_DIR=/app/logs
     env_file: /home/dietpi/localstack/secrets/ab-kopia.env
 
 networks:
