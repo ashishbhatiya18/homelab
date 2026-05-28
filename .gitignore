@@ -11,9 +11,9 @@ nodes/**/config/traefik/*.pem
 # Tailscale node identity and auth state
 nodes/**/config/tailscale/
 
-# Syncthing — entire config dir is the mount point (contains private keys and indexes)
-nodes/ab/syncthing/config/
-nodes/cd/syncthing/config/
+# Syncthing — keys live in secrets (symlinked at runtime), indexes are runtime state
+nodes/**/syncthing/config/*.pem
+nodes/**/syncthing/config/index-v2/
 
 # ESPHome (contains WiFi PSKs and device API keys)
 nodes/**/config/esphome/
