@@ -53,6 +53,8 @@ nodes/**/config/pihole/listsCache/
 nodes/**/config/pihole/migration_backup/
 nodes/**/config/pihole/dhcp.leases
 nodes/**/config/pihole/cli_pw
+nodes/**/config/pihole/logrotate
+nodes/**/config/pihole/versions
 
 # Cloudflare / third-party OAuth tokens
 nodes/**/config/citrusdental-bfe/

@@ -1,7 +1,7 @@
-# Pi-hole configuration file (v6.6.1)
+# Pi-hole configuration file (v6.6.2)
 # Encoding: UTF-8
 # This file is managed by pihole-FTL
-# Last updated on 2026-04-25 03:37:46 IST
+# Last updated on 2026-05-24 20:23:54 IST
 
 [dns]
   # Upstream DNS Servers to be used by Pi-hole. If this is not set, Pi-hole will not

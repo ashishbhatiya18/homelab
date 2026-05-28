@@ -17,15 +17,13 @@
 #                       WITHIN /etc/dnsmasq.d/yourname.conf                      #
 #    (make sure misc.etc_dnsmasq_d is set to true in /etc/pihole/pihole.toml)    #
 #                                                                                #
-#                      Last updated: 2026-01-01 22:00:49 IST                     #
-#                              by FTL version v6.4.1                             #
+#                      Last updated: 2026-05-24 20:21:14 IST                     #
+#                              by FTL version v6.6.2                             #
 #                                                                                #
 ##################################################################################
 
 10.10.10.12 citrusdental.in
 10.10.10.11 ab18.in
-11.11.11.2 citrusdental.in
-11.11.11.3 ab18.in
 
 
-# There are 4 entries in this file
+# There are 2 entries in this file
