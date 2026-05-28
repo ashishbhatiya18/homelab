@@ -32,6 +32,10 @@ deploy_stack() {
   local compose_file="$REPO_DIR/$rel_dir/compose.yaml"
   [[ -f "$compose_file" ]] || { log "SKIP $rel_dir — no compose.yaml"; return 0; }
   log "DEPLOY $rel_dir"
+  if grep -q '^\s*build:' "$compose_file"; then
+    log "BUILD $rel_dir (build: directive detected)"
+    docker compose -f "$compose_file" build 2>&1 | sed "s/^/  /"
+  fi
   docker compose -f "$compose_file" up -d --remove-orphans 2>&1 | sed "s/^/  /"
 }
 
