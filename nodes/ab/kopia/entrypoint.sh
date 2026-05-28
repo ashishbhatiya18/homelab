@@ -35,7 +35,6 @@ init_repository() {
       --remote-path="${KOPIA_RCLONE_PATH}" \
       --password="${KOPIA_PASSWORD}" 2>/dev/null; then
     patch_enable_actions
-    apply_policy
     return 0
   fi
 
@@ -44,7 +43,6 @@ init_repository() {
       --remote-path="${KOPIA_RCLONE_PATH}" \
       --password="${KOPIA_PASSWORD}"; then
     patch_enable_actions
-    apply_policy
   else
     echo "[entrypoint] ERROR: repository init failed, server will start without a repository"
   fi
@@ -55,5 +53,7 @@ patch_enable_actions
 if ! /usr/bin/kopia repository status > /dev/null 2>&1; then
   init_repository
 fi
+
+apply_policy
 
 exec /usr/bin/kopia "$@"
