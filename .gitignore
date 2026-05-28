@@ -11,6 +11,9 @@ nodes/**/config/traefik/*.pem
 # Tailscale node identity and auth state
 nodes/**/config/tailscale/
 
+# iSponsorBlockTV — backup file is runtime state
+nodes/**/config/isponsorblock/config_backup.json
+
 # Syncthing — keys live in secrets (copied at runtime), rest is runtime state
 nodes/**/syncthing/config/*.pem
 nodes/**/syncthing/config/index-v2/

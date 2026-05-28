@@ -1,0 +1,24 @@
+{
+    "devices": [
+        {
+            "screen_id": "c10f0d9b374e6e8562ce90a0e1d99c2a9c599261206d99a5a83843e76676793c",
+            "name": "vahe-tv",
+            "offset": 0
+        }
+    ],
+    "apikey": "",
+    "skip_categories": [
+        "sponsor",
+        "selfpromo",
+        "preview",
+        "filler"
+    ],
+    "channel_whitelist": [],
+    "skip_count_tracking": true,
+    "mute_ads": true,
+    "skip_ads": true,
+    "minimum_skip_length": 5,
+    "auto_play": true,
+    "join_name": "TimeSaverBuddy",
+    "use_proxy": false
+}
