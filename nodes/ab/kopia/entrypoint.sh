@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 CONFIG="${KOPIA_CONFIG_PATH:-/app/config/repository.config}"
 
@@ -39,11 +38,14 @@ init_repository() {
   fi
 
   echo "[entrypoint] No existing repository found, creating..."
-  /usr/bin/kopia repository create rclone \
-    --remote-path="${KOPIA_RCLONE_PATH}" \
-    --password="${KOPIA_PASSWORD}"
-  patch_enable_actions
-  apply_policy
+  if /usr/bin/kopia repository create rclone \
+      --remote-path="${KOPIA_RCLONE_PATH}" \
+      --password="${KOPIA_PASSWORD}"; then
+    patch_enable_actions
+    apply_policy
+  else
+    echo "[entrypoint] ERROR: repository init failed, server will start without a repository"
+  fi
 }
 
 patch_enable_actions
