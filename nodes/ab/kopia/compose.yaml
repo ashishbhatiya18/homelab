@@ -15,10 +15,8 @@ services:
     volumes:
       - /home/dietpi/localstack/data/kopia/config:/app/config
       - /home/dietpi/localstack/data/kopia/cache:/app/cache
-      - /home/dietpi/localstack/data/kopia/logs:/app/logs
       - /home/dietpi/localstack/data/kopia/rclone:/app/rclone
       - /home/dietpi/localstack:/data-ab
-      - /home/dietpi/localstack/data/kopia/tmp:/tmp:shared
       - ./scripts/pre-snapshot.sh:/scripts/pre-snapshot.sh:ro
     labels:
       - traefik.enable=true
@@ -30,7 +28,6 @@ services:
     environment:
       - KOPIA_CONFIG_PATH=/app/config/repository.config
       - KOPIA_CACHE_DIRECTORY=/app/cache
-      - KOPIA_LOG_DIR=/app/logs
       - RCLONE_CONFIG=/app/rclone/rclone.conf
     env_file: /home/dietpi/localstack/secrets/ab-kopia.env
 
