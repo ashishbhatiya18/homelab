@@ -3,17 +3,13 @@ services:
     image: kopia/kopia:latest
     container_name: kopia
     restart: always
-    # Setup the server that provides the web gui
-    entrypoint:
-      - sh
-      - -c
-      - |
-        exec kopia server start \
-          --disable-csrf-token-checks \
-          --insecure \
-          --address=0.0.0.0:51515 \
-          --server-username="$$KOPIA_SERVER_USERNAME" \
-          --server-password="$$KOPIA_SERVER_PASSWORD"
+    command:
+      - server
+      - start
+      - --disable-csrf-token-checks
+      - --insecure
+      - --address=0.0.0.0:51515
+      - --without-password
     volumes:
       - /home/dietpi/localstack/data/kopia/config:/app/config
       - /home/dietpi/localstack/data/kopia/cache:/app/cache
@@ -21,7 +17,7 @@ services:
       - /home/dietpi/localstack/data/kopia/rclone:/app/rclone
       - /home/dietpi/localstack:/data-ab:ro
       - nfs-data:/data-cd:ro
-      - /home/dietpi/localstack/data/kopia/repository:/repository
+      - nfs-kopia-repo:/repository
       - /home/dietpi/localstack/data/kopia/tmp:/tmp:shared
     labels:
       - traefik.enable=true
@@ -42,3 +38,9 @@ volumes:
       type: nfs
       o: nfsvers=4,addr=10.10.10.12,rw,nolock,soft
       device: :/home/dietpi/localstack
+  nfs-kopia-repo:
+    driver: local
+    driver_opts:
+      type: nfs
+      o: nfsvers=4,addr=10.10.10.12,rw,nolock,soft
+      device: :/home/dietpi/localstack/data/kopia-repo
