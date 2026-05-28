@@ -1,8 +1,9 @@
 #!/bin/sh
 # Copy syncthing identity certs from read-only secrets mount into config dir.
-# Using cp (not symlinks) so syncthing can write to /config normally without
-# touching the canonical cert in secrets.
+# Using cp (not symlinks) so syncthing can write to /config without touching
+# the canonical cert in secrets. Remove any stale symlinks first.
 for f in cert.pem key.pem https-cert.pem https-key.pem; do
+    rm -f "/config/$f"
     cp "/secrets/$f" "/config/$f"
 done
 
