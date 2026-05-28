@@ -11,6 +11,7 @@ services:
       - --address=0.0.0.0:51515
       - --without-password
       - --allow-extremely-dangerous-unauthenticated-server-on-the-network
+      - --enable-actions
     volumes:
       - /home/dietpi/localstack/data/kopia/config:/app/config
       - /home/dietpi/localstack/data/kopia/cache:/app/cache
