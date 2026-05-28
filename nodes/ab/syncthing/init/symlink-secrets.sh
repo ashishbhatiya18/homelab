@@ -5,6 +5,7 @@
 for f in cert.pem key.pem https-cert.pem https-key.pem; do
     rm -f "/config/$f"
     cp "/secrets/$f" "/config/$f"
+    chown abc:abc "/config/$f"
 done
 
 # Inject stable device ID from secrets into config.xml template.
