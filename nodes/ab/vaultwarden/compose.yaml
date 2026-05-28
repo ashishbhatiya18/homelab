@@ -5,6 +5,7 @@ services:
     restart: always
     volumes:
       - /home/dietpi/localstack/data/vaultwarden_data:/data
+      - ./config/config.json:/data/config.json
     expose:
       - "3012"
     networks:
