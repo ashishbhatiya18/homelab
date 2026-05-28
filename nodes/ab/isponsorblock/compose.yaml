@@ -1,0 +1,7 @@
+services:
+  isponsorblock:
+    image: dmunozv04/isponsorblocktv
+    container_name: isponsorblock
+    restart: always
+    volumes:
+      - ./config:/app/data
