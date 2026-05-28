@@ -4,6 +4,6 @@ FROM debian:bookworm-slim
 RUN apt-get update \
   && apt-get install -y --no-install-recommends postgresql-client ca-certificates \
   && rm -rf /var/lib/apt/lists/*
-COPY --from=kopia-src /app/kopia /app/kopia
-COPY --from=kopia-src /app/rclone /app/rclone
-ENTRYPOINT ["/app/kopia"]
+COPY --from=kopia-src /usr/bin/kopia /usr/bin/kopia
+COPY --from=kopia-src /usr/bin/rclone /usr/bin/rclone
+ENTRYPOINT ["/usr/bin/kopia"]
