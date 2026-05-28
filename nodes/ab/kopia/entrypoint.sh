@@ -12,7 +12,7 @@ apply_policy() {
   echo "[entrypoint] Applying snapshot policy..."
   /usr/bin/kopia policy set \
     --before-folder-action=/scripts/pre-snapshot.sh \
-    --scheduling-cron="${KOPIA_SNAPSHOT_CRON:-0 2 * * *}" \
+    --snapshot-time-crontab="${KOPIA_SNAPSHOT_CRON:-0 2 * * *}" \
     --add-ignore="data/kopia/cache" \
     --add-ignore="data/kopia/logs" \
     --add-ignore="data/kopia/tmp" \
