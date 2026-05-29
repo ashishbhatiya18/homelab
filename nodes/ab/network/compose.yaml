@@ -68,24 +68,18 @@ services:
       - network-layer
     labels:
       - com.centurylinklabs.watchtower.enable=false
-  oauth2-proxy:
-    image: bitnami/oauth2-proxy:latest
-    container_name: oauth2-proxy
+  webauthn-proxy:
+    image: ghcr.io/ashishbhatiya18/webauthn-proxy:latest
+    container_name: webauthn-proxy
     restart: always
     networks:
       - network-layer
     volumes:
-      - ./config/oauth2-proxy/config.toml:/etc/oauth2-proxy.cfg:ro
-      - ./config/oauth2-proxy/emails.txt:/etc/emails.txt:ro
-    command:
-      - --config=/etc/oauth2-proxy.cfg
-      - --authenticated-emails-file=/etc/emails.txt
-      - --set-xauthrequest=true
-    dns:
-      - 1.1.1.1
+      - webauthn_data:/data
+    env_file: /home/dietpi/localstack/secrets/webauthn-proxy.env
     labels:
       - traefik.enable=true
-      - traefik.http.routers.auth.rule=(Host(`auth.ab18.in`) || PathPrefix(`/oauth2`))
+      - traefik.http.routers.auth.rule=(Host(`auth.ab18.in`) || PathPrefix(`/_webauthn`))
       - traefik.http.routers.auth.middlewares=auth-headers
       - traefik.http.middlewares.auth-headers.headers.stsSeconds=315360000
       - traefik.http.middlewares.auth-headers.headers.browserXssFilter=true
@@ -94,11 +88,44 @@ services:
       - traefik.http.middlewares.auth-headers.headers.stsIncludeSubdomains=true
       - traefik.http.middlewares.auth-headers.headers.stsPreload=true
       - traefik.http.middlewares.auth-headers.headers.frameDeny=true
-      - traefik.http.middlewares.auth.forwardauth.address=http://oauth2-proxy:4180
-      - traefik.http.middlewares.auth.forwardAuth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Access-Token,Authorization
+      - traefik.http.middlewares.auth.forwardauth.address=http://webauthn-proxy:4180/_webauthn/auth
+      - traefik.http.middlewares.auth.forwardAuth.authResponseHeaders=X-Webauthn-User
       - traefik.http.middlewares.auth.forwardAuth.maxResponseBodySize=10485760
+
+  # oauth2-proxy (kept for reference, disabled until webauthn-proxy is stable)
+  # oauth2-proxy:
+  #   image: bitnami/oauth2-proxy:latest
+  #   container_name: oauth2-proxy
+  #   restart: always
+  #   networks:
+  #     - network-layer
+  #   volumes:
+  #     - ./config/oauth2-proxy/config.toml:/etc/oauth2-proxy.cfg:ro
+  #     - ./config/oauth2-proxy/emails.txt:/etc/emails.txt:ro
+  #   command:
+  #     - --config=/etc/oauth2-proxy.cfg
+  #     - --authenticated-emails-file=/etc/emails.txt
+  #     - --set-xauthrequest=true
+  #   dns:
+  #     - 1.1.1.1
+  #   labels:
+  #     - traefik.enable=true
+  #     - traefik.http.routers.auth.rule=(Host(`auth.ab18.in`) || PathPrefix(`/oauth2`))
+  #     - traefik.http.routers.auth.middlewares=auth-headers
+  #     - traefik.http.middlewares.auth-headers.headers.stsSeconds=315360000
+  #     - traefik.http.middlewares.auth-headers.headers.browserXssFilter=true
+  #     - traefik.http.middlewares.auth-headers.headers.contentTypeNosniff=true
+  #     - traefik.http.middlewares.auth-headers.headers.forceSTSHeader=true
+  #     - traefik.http.middlewares.auth-headers.headers.stsIncludeSubdomains=true
+  #     - traefik.http.middlewares.auth-headers.headers.stsPreload=true
+  #     - traefik.http.middlewares.auth-headers.headers.frameDeny=true
+  #     - traefik.http.middlewares.auth.forwardauth.address=http://oauth2-proxy:4180
+  #     - traefik.http.middlewares.auth.forwardAuth.authResponseHeaders=X-Auth-Request-User,X-Auth-Request-Access-Token,Authorization
+  #     - traefik.http.middlewares.auth.forwardAuth.maxResponseBodySize=10485760
+
 volumes:
   tailscale_state:
+  webauthn_data:
 
 networks:
   network-layer:
