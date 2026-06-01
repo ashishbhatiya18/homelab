@@ -13,10 +13,14 @@ services:
       - traefik.enable=true
       - traefik.http.routers.immich.rule=Host(`photos.ab18.in`)
       - traefik.http.services.immich.loadbalancer.server.port=2283
-      - traefik.http.routers.immich.middlewares=immich-ratelimit
+      - traefik.http.routers.immich.middlewares=immich-ratelimit,immich-cors
       - traefik.http.middlewares.immich-ratelimit.ratelimit.average=200
       - traefik.http.middlewares.immich-ratelimit.ratelimit.burst=120
       - traefik.http.middlewares.immich-ratelimit.ratelimit.period=1m
+      - "traefik.http.middlewares.immich-cors.headers.accesscontrolalloworiginlist=http://localhost:3000,https://ab18.in,https://photos.ab18.in"
+      - "traefik.http.middlewares.immich-cors.headers.accesscontrolallowmethods=GET,HEAD,OPTIONS"
+      - "traefik.http.middlewares.immich-cors.headers.accesscontrolallowheaders=Accept,Content-Type,Authorization"
+      - "traefik.http.middlewares.immich-cors.headers.accesscontrolmaxage=3600"
     restart: always
     dns:
       - 10.10.10.10
