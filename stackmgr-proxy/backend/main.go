@@ -337,7 +337,10 @@ func main() {
 		fileServer := http.FileServer(http.FS(staticSub))
 		router.NoRoute(func(c *gin.Context) {
 			path := strings.TrimPrefix(c.Request.URL.Path, "/")
-			if _, err := staticSub.(fs.StatFS).Stat(path); err != nil {
+			if path == "" {
+				path = "."
+			}
+			if _, err := fs.Stat(staticSub, path); err != nil {
 				c.Request.URL.Path = "/"
 			}
 			fileServer.ServeHTTP(c.Writer, c.Request)
@@ -524,7 +527,7 @@ func (sm *StackManager) getSystemHealth(c *gin.Context) {
 
 func (sm *StackManager) listStacks(c *gin.Context) {
 	ctx := context.Background()
-	var stacks []StackInfo
+	stacks := make([]StackInfo, 0)
 
 	for _, host := range sm.hosts {
 		var ctrs []container.Summary

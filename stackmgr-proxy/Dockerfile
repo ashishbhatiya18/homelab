@@ -24,7 +24,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
 # ── Stage 3: Distroless runtime ───────────────────────────────────────────────
 # static-debian12 has no shell, no package manager — minimal attack surface.
 # The Go binary is statically linked (CGO_ENABLED=0) so no glibc needed.
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/static-debian12
 COPY --from=backend /app/stackmgr-proxy /stackmgr-proxy
 EXPOSE 8080
 ENTRYPOINT ["/stackmgr-proxy"]
