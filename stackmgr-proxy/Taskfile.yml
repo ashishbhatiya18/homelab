@@ -1,0 +1,77 @@
+version: "3"
+
+tasks:
+  default:
+    desc: List available tasks
+    cmd: task --list
+
+  setup:
+    desc: Copy example env files for first-time setup
+    cmds:
+      - cp backend/.env.example backend/.env
+      - cp frontend/.env.local.example frontend/.env.local
+
+  backend:dev:
+    desc: Run Go backend in development mode
+    dir: backend
+    cmds:
+      - go mod download
+      - go run main.go
+
+  frontend:dev:
+    desc: Run Next.js frontend in development mode
+    dir: frontend
+    cmds:
+      - npm install
+      - npm run dev
+
+  dev:
+    desc: Run backend and frontend locally in parallel
+    deps: [backend:dev, frontend:dev]
+
+  dev:remote:
+    desc: Run backend+frontend against remote node via SSH (set DOCKER_HOST=name=ssh://user@host in backend/.env)
+    deps: [backend:dev, frontend:dev]
+
+  backend:build:
+    desc: Build Go backend binary
+    dir: backend
+    cmds:
+      - go mod download
+      - go build -o stackmgr-proxy .
+
+  frontend:build:
+    desc: Build Next.js frontend
+    dir: frontend
+    cmds:
+      - npm install
+      - npm run build
+
+  build:
+    desc: Build both backend and frontend
+    deps: [backend:build, frontend:build]
+
+  up:
+    desc: Start services with docker-compose
+    cmd: docker-compose up -d
+
+  down:
+    desc: Stop docker-compose services
+    cmd: docker-compose down
+
+  restart:
+    desc: Restart docker-compose services
+    cmds:
+      - task: down
+      - task: up
+
+  logs:
+    desc: Tail docker-compose logs
+    cmd: docker-compose logs -f
+
+  clean:
+    desc: Remove build artifacts and docker volumes
+    cmds:
+      - rm -f backend/stackmgr-proxy
+      - rm -rf frontend/.next frontend/out frontend/node_modules
+      - docker-compose down -v

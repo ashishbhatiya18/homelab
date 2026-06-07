@@ -1,0 +1,14 @@
+**/.git
+**/.gitignore
+**/.DS_Store
+**/.vscode
+**/.idea
+**/node_modules
+**/yarn-error.log
+frontend/.next
+frontend/out
+backend/static
+backend/stackmgr-proxy
+*.md
+Taskfile.yml
+package.json

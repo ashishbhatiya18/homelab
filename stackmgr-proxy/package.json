@@ -1,0 +1,11 @@
+{
+    "name": "stackmgr-proxy",
+    "version": "0.1.0",
+    "description": "Stack Management Dashboard for LocalStack services",
+    "author": "ab18",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/your-org/stackmgr-proxy"
+    }
+}
