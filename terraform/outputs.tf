@@ -17,6 +17,11 @@ output "pages_url_ab18" {
   value       = "https://${cloudflare_pages_project.ab18.name}.pages.dev"
 }
 
+output "pages_custom_domain_ab18" {
+  description = "Custom domain attached to the ab18 Pages project"
+  value       = "https://${cloudflare_pages_domain.ab18_root.name}"
+}
+
 output "pages_url_citrusdental" {
   description = "Cloudflare Pages deployment URL for citrusdental-in"
   value       = "https://${cloudflare_pages_project.citrusdental.name}.pages.dev"

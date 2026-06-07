@@ -1,0 +1,32 @@
+services:
+  stackmgr-proxy:
+    image: ghcr.io/ashishbhatiya18/stackmgr-proxy:latest
+    container_name: stackmgr-proxy
+    restart: always
+    networks:
+      - network-layer
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    secrets:
+      - stackmgr_cd_ssh_key
+    environment:
+      PORT: "8080"
+      # local=ab node socket, cd=remote node via SSH
+      DOCKER_HOST: "local=unix:///var/run/docker.sock,cd=ssh://dietpi@10.10.10.12"
+      SSH_KEY_FILE: /run/secrets/stackmgr_cd_ssh_key
+      STACKS_PATH: /home/dietpi/localstack/repo/nodes
+      REMOTE_STACKS_PATH: /home/dietpi/localstack/repo/nodes
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.stackmgr.rule=Host(`stack.ab18.in`)
+      - traefik.http.routers.stackmgr.middlewares=auth
+      - traefik.http.services.stackmgr.loadbalancer.server.port=8080
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
+
+secrets:
+  stackmgr_cd_ssh_key:
+    file: /home/dietpi/localstack/secrets/stackmgr-cd-ssh-key
