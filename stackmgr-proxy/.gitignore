@@ -1,7 +1,8 @@
 # Backend
 backend/.env
 backend/stackmgr-proxy
-backend/go.sum
+backend/static/*
+!backend/static/.gitkeep
 
 # Frontend
 frontend/.env.local
