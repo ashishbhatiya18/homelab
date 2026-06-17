@@ -125,6 +125,16 @@ function ContainerRow({ svc, stack }: { svc: Service; stack: Stack }) {
         <span className="font-mono text-sm text-slate-300 min-w-[140px] shrink-0">{svc.name}</span>
         <span className={`text-xs shrink-0 ${stateColor}`}>{state}</span>
 
+        {/* Docker image */}
+        {svc.image && (
+          <span className="text-xs font-mono text-slate-500 shrink-0 hidden sm:block" title={`${svc.image}${svc.imageTag ? ':' + svc.imageTag : ''}`}>
+            <span className="text-slate-600">{svc.image.includes('/') ? svc.image.split('/').slice(-1)[0] : svc.image}</span>
+            {svc.imageTag && svc.imageTag !== 'latest' && (
+              <span className="text-blue-500/70">:{svc.imageTag}</span>
+            )}
+          </span>
+        )}
+
         {/* Traefik URL */}
         {svc.url && (
           <a
@@ -215,6 +225,9 @@ export default function StackCard({ stack }: { stack: Stack }) {
           <span className="text-sm font-semibold text-white">{stack.name}</span>
           <p className="text-xs text-slate-600 font-mono truncate max-w-[200px]" title={stack.path}>
             …/{stack.path?.split('/').slice(-2).join('/')}
+            {stack.composeFile && stack.composeFile !== 'docker-compose.yml' && stack.composeFile !== 'compose.yml' && (
+              <span className="text-slate-700 ml-1">({stack.composeFile})</span>
+            )}
           </p>
         </div>
 

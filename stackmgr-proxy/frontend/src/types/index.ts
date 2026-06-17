@@ -3,6 +3,7 @@ export interface Stack {
   environment: string;
   name: string;
   path: string;
+  composeFile?: string;
   status: string;
   services: Service[];
 }
@@ -12,6 +13,8 @@ export interface Service {
   status: string;
   state: string;
   url?: string;
+  image?: string;
+  imageTag?: string;
 }
 
 export interface StackDetail {

@@ -371,6 +371,7 @@ type StackInfo struct {
 	Environment string          `json:"environment"`
 	Name        string          `json:"name"`
 	Path        string          `json:"path"`
+	ComposeFile string          `json:"composeFile,omitempty"`
 	Status      string          `json:"status"`
 	Services    []ServiceStatus `json:"services"`
 }
@@ -383,10 +384,12 @@ type StackDetail struct {
 }
 
 type ServiceStatus struct {
-	Name   string `json:"name"`
-	Status string `json:"status"`
-	State  string `json:"state"`
-	URL    string `json:"url,omitempty"`
+	Name        string `json:"name"`
+	Status      string `json:"status"`
+	State       string `json:"state"`
+	URL         string `json:"url,omitempty"`
+	Image       string `json:"image,omitempty"`
+	ImageTag    string `json:"imageTag,omitempty"`
 }
 
 type HealthCheckResult struct {
@@ -483,6 +486,18 @@ func (sm *StackManager) envFromWorkdir(workDir string) string {
 	return "unknown"
 }
 
+func parseImage(image string) (name, tag string) {
+	// strip digest if present
+	if i := strings.Index(image, "@"); i >= 0 {
+		image = image[:i]
+	}
+	// split name:tag
+	if i := strings.LastIndex(image, ":"); i >= 0 {
+		return image[:i], image[i+1:]
+	}
+	return image, ""
+}
+
 func svcName(ctr container.Summary) string {
 	if n := ctr.Labels["com.docker.compose.service"]; n != "" {
 		return n
@@ -541,11 +556,12 @@ func (sm *StackManager) listStacks(c *gin.Context) {
 		}
 
 		type projectMeta struct {
-			env      string
-			path     string
-			running  int
-			total    int
-			services []ServiceStatus
+			env         string
+			path        string
+			composeFile string
+			running     int
+			total       int
+			services    []ServiceStatus
 		}
 		projects := map[string]*projectMeta{}
 
@@ -556,20 +572,30 @@ func (sm *StackManager) listStacks(c *gin.Context) {
 			}
 			if _, ok := projects[project]; !ok {
 				workDir := ctr.Labels["com.docker.compose.project.working_dir"]
+				cfgFiles := ctr.Labels["com.docker.compose.project.config_files"]
+				// take only the filename of the first config file
+				if cfgFiles != "" {
+					first := strings.SplitN(cfgFiles, ",", 2)[0]
+					cfgFiles = filepath.Base(first)
+				}
 				projects[project] = &projectMeta{
-					env:  sm.envFromWorkdir(workDir),
-					path: workDir,
+					env:         sm.envFromWorkdir(workDir),
+					path:        workDir,
+					composeFile: cfgFiles,
 				}
 			}
 			projects[project].total++
 			if ctr.State == "running" {
 				projects[project].running++
 			}
+			imgName, imgTag := parseImage(ctr.Image)
 			projects[project].services = append(projects[project].services, ServiceStatus{
-				Name:   svcName(ctr),
-				Status: ctr.Status,
-				State:  string(ctr.State),
-				URL:    extractTraefikURL(ctr.Labels),
+				Name:     svcName(ctr),
+				Status:   ctr.Status,
+				State:    string(ctr.State),
+				URL:      extractTraefikURL(ctr.Labels),
+				Image:    imgName,
+				ImageTag: imgTag,
 			})
 		}
 
@@ -582,6 +608,7 @@ func (sm *StackManager) listStacks(c *gin.Context) {
 				Environment: meta.env,
 				Name:        name,
 				Path:        meta.path,
+				ComposeFile: meta.composeFile,
 				Status:      composeStatus(meta.running, meta.total),
 				Services:    meta.services,
 			})
@@ -619,11 +646,14 @@ func (sm *StackManager) getStackStatus(c *gin.Context) {
 			if ctr.State == "running" {
 				running++
 			}
+			imgName, imgTag := parseImage(ctr.Image)
 			services = append(services, ServiceStatus{
-				Name:   svcName(ctr),
-				Status: ctr.Status,
-				State:  string(ctr.State),
-				URL:    extractTraefikURL(ctr.Labels),
+				Name:     svcName(ctr),
+				Status:   ctr.Status,
+				State:    string(ctr.State),
+				URL:      extractTraefikURL(ctr.Labels),
+				Image:    imgName,
+				ImageTag: imgTag,
 			})
 		}
 		return nil
