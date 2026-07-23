@@ -1,0 +1,29 @@
+services:
+  codeserver:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: codeserver
+    restart: always
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - DEFAULT_WORKSPACE=/repos
+    env_file: /home/dietpi/localstack/secrets/ab-codeserver.env
+    volumes:
+      - /home/dietpi/localstack/data/codeserver_config:/config
+      - /home/dietpi/localstack/data/codeserver_claude:/config/.claude
+      - /home/dietpi/repos:/repos
+    networks:
+      - network-layer
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.code.rule=Host(`code.ab18.in`)
+      - traefik.http.routers.code.middlewares=auth
+      - traefik.http.services.code.loadbalancer.server.port=8443
+      - traefik.http.services.code.loadbalancer.server.scheme=https
+      - traefik.http.services.code.loadbalancer.serverstransport=code-insecure@docker
+      - traefik.http.serverstransports.code-insecure.insecureskipverify=true
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true

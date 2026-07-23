@@ -1,0 +1,7 @@
+{
+    "mcpServers": {
+        "codebase-memory-mcp": {
+            "command": "/Users/ab18/.local/bin/codebase-memory-mcp"
+        }
+    }
+}

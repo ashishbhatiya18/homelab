@@ -92,6 +92,7 @@ services:
       - traefik.http.middlewares.auth.forwardauth.address=http://webauthn-proxy:4180/_webauthn/auth
       - traefik.http.middlewares.auth.forwardAuth.authResponseHeaders=X-Webauthn-User
       - traefik.http.middlewares.auth.forwardAuth.maxResponseBodySize=10485760
+      - traefik.http.middlewares.auth.forwardAuth.trustForwardHeader=true
 
   # oauth2-proxy (kept for reference, disabled until webauthn-proxy is stable)
   # oauth2-proxy:

@@ -7,6 +7,7 @@
 locals {
   ab18_hostnames = toset([
     "auth",
+    "code",
     "draw",
     "pad",
     "pdf",
