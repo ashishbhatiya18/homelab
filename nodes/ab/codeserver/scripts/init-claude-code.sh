@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -e
 
-export NPM_CONFIG_PREFIX=/config/.npm-global
+export HOME=/config
 
-if [ ! -x "${NPM_CONFIG_PREFIX}/bin/claude" ]; then
-  echo "[init-claude-code] installing @anthropic-ai/claude-code into ${NPM_CONFIG_PREFIX}"
-  mkdir -p "${NPM_CONFIG_PREFIX}"
-  npm install -g @anthropic-ai/claude-code
-  chown -R abc:abc "${NPM_CONFIG_PREFIX}"
+if [ ! -x "${HOME}/.local/bin/claude" ]; then
+  echo "[init-claude-code] installing claude-code via install.sh"
+  curl -fsSL https://claude.ai/install.sh | bash
+  chown -R abc:abc "${HOME}/.local"
 else
   echo "[init-claude-code] claude-code already installed, skipping"
 fi
 
-ln -sf "${NPM_CONFIG_PREFIX}/bin/claude" /usr/local/bin/claude
+ln -sf "${HOME}/.local/bin/claude" /usr/local/bin/claude
