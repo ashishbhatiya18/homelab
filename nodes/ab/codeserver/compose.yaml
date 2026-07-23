@@ -13,6 +13,7 @@ services:
       - /home/dietpi/localstack/data/codeserver_config:/config
       - /home/dietpi/localstack/data/codeserver_claude:/config/.claude
       - /home/dietpi/repos:/repos
+      - ./scripts/init-claude-code.sh:/custom-cont-init.d/init-claude-code.sh:ro
     networks:
       - network-layer
     labels:
