@@ -20,9 +20,6 @@ services:
       - traefik.http.routers.code.rule=Host(`code.ab18.in`)
       - traefik.http.routers.code.middlewares=auth
       - traefik.http.services.code.loadbalancer.server.port=8443
-      - traefik.http.services.code.loadbalancer.server.scheme=https
-      - traefik.http.services.code.loadbalancer.serverstransport=code-insecure@docker
-      - traefik.http.serverstransports.code-insecure.insecureskipverify=true
 networks:
   network-layer:
     name: internal_bridge
