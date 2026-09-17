@@ -91,6 +91,7 @@ certificatesResolvers:
     acme:
       storage: "/etc/acme/acme.json"
       certificatesDuration: 720
+      preferredChain: "ISRG Root X1"
       dnsChallenge:
         provider: cloudflare
         resolvers:
