@@ -6,7 +6,7 @@ services:
     environment:
       - PUID=1000
       - PGID=1000
-      - TZ=Etc/UTC
+      - TZ=Asia/Kolkata
       - DEFAULT_WORKSPACE=/repos
     env_file: /home/dietpi/localstack/secrets/ab-codeserver.env
     volumes:
