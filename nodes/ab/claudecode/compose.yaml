@@ -17,7 +17,7 @@ services:
     environment:
       - TZ=Etc/UTC
     volumes:
-      - /home/dietpi/localstack/data/claudecode_home:/home/node
+      - /home/dietpi/localstack/data/claudecode_claude:/home/node/.claude
       - /home/dietpi/repos:/workspace
     networks:
       - network-layer
