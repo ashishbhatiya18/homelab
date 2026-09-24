@@ -1,0 +1,32 @@
+services:
+  claudecode:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: claudecode:latest
+    container_name: claudecode
+    restart: always
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Etc/UTC
+    volumes:
+      - /home/dietpi/localstack/data/claudecode_home:/home/node
+      - /home/dietpi/repos:/workspace
+    networks:
+      - network-layer
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.term.rule=Host(`term.ab18.in`)
+      - traefik.http.routers.term.middlewares=auth
+      - traefik.http.services.term.loadbalancer.server.port=7681
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
