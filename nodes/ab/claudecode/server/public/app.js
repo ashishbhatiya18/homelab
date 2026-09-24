@@ -48,6 +48,30 @@
 
   fitAddon.fit();
 
+  // --- Shift+Enter for a newline ------------------------------------------
+  // xterm.js never negotiates the "kitty keyboard protocol" Claude Code
+  // needs to tell Shift+Enter apart from plain Enter, so both would
+  // otherwise send the identical \r and submit instead of inserting a
+  // newline. ESC CR is the documented fallback Claude Code's own
+  // /terminal-setup remaps Shift+Enter to for VS Code/iTerm2 — sent
+  // directly here instead, bypassing xterm.js's default Enter handling.
+  term.attachCustomKeyEventHandler((event) => {
+    if (
+      event.type === 'keydown' &&
+      event.key === 'Enter' &&
+      event.shiftKey &&
+      !event.ctrlKey &&
+      !event.altKey &&
+      !event.metaKey
+    ) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'data', data: '\x1b\r' }));
+      }
+      return false;
+    }
+    return true;
+  });
+
   // --- Mouse-selection copy -------------------------------------------------
   // xterm.js keeps text selection purely internal (painted to canvas/WebGL),
   // so there is no real DOM selection for the browser's native copy to act
