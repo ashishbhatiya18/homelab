@@ -58,6 +58,13 @@ function serveStatic(req, res) {
     res.writeHead(200, {
       ...SECURITY_HEADERS,
       'Content-Type': MIME_TYPES[path.extname(filePath)] || 'application/octet-stream',
+      // Without this, browsers' default heuristic caching can keep serving a
+      // stale app.js/index.html after a redeploy until a hard refresh — this
+      // app has no versioned asset filenames to bust that cache, and we send
+      // no ETag/Last-Modified for "no-cache" to revalidate against, so
+      // "no-store" (never cache at all) is the only directive that reliably
+      // guarantees freshness here.
+      'Cache-Control': 'no-store',
     });
     res.end(data);
   });
