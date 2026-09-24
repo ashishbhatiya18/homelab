@@ -23,6 +23,10 @@ services:
       # below, instead of a separate top-level ~/.claude.json that would
       # sit outside the mount (and fail to write on the read-only rootfs).
       - CLAUDE_CONFIG_DIR=/home/node/.claude
+      # Caps concurrent PTY sessions this server will spawn (defense-in-depth
+      # behind the passkey gate). Raise if you regularly need more than this
+      # many simultaneous terminal tabs/connections open at once.
+      - MAX_CONCURRENT_SESSIONS=8
     volumes:
       - /home/dietpi/localstack/data/claudecode_claude:/home/node/.claude
       - /home/dietpi/repos:/workspace
