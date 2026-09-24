@@ -168,7 +168,7 @@ All endpoints require auth token:
 The frontend pre-configures health checks for:
 
 **ab environment:**
-- immich, vaultwarden, ollama, syncthing, rustpad, kopia
+- immich, vaultwarden, syncthing, rustpad, kopia
 - homeautomation, media, filebrowser, bentopdf, isponsorblock, excalidraw
 
 **cd environment:**

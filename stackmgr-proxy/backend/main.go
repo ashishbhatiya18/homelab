@@ -847,7 +847,6 @@ func (sm *StackManager) getHealthCheckEndpoints(stack string) map[string]string 
 	return map[string]string{
 		"immich":         "http://immich:2283/api/server/ping",
 		"vaultwarden":    "http://vaultwarden:80/alive",
-		"ollama":         "http://ollama:11434/api/tags",
 		"syncthing":      "http://syncthing:8384/rest/system/status",
 		"rustpad":        "http://rustpad:8080/health",
 		"kopia":          "http://kopia:51515/api/v1/status",

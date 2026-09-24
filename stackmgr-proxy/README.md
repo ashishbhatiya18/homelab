@@ -121,7 +121,6 @@ Supports service-specific health endpoints for:
 
 - **immich**: HTTP ping to :2283/api/server/ping
 - **vaultwarden**: HTTP check to :80/alive
-- **ollama**: GET :11434/api/tags
 - **syncthing**: GET :8384/rest/system/status
 - **homeautomation**: GET :8123/api/
 - And more...
