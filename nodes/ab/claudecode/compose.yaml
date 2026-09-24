@@ -21,6 +21,11 @@ services:
       - DISABLE_AUTOUPDATER=1
     volumes:
       - /home/dietpi/localstack/data/claudecode_claude:/home/node/.claude
+      # ~/.claude.json (session/conversation index, separate from ~/.claude/)
+      # must also persist, or restarts reset the session even though
+      # ~/.claude/ itself is retained. The host file must exist before the
+      # container starts, or Docker will create a directory there instead.
+      - /home/dietpi/localstack/data/claudecode_claude.json:/home/node/.claude.json
       - /home/dietpi/repos:/workspace
     networks:
       - network-layer
