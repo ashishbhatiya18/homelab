@@ -19,13 +19,12 @@ services:
       # Root filesystem is read-only, so the self-updater can't write to
       # ~/.local/bin — updates are handled by rebuilding the image instead.
       - DISABLE_AUTOUPDATER=1
+      # Makes claude-code write .claude.json inside the ~/.claude volume
+      # below, instead of a separate top-level ~/.claude.json that would
+      # sit outside the mount (and fail to write on the read-only rootfs).
+      - CLAUDE_CONFIG_DIR=/home/node/.claude
     volumes:
       - /home/dietpi/localstack/data/claudecode_claude:/home/node/.claude
-      # ~/.claude.json (session/conversation index, separate from ~/.claude/)
-      # must also persist, or restarts reset the session even though
-      # ~/.claude/ itself is retained. The host file must exist before the
-      # container starts, or Docker will create a directory there instead.
-      - /home/dietpi/localstack/data/claudecode_claude.json:/home/node/.claude.json
       - /home/dietpi/repos:/workspace
     networks:
       - network-layer
