@@ -16,6 +16,9 @@ services:
       - no-new-privileges:true
     environment:
       - TZ=Etc/UTC
+      # Root filesystem is read-only, so the self-updater can't write to
+      # ~/.local/bin — updates are handled by rebuilding the image instead.
+      - DISABLE_AUTOUPDATER=1
     volumes:
       - /home/dietpi/localstack/data/claudecode_claude:/home/node/.claude
       - /home/dietpi/repos:/workspace
