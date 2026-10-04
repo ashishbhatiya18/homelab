@@ -39,8 +39,8 @@ home install      # background service: daily backups + a daily node check
 | `home stack logs <node>/<stack> [svc] [-f] [--tail N]` | logs |
 | `home stack update <node>/<stack>` | pull → pre-update hook (e.g. a database backup) → apply → wait until healthy; **rolls back automatically** if not |
 | `home stack rollback <node>/<stack>` | back to the images before the last update (old images are kept tagged) |
-| `home apt check\|upgrade <node\|all>` | apt, non-interactive, keeping your config files |
-| `home dietpi check\|upgrade <node\|all>` | DietPi's own updater, non-interactive |
+| `home node apt check\|upgrade <node\|all>` | apt, non-interactive, keeping your config files |
+| `home node dietpi check\|upgrade <node\|all>` | DietPi's own updater, non-interactive |
 | `home node reboot <node>` | reboot and wait until every container that was running is healthy again |
 | `home upgrade <node\|all>` | apt → DietPi → stack updates → reboot if required, node by node in your upgrade order; stops at the first failure |
 

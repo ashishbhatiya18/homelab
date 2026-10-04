@@ -52,12 +52,14 @@ Stacks:
   home stack rollback <node>/<stack>         back to the images before the last update
 
 Nodes:
-  home apt check|upgrade <node|all> [--yes]
-  home dietpi check|upgrade <node|all> [--yes]
+  home node apt check|upgrade <node|all> [--yes]
+  home node dietpi check|upgrade <node|all> [--yes]
   home node reboot <node> [--yes]            waits until every container is back
+
+Upgrade:
   home upgrade <node|all> [--dry-run] [--yes] [--no-reboot]
                                     apt → DietPi → stack updates → reboot if needed,
-                                    node by node in upgrade order
+                                    node by node in upgrade order; stops at the first failure
 
 Backups:
   home br …                         encrypted Postgres backups (see ` + "`home br help`" + `)
@@ -216,6 +218,7 @@ func run(ctx context.Context, cmd string, args []string) error {
 	case "stack":
 		return a.stackCmd(ctx, args)
 	case "apt", "dietpi":
+		fmt.Fprintf(os.Stderr, "note: `home %s` is now `home node %s`\n", cmd, cmd)
 		return a.pkgCmd(ctx, cmd, args)
 	case "node":
 		return a.nodeCmd(ctx, args)
@@ -446,7 +449,7 @@ func (a *app) pkgCmd(ctx context.Context, kind string, args []string) error {
 	yes := fs.Bool("yes", false, "do not ask for confirmation")
 	fs.Parse(reorder(args))
 	if fs.NArg() != 2 || (fs.Arg(0) != "check" && fs.Arg(0) != "upgrade") {
-		return fmt.Errorf("usage: home %s check|upgrade <node|all>", kind)
+		return fmt.Errorf("usage: home node %s check|upgrade <node|all>", kind)
 	}
 	nodes, err := a.cfg.Ordered(fs.Arg(1))
 	if err != nil {
@@ -501,11 +504,23 @@ func (a *app) pkgCmd(ctx context.Context, kind string, args []string) error {
 	return nil
 }
 
+const nodeUsage = "usage: home node apt check|upgrade <node|all> | home node dietpi check|upgrade <node|all> | home node reboot <node>"
+
 func (a *app) nodeCmd(ctx context.Context, args []string) error {
-	fs := flag.NewFlagSet("node", flag.ExitOnError)
+	if len(args) == 0 {
+		return errors.New(nodeUsage)
+	}
+	switch args[0] {
+	case "apt", "dietpi":
+		return a.pkgCmd(ctx, args[0], args[1:])
+	case "reboot":
+	default:
+		return errors.New(nodeUsage)
+	}
+	fs := flag.NewFlagSet("node reboot", flag.ExitOnError)
 	yes := fs.Bool("yes", false, "do not ask for confirmation")
 	fs.Parse(reorder(args))
-	if fs.NArg() != 2 || fs.Arg(0) != "reboot" {
+	if fs.NArg() != 2 {
 		return errors.New("usage: home node reboot <node>")
 	}
 	n, err := a.cfg.Node(fs.Arg(1))
