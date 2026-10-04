@@ -4,11 +4,10 @@
 package service
 
 import (
+	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"os/exec"
-	"strings"
 )
 
 const formula = "hbr"
@@ -58,14 +57,28 @@ func Uninstall() error {
 	return brewRun(b, "services", "stop", formula)
 }
 
-// Running reports whether the service is loaded.
+// Running reports whether the service is loaded (registered with launchd).
+// Being an interval job, it is usually loaded but not executing.
 func Running() bool {
 	b, err := brew()
 	if err != nil {
 		return false
 	}
 	out, err := exec.Command(b, "services", "info", formula, "--json").Output()
-	return err == nil && strings.Contains(string(out), `"loaded":true`)
+	if err != nil {
+		return false
+	}
+	return loaded(out)
+}
+
+func loaded(infoJSON []byte) bool {
+	var info []struct {
+		Loaded bool `json:"loaded"`
+	}
+	if err := json.Unmarshal(infoJSON, &info); err != nil {
+		return false
+	}
+	return len(info) > 0 && info[0].Loaded
 }
 
 // Describe returns a one-line status for `hbr status`.
@@ -80,5 +93,5 @@ func Describe() string {
 	if Running() {
 		return "service: running (manage with `brew services info|stop|restart hbr`)"
 	}
-	return fmt.Sprintf("service: not installed — run `hbr install`")
+	return "service: not installed — run `hbr install`"
 }
