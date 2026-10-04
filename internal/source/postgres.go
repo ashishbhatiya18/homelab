@@ -27,6 +27,7 @@ type pgExec interface {
 	// against the source database; the database is selected by the exec.
 	run(ctx context.Context, env *Env, tool string, args []string, stdin io.Reader, stdout io.Writer) error
 	describe() string
+	database() string
 }
 
 // pgSource is the shared implementation behind every Postgres source type.
@@ -50,7 +51,8 @@ func (p *pgSource) psql(ctx context.Context, env *Env, sql string) (string, erro
 }
 
 func (p *pgSource) Collect(ctx context.Context, env *Env, dir string) (manifest.Artifact, error) {
-	a := manifest.Artifact{Source: p.Name(), Kind: p.Kind(), Host: p.Host(), Meta: map[string]any{"from": p.x.describe()}}
+	a := manifest.Artifact{Source: p.Name(), Kind: p.Kind(), Host: p.Host(),
+		Meta: map[string]any{"from": p.x.describe(), "database": p.x.database()}}
 	ver, err := p.psql(ctx, env, "show server_version_num")
 	if err != nil {
 		return a, err
@@ -291,16 +293,7 @@ func (p *pgSource) RestoreTo(ctx context.Context, env *Env, dir string, a manife
 	case !empty && !t.Replace:
 		return "", fmt.Errorf("database %q on the target is not empty (add --replace)", db)
 	}
-	f, err := os.Open(filepath.Join(dir, dumpFile))
-	if err != nil {
-		return "", err
-	}
-	defer f.Close()
-	args := []string{"-d", t.URL}
-	if t.Replace {
-		args = append(args, "--clean", "--if-exists")
-	}
-	if err := local(ctx, env, t.Password, f, nil, "pg_restore", append(args, portableRestore...)...); err != nil {
+	if err := restoreLocalTools(ctx, env, filepath.Join(dir, dumpFile), t); err != nil {
 		return "", err
 	}
 	got, err := rowCounts(ctx, func(sql string) (string, error) { return localQuery(ctx, env, t.Password, t.URL, sql) })
@@ -308,6 +301,104 @@ func (p *pgSource) RestoreTo(ctx context.Context, env *Env, dir string, a manife
 		return "", err
 	}
 	return compareCounts(a.Meta["row_counts"], got)
+}
+
+// restoreLocalTools restores a dump into t with this machine's Postgres
+// tools. When those are newer than the target server, pg_restore can emit
+// settings the server doesn't know (e.g. transaction_timeout, new in 17), so
+// the dump is converted to SQL, unsupported settings are dropped, and the
+// result is applied with psql in a single transaction.
+func restoreLocalTools(ctx context.Context, env *Env, dump string, t Target) error {
+	server, err := serverMajor(ctx, env, t)
+	if err != nil {
+		return err
+	}
+	client := clientMajor(env)
+	clean := []string{}
+	if t.Replace {
+		clean = []string{"--clean", "--if-exists"}
+	}
+	if client <= server {
+		f, err := os.Open(dump)
+		if err != nil {
+			return err
+		}
+		defer f.Close()
+		args := append(append([]string{"-d", t.URL}, clean...), portableRestore...)
+		return local(ctx, env, t.Password, f, nil, "pg_restore", args...)
+	}
+
+	pr, pw := io.Pipe()
+	errc := make(chan error, 1)
+	go func() {
+		var raw bytes.Buffer
+		args := append(append([]string{"--no-owner", "--no-privileges", "-f", "-"}, clean...), dump)
+		err := local(ctx, env, "", nil, &raw, "pg_restore", args...)
+		if err == nil {
+			err = filterSettings(&raw, pw, server)
+		}
+		pw.CloseWithError(err)
+		errc <- err
+	}()
+	err = local(ctx, env, t.Password, pr, io.Discard, "psql", "-X", "-q", "-v", "ON_ERROR_STOP=1", "--single-transaction", "-d", t.URL)
+	if gerr := <-errc; err == nil {
+		err = gerr
+	}
+	return err
+}
+
+// settingsSince lists session settings pg_restore may emit, by the server
+// version that introduced them.
+var settingsSince = map[string]int{"transaction_timeout": 17}
+
+func filterSettings(in io.Reader, out io.Writer, server int) error {
+	sc := bufio.NewScanner(in)
+	sc.Buffer(make([]byte, 1<<20), 1<<30)
+	w := bufio.NewWriter(out)
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.HasPrefix(line, "SET ") {
+			name, _, _ := strings.Cut(strings.TrimPrefix(line, "SET "), " ")
+			if v, ok := settingsSince[name]; ok && server < v {
+				continue
+			}
+		}
+		w.WriteString(line)
+		w.WriteByte('\n')
+	}
+	if err := sc.Err(); err != nil {
+		return err
+	}
+	return w.Flush()
+}
+
+func serverMajor(ctx context.Context, env *Env, t Target) (int, error) {
+	admin, err := WithDatabase(t.URL, "postgres")
+	if err != nil {
+		return 0, err
+	}
+	out, err := localQuery(ctx, env, t.Password, admin, "show server_version_num")
+	if err != nil {
+		return 0, err
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(out))
+	if err != nil {
+		return 0, fmt.Errorf("unexpected server version %q", out)
+	}
+	return n / 10000, nil
+}
+
+func clientMajor(env *Env) int {
+	out, err := exec.Command(pgTool(env, "pg_restore"), "--version").Output()
+	if err != nil {
+		return 0
+	}
+	f := strings.Fields(string(out)) // "pg_restore (PostgreSQL) 18.6"
+	if len(f) == 0 {
+		return 0
+	}
+	v, _ := strconv.Atoi(strings.SplitN(f[len(f)-1], ".", 2)[0])
+	return v
 }
 
 // ---- restore drill ------------------------------------------------------------

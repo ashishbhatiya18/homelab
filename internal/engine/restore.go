@@ -101,8 +101,13 @@ type RestoreOptions struct {
 	TargetURL string
 	// TargetPassword, if set, is used instead of prompting.
 	TargetPassword string
-	Create         bool
-	Replace        bool
+	// Local restores into a new Postgres container on this machine (docker
+	// or podman, per verify.container_cli) that is left running to explore.
+	Local bool
+	// PgVersion picks the Postgres major for Local (0 = the snapshot's own).
+	PgVersion int
+	Create    bool
+	Replace   bool
 	// Yes skips the confirmations; only honoured with TargetURL, so
 	// production restores always require a human at the keyboard.
 	Yes bool
@@ -135,9 +140,20 @@ func (e *Engine) Restore(ctx context.Context, app string, o RestoreOptions) erro
 		byName[s.Name()] = s
 	}
 
-	fmt.Printf("\nBackup:  %s\nTaken:   %s\n", filepath.Base(b.Path), m.CreatedAt.Local().Format("Mon 2 Jan 2006 15:04"))
+	fmt.Printf("\nSnapshot: %s\nTaken:    %s\n", filepath.Base(b.Path), m.CreatedAt.Local().Format("Mon 2 Jan 2006 15:04"))
 	for _, a := range m.Artifacts {
-		fmt.Printf("Source:  %s (%s on %s) %s\n", a.Source, a.Kind, a.Host, summarize(a))
+		if err := source.CheckArtifact(filepath.Join(dir, a.Source), a); err != nil {
+			return fmt.Errorf("snapshot is damaged (%s): %w", a.Source, err)
+		}
+		fmt.Printf("Source:   %s (%s) %s\n", a.Source, a.Kind, summarize(a))
+	}
+	how := "password"
+	if o.Recovery {
+		how = "recovery key"
+	}
+	fmt.Printf("✓ %s accepted — snapshot decrypted, every file matches its checksum\n", how)
+	if o.Local {
+		return e.restoreLocal(ctx, app, b, dir, m, byName, o)
 	}
 	if o.TargetURL != "" {
 		return e.restoreToTarget(ctx, app, b, dir, m, byName, o)
@@ -177,9 +193,16 @@ func (e *Engine) restoreToTarget(ctx context.Context, app string, b store.Backup
 	}
 	exists, empty, err := pr.InspectTarget(ctx, e.Env, t)
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot use the target database: %w", err)
 	}
-	fmt.Printf("Target:  %s (exists: %v, empty: %v)\n\n", redact(o.TargetURL), exists, empty)
+	state := "does not exist yet"
+	switch {
+	case exists && empty:
+		state = "exists, empty"
+	case exists:
+		state = "exists, NOT empty"
+	}
+	fmt.Printf("✓ connected to target %s — database %s\n\n", redact(o.TargetURL), state)
 	if o.DryRun {
 		fmt.Println("Dry run: nothing changed.")
 		return nil

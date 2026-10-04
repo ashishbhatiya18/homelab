@@ -56,6 +56,8 @@ func (d *dockerExec) run(ctx context.Context, env *Env, tool string, args []stri
 	return env.Remote.Run(ctx, d.host, cmd, stdin, stdout)
 }
 
+func (d *dockerExec) database() string { return d.Database }
+
 func (d *dockerExec) describe() string {
 	return fmt.Sprintf("%s in container %s on %s", d.Database, d.Container, d.host)
 }

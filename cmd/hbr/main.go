@@ -52,8 +52,11 @@ Everyday:
       --replace                   with --to: overwrite a non-empty database
                                   (a safety copy is taken first)
       --password-stdin            with --to: read the target password from stdin
+      --local                     restore into a new Postgres container on this Mac
+                                  (docker/podman), left running to explore
+      --pg-version N              with --local: Postgres major (default: the snapshot's)
       --yes                       with --to: skip confirmations (never for production)
-      --dry-run                   show the plan only
+      --dry-run                   check the password, snapshot and target; change nothing
       --recovery                  unlock with the recovery key instead of the password
 
 Maintenance:
@@ -259,10 +262,15 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		fs.BoolVar(&o.DryRun, "dry-run", false, "show the plan only")
 		fs.BoolVar(&o.Recovery, "recovery", false, "unlock with the recovery key")
 		fs.BoolVar(&o.Yes, "yes", false, "with --to: skip confirmations")
+		fs.BoolVar(&o.Local, "local", false, "restore into a new Postgres container on this machine")
+		fs.IntVar(&o.PgVersion, "pg-version", 0, "with --local: Postgres major version (default: the snapshot's)")
 		pwStdin := fs.Bool("password-stdin", false, "with --to: read the target password from stdin")
 		parse()
 		if fs.NArg() != 1 {
 			return errors.New("usage: hbr restore <app> [--snapshot S] [--to URL] …")
+		}
+		if o.Local && o.TargetURL != "" {
+			return errors.New("use either --local or --to, not both")
 		}
 		if (o.Yes || *pwStdin) && o.TargetURL == "" {
 			return errors.New("--yes and --password-stdin only work with --to; production restores always ask")

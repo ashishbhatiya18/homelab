@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/url"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 
@@ -56,6 +57,14 @@ func (x *urlExec) run(ctx context.Context, env *Env, tool string, args []string,
 		return err
 	}
 	return local(ctx, env, pw, stdin, stdout, tool, append(args, "-d", x.URL)...)
+}
+
+func (x *urlExec) database() string {
+	u, err := url.Parse(x.URL)
+	if err != nil {
+		return ""
+	}
+	return strings.TrimPrefix(u.Path, "/")
 }
 
 func (x *urlExec) describe() string {

@@ -61,6 +61,8 @@ backup, run a restore drill, and install the service.
 | `hbr verify [app…]` | restore drill into throwaway Postgres; asks your password |
 | `hbr restore <app> --snapshot S` | restore to the app's own database (safety backup first, app containers stopped, single transaction, automatic rollback) |
 | `hbr restore <app> --snapshot S --to URL` | restore into **any** Postgres (`--create`, `--replace`, `--password-stdin`, `--yes`) |
+| `hbr restore <app> --snapshot S --local` | restore into a new Postgres container on this Mac (Docker/Podman) that stays running, to browse or copy data out without touching production (`--pg-version N`) |
+| `hbr restore <app> … --dry-run` | check the password, the snapshot's checksums and (with `--to`) the target login; change nothing |
 | `hbr install` / `hbr uninstall` | start / stop the background service (`brew services`) |
 | `hbr passwd` | change the password; existing snapshots stay readable |
 

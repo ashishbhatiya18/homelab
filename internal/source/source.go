@@ -204,3 +204,7 @@ func checkSums(dir string, a manifest.Artifact) error {
 	}
 	return nil
 }
+
+// CheckArtifact verifies an unpacked artifact's files against the checksums
+// recorded at backup time.
+func CheckArtifact(dir string, a manifest.Artifact) error { return checkSums(dir, a) }
