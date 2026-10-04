@@ -4,7 +4,9 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -105,11 +107,22 @@ func registryCreds(host string) *registry.Cred {
 	if err != nil {
 		return nil
 	}
-	user, pass, ok := strings.Cut(v, "\n")
+	user, pass, ok := parseLogin(v)
 	if !ok {
 		return nil
 	}
 	return &registry.Cred{User: user, Password: pass}
+}
+
+// parseLogin reads "user:token". v0.2.0 saved "user\ntoken", which the
+// Keychain returns hex-encoded because of the newline; accept that too.
+func parseLogin(v string) (string, string, bool) {
+	if b, err := hex.DecodeString(v); err == nil && bytes.Contains(b, []byte("\n")) {
+		u, p, _ := strings.Cut(string(b), "\n")
+		return u, p, u != "" && p != ""
+	}
+	u, p, ok := strings.Cut(v, ":")
+	return u, p, ok && u != "" && p != ""
 }
 
 func registryCmd(args []string) error {
@@ -131,7 +144,10 @@ func registryCmd(args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := secret.Set("registry:"+host, user+"\n"+pass); err != nil {
+	if strings.Contains(user, ":") {
+		return errors.New("username cannot contain ':'")
+	}
+	if err := secret.Set("registry:"+host, user+":"+pass); err != nil {
 		return err
 	}
 	fmt.Println("✓ saved. `home stacks` will now check private images on", host)
@@ -311,7 +327,7 @@ func (a *app) stacks(ctx context.Context, only string) error {
 			case len(newer) > 0:
 				upd = "newer: " + strings.Join(newer, ", ")
 			case len(failed) > 0:
-				upd = "could not check: " + strings.Join(failed, ", ")
+				upd = "could not check: " + strings.Join(failed, ", ") + " (" + firstErr(ups) + ")"
 			case len(s.Containers) == 0:
 				upd = "-"
 			}
@@ -675,4 +691,13 @@ func human(d time.Duration) string {
 		return fmt.Sprintf("%dh", int(d.Hours()))
 	}
 	return fmt.Sprintf("%dd", int(d.Hours()/24))
+}
+
+func firstErr(ups []stack.Update) string {
+	for _, u := range ups {
+		if u.Err != nil {
+			return u.Err.Error()
+		}
+	}
+	return ""
 }
