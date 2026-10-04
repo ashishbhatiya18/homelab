@@ -17,6 +17,7 @@ import (
 	"os/signal"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"text/tabwriter"
 	"time"
@@ -49,6 +50,7 @@ Overview:
                                     inline secrets, TLS and Tailscale expiry, Watchtower mode
 
 Stacks:
+  home stack list [node] [--updates]         every stack with health (--updates: check images)
   home stack restart <node>/<stack> [service…]
   home stack stop|start <node>/<stack>
   home stack logs <node>/<stack> [service…] [-f] [--tail N]
@@ -58,6 +60,7 @@ Stacks:
   home stack rollback <node>/<stack>         back to the images before the last update
 
 Nodes:
+  home node list                             nodes, reachability, stacks, containers
   home node apt check|upgrade <node|all> [--yes]
   home node dietpi check|upgrade <node|all> [--yes]
   home node reboot <node> [--yes]            waits until every container is back
@@ -310,12 +313,21 @@ func printReports(reports []check.NodeReport, diskWarn int) {
 }
 
 func (a *app) stacks(ctx context.Context, only string) error {
+	return a.listStacks(ctx, only, true)
+}
+
+// listStacks prints every stack; updates adds the registry check (slower).
+func (a *app) listStacks(ctx context.Context, only string, updates bool) error {
 	nodes, err := a.cfg.Ordered(only)
 	if err != nil {
 		return err
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(w, "STACK\tCONTAINERS\tHEALTH\tUPDATE")
+	if updates {
+		fmt.Fprintln(w, "STACK\tCONTAINERS\tHEALTH\tUPDATE")
+	} else {
+		fmt.Fprintln(w, "STACK\tCONTAINERS\tHEALTH")
+	}
 	for _, n := range nodes {
 		c := &node.Client{R: a.r, Name: n.Name}
 		st, err := c.Status(ctx)
@@ -326,6 +338,12 @@ func (a *app) stacks(ctx context.Context, only string) error {
 		list, err := a.sm.List(ctx, n.Name, n.StacksDir, st)
 		if err != nil {
 			return err
+		}
+		if !updates {
+			for _, s := range list {
+				fmt.Fprintf(w, "%s\t%d\t%s\n", s.ID(), len(s.Containers), s.Health())
+			}
+			continue
 		}
 		all := a.sm.CheckUpdates(ctx, list)
 		for _, s := range list {
@@ -383,8 +401,14 @@ func (a *app) findStack(ctx context.Context, id string) (stack.Stack, error) {
 }
 
 func (a *app) stackCmd(ctx context.Context, args []string) error {
+	if len(args) > 0 && args[0] == "list" {
+		fs := flag.NewFlagSet("stack list", flag.ExitOnError)
+		updates := fs.Bool("updates", false, "also check registries for newer images")
+		fs.Parse(reorder(args[1:]))
+		return a.listStacks(ctx, fs.Arg(0), *updates)
+	}
 	if len(args) < 2 {
-		return errors.New("usage: home stack <restart|stop|start|logs|update|rollback> <node>/<stack> [service…]")
+		return errors.New("usage: home stack list [node] | home stack <restart|stop|start|logs|shell|exec|update|rollback> <node>/<stack> [service…]")
 	}
 	action := args[0]
 	if action == "exec" || action == "shell" {
@@ -617,7 +641,48 @@ func (a *app) pkgCmd(ctx context.Context, kind string, args []string) error {
 	return nil
 }
 
-const nodeUsage = "usage: home node apt|dietpi check|upgrade <node|all> | home node reboot <node> | home node disk <node> [--clean]"
+const nodeUsage = "usage: home node list | home node apt|dietpi check|upgrade <node|all> | home node reboot <node> | home node disk <node> [--clean]"
+
+// listNodes prints every configured node and whether it is reachable.
+func (a *app) listNodes(ctx context.Context) error {
+	type row struct {
+		reach           string
+		stacks, running int
+		total           int
+	}
+	nodes, _ := a.cfg.Ordered("")
+	rows := make([]row, len(nodes))
+	var wg sync.WaitGroup
+	for i, n := range nodes {
+		wg.Add(1)
+		go func(i int, n homecfg.Node) {
+			defer wg.Done()
+			r := row{reach: "unreachable"}
+			c := &node.Client{R: a.r, Name: n.Name}
+			if st, err := c.Status(ctx); err == nil {
+				r.reach = "reachable"
+				for _, ct := range st.Containers {
+					r.total++
+					if ct.State == "running" {
+						r.running++
+					}
+				}
+				if list, err := a.sm.List(ctx, n.Name, n.StacksDir, st); err == nil {
+					r.stacks = len(list)
+				}
+			}
+			rows[i] = r
+		}(i, n)
+	}
+	wg.Wait()
+	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
+	fmt.Fprintln(w, "NODE\tSSH\tSTATE\tSTACKS\tCONTAINERS\tSTACKS DIR")
+	for i, n := range nodes {
+		r := rows[i]
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d/%d\t%s\n", n.Name, n.SSH, r.reach, r.stacks, r.running, r.total, n.StacksDir)
+	}
+	return w.Flush()
+}
 
 // diskCmd shows where a node's space goes and, with --clean, lets the user
 // pick what to reclaim.
@@ -698,6 +763,8 @@ func (a *app) nodeCmd(ctx context.Context, args []string) error {
 		return a.pkgCmd(ctx, args[0], args[1:])
 	case "disk":
 		return a.diskCmd(ctx, args[1:])
+	case "list":
+		return a.listNodes(ctx)
 	case "reboot":
 	default:
 		return errors.New(nodeUsage)

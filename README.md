@@ -33,6 +33,8 @@ home install      # background service: daily backups + a daily node check
 | Command | What it does |
 |---|---|
 | `home status` | per node: DietPi/OS, uptime, pending apt and DietPi updates, reboot required, disk, unhealthy containers |
+| `home node list` | nodes with SSH target, reachability, stack and container counts |
+| `home stack list [node] [--updates]` | every stack with its health; `--updates` adds the image check |
 | `home stacks [node]` | every stack's health and whether newer images exist (registry digest check — nothing is pulled) |
 | `home check` | refresh package lists and run every check now |
 | `home doctor [node]` | drift and risk: GitOps checkout behind, stray containers, stacks not running, missing restart policies, crash loops, unbounded logs, secrets inline in compose files, clock sync, Watchtower not monitor-only, Tailscale key and TLS certificate expiry |
