@@ -8,6 +8,9 @@ services:
       - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_HTTP_API_METRICS=true
       - WATCHTOWER_HTTP_API_TOKEN=abcde
+      # Detect new images but never apply them; updates are done with
+      # `home stack update` / `home upgrade` (backup first, auto-rollback).
+      - WATCHTOWER_MONITOR_ONLY=true
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
