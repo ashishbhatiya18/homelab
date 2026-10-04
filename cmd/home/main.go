@@ -24,6 +24,7 @@ import (
 	brcli "github.com/ashishbhatiya18/home/internal/br/cli"
 	"github.com/ashishbhatiya18/home/internal/br/secret"
 	"github.com/ashishbhatiya18/home/internal/check"
+	"github.com/ashishbhatiya18/home/internal/doctor"
 	"github.com/ashishbhatiya18/home/internal/homecfg"
 	"github.com/ashishbhatiya18/home/internal/homesetup"
 	"github.com/ashishbhatiya18/home/internal/node"
@@ -33,6 +34,7 @@ import (
 	"github.com/ashishbhatiya18/home/internal/remote"
 	"github.com/ashishbhatiya18/home/internal/service"
 	"github.com/ashishbhatiya18/home/internal/stack"
+	"golang.org/x/term"
 )
 
 var version = "dev"
@@ -43,11 +45,15 @@ Overview:
   home status                       nodes: OS/DietPi, pending updates, reboot, disk, problems
   home stacks [node]                stacks with health and available image updates
   home check                        full check now (refreshes package lists); notifies
+  home doctor [node]                drift and risks: GitOps, restart policies, log growth,
+                                    inline secrets, TLS and Tailscale expiry, Watchtower mode
 
 Stacks:
   home stack restart <node>/<stack> [service…]
   home stack stop|start <node>/<stack>
   home stack logs <node>/<stack> [service…] [-f] [--tail N]
+  home stack shell <node>/<stack> [service]  interactive shell in a container
+  home stack exec <node>/<stack> [service] -- <command…>
   home stack update <node>/<stack> [--yes]   pull, apply, verify health; auto-rollback
   home stack rollback <node>/<stack>         back to the images before the last update
 
@@ -55,6 +61,7 @@ Nodes:
   home node apt check|upgrade <node|all> [--yes]
   home node dietpi check|upgrade <node|all> [--yes]
   home node reboot <node> [--yes]            waits until every container is back
+  home node disk <node> [--clean]            where the space goes; pick what to reclaim
 
 Upgrade:
   home upgrade <node|all> [--dry-run] [--yes] [--no-reboot]
@@ -217,6 +224,12 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return nil
 	case "stack":
 		return a.stackCmd(ctx, args)
+	case "doctor":
+		only := ""
+		if len(args) > 0 {
+			only = args[0]
+		}
+		return a.doctor(ctx, only)
 	case "apt", "dietpi":
 		fmt.Fprintf(os.Stderr, "note: `home %s` is now `home node %s`\n", cmd, cmd)
 		return a.pkgCmd(ctx, cmd, args)
@@ -374,6 +387,9 @@ func (a *app) stackCmd(ctx context.Context, args []string) error {
 		return errors.New("usage: home stack <restart|stop|start|logs|update|rollback> <node>/<stack> [service…]")
 	}
 	action := args[0]
+	if action == "exec" || action == "shell" {
+		return a.stackExec(ctx, action, args[1:])
+	}
 	fs := flag.NewFlagSet("stack "+action, flag.ExitOnError)
 	follow := fs.Bool("f", false, "follow logs")
 	tail := fs.Int("tail", 100, "log lines")
@@ -416,6 +432,103 @@ func (a *app) stackCmd(ctx context.Context, args []string) error {
 		return a.sm.Rollback(ctx, s, os.Stdout)
 	}
 	return fmt.Errorf("unknown stack action %q", action)
+}
+
+// stackExec opens a shell or runs a command in one of a stack's services.
+func (a *app) stackExec(ctx context.Context, action string, args []string) error {
+	var before, cmd []string
+	for i, x := range args {
+		if x == "--" {
+			before, cmd = args[:i], args[i+1:]
+			break
+		}
+	}
+	if before == nil {
+		before = args
+	}
+	if len(before) == 0 || len(before) > 2 || (action == "exec" && len(cmd) == 0) {
+		return errors.New("usage: home stack shell <node>/<stack> [service]  |  home stack exec <node>/<stack> [service] -- <command…>")
+	}
+	s, err := a.findStack(ctx, before[0])
+	if err != nil {
+		return err
+	}
+	file := remote.Quote(s.Dir + "/" + s.Name + "/compose.yaml")
+	svc := ""
+	if len(before) == 2 {
+		svc = before[1]
+	} else {
+		out, err := a.r.Output(ctx, s.Node, "docker compose -f "+file+" ps --services --status running")
+		if err != nil {
+			return err
+		}
+		services := strings.Fields(out)
+		tty := term.IsTerminal(int(os.Stdin.Fd()))
+		switch {
+		case len(services) == 0:
+			return fmt.Errorf("%s has no running services", s.ID())
+		case len(services) == 1:
+			svc = services[0]
+		case !tty:
+			return fmt.Errorf("%s has several services; name one: %s", s.ID(), strings.Join(services, ", "))
+		default:
+			i, err := prompt.Choose("Which service?", services, 0)
+			if err != nil {
+				return err
+			}
+			svc = services[i]
+		}
+	}
+	tty := term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+	if action == "shell" && !tty {
+		return errors.New("home stack shell needs an interactive terminal; use `home stack exec … -- <command>` in scripts")
+	}
+	remoteCmd := "docker compose -f " + file + " exec "
+	if !tty {
+		remoteCmd += "-T "
+	}
+	remoteCmd += remote.Quote(svc) + " "
+	if action == "shell" {
+		remoteCmd += `sh -c 'command -v bash >/dev/null 2>&1 && exec bash || exec sh'`
+	} else {
+		q := make([]string, len(cmd))
+		for i, c := range cmd {
+			q[i] = remote.Quote(c)
+		}
+		remoteCmd += strings.Join(q, " ")
+	}
+	if !tty {
+		return a.r.Run(ctx, s.Node, remoteCmd, os.Stdin, os.Stdout)
+	}
+	return a.r.Interactive(ctx, s.Node, remoteCmd)
+}
+
+func (a *app) doctor(ctx context.Context, only string) error {
+	reports := doctor.Run(ctx, a.cfg, a.r, only)
+	problems := 0
+	for _, r := range reports {
+		fmt.Printf("\n%s\n", r.Node)
+		if r.Err != nil {
+			fmt.Printf("  ✗ %v\n", r.Err)
+			problems++
+			continue
+		}
+		for _, f := range r.Findings {
+			fmt.Printf("  %s %s\n", f.Level.Icon(), f.Title)
+			if f.Hint != "" && f.Level != doctor.OK {
+				fmt.Printf("      → %s\n", f.Hint)
+			}
+			if f.Level != doctor.OK {
+				problems++
+			}
+		}
+	}
+	if problems == 0 {
+		fmt.Println("\n✓ nothing found")
+	} else {
+		fmt.Printf("\n%d finding(s)\n", problems)
+	}
+	return nil
 }
 
 // hook returns the configured pre-update commands for a stack, run as
@@ -504,7 +617,77 @@ func (a *app) pkgCmd(ctx context.Context, kind string, args []string) error {
 	return nil
 }
 
-const nodeUsage = "usage: home node apt check|upgrade <node|all> | home node dietpi check|upgrade <node|all> | home node reboot <node>"
+const nodeUsage = "usage: home node apt|dietpi check|upgrade <node|all> | home node reboot <node> | home node disk <node> [--clean]"
+
+// diskCmd shows where a node's space goes and, with --clean, lets the user
+// pick what to reclaim.
+func (a *app) diskCmd(ctx context.Context, args []string) error {
+	fs := flag.NewFlagSet("node disk", flag.ExitOnError)
+	clean := fs.Bool("clean", false, "choose cleanups to run")
+	yes := fs.Bool("yes", false, "with --clean: run every listed cleanup without asking")
+	days := fs.Int("rollback-days", 30, "offer rollback images older than this")
+	fs.Parse(reorder(args))
+	if fs.NArg() != 1 {
+		return errors.New("usage: home node disk <node> [--clean] [--yes]")
+	}
+	n, err := a.cfg.Node(fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	c := &node.Client{R: a.r, Name: n.Name}
+	rep, err := c.Disk(ctx, *days)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("%s: %s used of %s (%d%%), %s free\n\n", n.Name, node.Human(rep.Used), node.Human(rep.Size), rep.Percent, node.Human(rep.Avail))
+	if len(rep.Dirs) > 0 {
+		fmt.Println("Largest directories (for your information; not offered for deletion):")
+		for _, d := range rep.Dirs {
+			fmt.Printf("  %9s  %s\n", node.Human(d.Bytes), d.Path)
+		}
+		fmt.Println()
+	}
+	for _, d := range rep.Docker {
+		fmt.Println("  docker " + d)
+	}
+	if len(rep.Cleanups) == 0 {
+		fmt.Println("\nNothing worth reclaiming.")
+		return nil
+	}
+	fmt.Println("\nCan be reclaimed (nothing in use is touched):")
+	var total int64
+	labels := make([]string, len(rep.Cleanups))
+	for i, cl := range rep.Cleanups {
+		labels[i] = fmt.Sprintf("%-22s %8s  %s", cl.Name, node.Human(cl.Bytes), cl.Detail)
+		total += cl.Bytes
+		if !*clean {
+			fmt.Println("  " + labels[i])
+		}
+	}
+	if !*clean {
+		fmt.Printf("\n  ≈ %s in total — run `home node disk %s --clean` to choose what to reclaim\n", node.Human(total), n.Name)
+		return nil
+	}
+	chosen := rep.Cleanups
+	if !*yes {
+		idx, err := prompt.ChooseMany("Choose what to reclaim:", labels)
+		if err != nil {
+			return err
+		}
+		chosen = nil
+		for _, i := range idx {
+			chosen = append(chosen, rep.Cleanups[i])
+		}
+	}
+	if err := c.Clean(ctx, chosen, os.Stdout); err != nil {
+		return err
+	}
+	after, err := c.Disk(ctx, *days)
+	if err == nil {
+		fmt.Printf("\n✓ %s: %d%% → %d%% used, %s freed\n", n.Name, rep.Percent, after.Percent, node.Human(rep.Used-after.Used))
+	}
+	return nil
+}
 
 func (a *app) nodeCmd(ctx context.Context, args []string) error {
 	if len(args) == 0 {
@@ -513,6 +696,8 @@ func (a *app) nodeCmd(ctx context.Context, args []string) error {
 	switch args[0] {
 	case "apt", "dietpi":
 		return a.pkgCmd(ctx, args[0], args[1:])
+	case "disk":
+		return a.diskCmd(ctx, args[1:])
 	case "reboot":
 	default:
 		return errors.New(nodeUsage)

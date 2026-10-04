@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -79,4 +80,17 @@ func firstWords(s string, n int) string {
 		f = append(f[:n], "…")
 	}
 	return strings.Join(f, " ")
+}
+
+// Interactive runs cmd on host with a terminal attached (ssh -t), wiring the
+// local stdin/stdout/stderr through, for shells and exec sessions.
+func (r *Runner) Interactive(ctx context.Context, host, cmd string) error {
+	t, err := r.target(host)
+	if err != nil {
+		return err
+	}
+	args := append([]string{"-t"}, r.args(t, cmd)...)
+	c := exec.CommandContext(ctx, "ssh", args...)
+	c.Stdin, c.Stdout, c.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return c.Run()
 }

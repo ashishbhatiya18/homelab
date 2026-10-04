@@ -35,13 +35,17 @@ home install      # background service: daily backups + a daily node check
 | `home status` | per node: DietPi/OS, uptime, pending apt and DietPi updates, reboot required, disk, unhealthy containers |
 | `home stacks [node]` | every stack's health and whether newer images exist (registry digest check — nothing is pulled) |
 | `home check` | refresh package lists and run every check now |
+| `home doctor [node]` | drift and risk: GitOps checkout behind, stray containers, stacks not running, missing restart policies, crash loops, unbounded logs, secrets inline in compose files, clock sync, Watchtower not monitor-only, Tailscale key and TLS certificate expiry |
 | `home stack restart\|stop\|start <node>/<stack>` | lifecycle |
 | `home stack logs <node>/<stack> [svc] [-f] [--tail N]` | logs |
+| `home stack shell <node>/<stack> [svc]` | interactive shell in a container |
+| `home stack exec <node>/<stack> [svc] -- <cmd…>` | run a command in a container (works in scripts and pipes too) |
 | `home stack update <node>/<stack>` | pull → pre-update hook (e.g. a database backup) → apply → wait until healthy; **rolls back automatically** if not |
 | `home stack rollback <node>/<stack>` | back to the images before the last update (old images are kept tagged) |
 | `home node apt check\|upgrade <node\|all>` | apt, non-interactive, keeping your config files |
 | `home node dietpi check\|upgrade <node\|all>` | DietPi's own updater, non-interactive |
 | `home node reboot <node>` | reboot and wait until every container that was running is healthy again |
+| `home node disk <node> [--clean]` | where the space goes (largest directories, Docker usage) and what can be reclaimed — dangling/unused images, build cache, old rollback images, oversized container logs, journal, apt cache — each chosen individually; nothing in use is touched |
 | `home upgrade <node\|all>` | apt → DietPi → stack updates → reboot if required, node by node in your upgrade order; stops at the first failure |
 
 Stacks are discovered from a directory per node with one subdirectory per
