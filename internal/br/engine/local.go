@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashishbhatiya18/hbr/internal/manifest"
-	"github.com/ashishbhatiya18/hbr/internal/source"
-	"github.com/ashishbhatiya18/hbr/internal/store"
+	"github.com/ashishbhatiya18/home/internal/br/manifest"
+	"github.com/ashishbhatiya18/home/internal/br/source"
+	"github.com/ashishbhatiya18/home/internal/br/store"
 )
 
 // restoreLocal starts a fresh Postgres container on this machine, restores the

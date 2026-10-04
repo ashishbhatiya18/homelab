@@ -1,6 +1,6 @@
 .PHONY: build test vet
 build:
-	go build -trimpath -o hbr ./cmd/hbr
+	go build -trimpath -o home ./cmd/home
 vet:
 	go vet ./...
 test:

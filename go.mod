@@ -1,4 +1,4 @@
-module github.com/ashishbhatiya18/hbr
+module github.com/ashishbhatiya18/home
 
 go 1.26.0
 

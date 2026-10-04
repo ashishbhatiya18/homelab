@@ -1,6 +1,6 @@
-// Command hbr (homelab-backup-restore) takes encrypted, portable Postgres
-// backups on a schedule and restores them into any Postgres. See README.md.
-package main
+// Package cli implements `home br`: encrypted, portable Postgres backups on a
+// schedule, restorable into any Postgres.
+package cli
 
 import (
 	"bufio"
@@ -10,40 +10,39 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"text/tabwriter"
 	"time"
 
-	"github.com/ashishbhatiya18/hbr/internal/config"
-	"github.com/ashishbhatiya18/hbr/internal/engine"
-	"github.com/ashishbhatiya18/hbr/internal/keys"
-	"github.com/ashishbhatiya18/hbr/internal/notify"
-	"github.com/ashishbhatiya18/hbr/internal/prompt"
-	"github.com/ashishbhatiya18/hbr/internal/service"
-	"github.com/ashishbhatiya18/hbr/internal/setup"
-	"github.com/ashishbhatiya18/hbr/internal/source"
-	"github.com/ashishbhatiya18/hbr/internal/store"
+	"github.com/ashishbhatiya18/home/internal/br/config"
+	"github.com/ashishbhatiya18/home/internal/br/engine"
+	"github.com/ashishbhatiya18/home/internal/br/keys"
+	"github.com/ashishbhatiya18/home/internal/br/setup"
+	"github.com/ashishbhatiya18/home/internal/br/source"
+	"github.com/ashishbhatiya18/home/internal/br/store"
+	"github.com/ashishbhatiya18/home/internal/notify"
+	"github.com/ashishbhatiya18/home/internal/prompt"
+	"github.com/ashishbhatiya18/home/internal/service"
 )
 
-var version = "dev"
+// Version is set by the home binary.
+var Version = "dev"
 
-const usage = `hbr — homelab backup & restore: encrypted, portable Postgres backups
+const usage = `home br — encrypted, portable Postgres backups
 
 Getting started:
-  hbr setup                     interactive setup (runs automatically the first time)
-  hbr install                   run backups in the background (managed by brew services)
-  hbr uninstall                 stop the background service
+  home br setup                     interactive setup (runs automatically the first time)
+  home br install                   run backups in the background (managed by brew services)
+  home br uninstall                 stop the background service
 
 Everyday:
-  hbr status                    last backup per app, service and server status
-  hbr snapshots [app]           list snapshots
-  hbr backup [app...]           take a backup now
-  hbr verify [app...]           restore drill into throwaway Postgres (asks password)
+  home br status                    last backup per app, service and server status
+  home br snapshots [app]           list snapshots
+  home br backup [app...]           take a backup now
+  home br verify [app...]           restore drill into throwaway Postgres (asks password)
       --snapshot S                which snapshot (default: latest)
-  hbr restore <app>             restore a snapshot (asks password, confirms twice)
+  home br restore <app>             restore a snapshot (asks password, confirms twice)
       --snapshot S                latest | yesterday | "3 days ago" | "1 month ago" |
                                   2026-10-03 | "2026-10-03 14:30" | <file name>
       --to URL                    restore into any Postgres, e.g.
@@ -60,38 +59,45 @@ Everyday:
       --recovery                  unlock with the recovery key instead of the password
 
 Maintenance:
-  hbr check                     validate the config
-  hbr prune [--dry-run]         apply the retention policy now
-  hbr passwd                    change the backup password
-  hbr keys                      create keys (if setup was interrupted)
-  hbr run [--force]             scheduled run (what the service calls)
-  hbr version
+  home br check                     validate the config
+  home br prune [--dry-run]         apply the retention policy now
+  home br passwd                    change the backup password
+  home br keys                      create keys (if setup was interrupted)
+  home br run [--force]             scheduled run (what the service calls)
+  home br version
 
-Config: $HBR_CONFIG or ~/.config/hbr/config.yaml (override with --config).
+Config: $HOME_BR_CONFIG or ~/.config/home/br.yaml (override with --config).
 `
 
-func main() {
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
-	cmd, args := "", os.Args[1:]
-	if len(args) > 0 {
-		cmd, args = args[0], args[1:]
+// Run executes `home br <cmd> args…`.
+func Run(ctx context.Context, cmd string, args []string) error {
+	if err := migrateFromHbr(); err != nil {
+		return err
 	}
-	if err := dispatch(ctx, cmd, args); err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+	return dispatch(ctx, cmd, args)
+}
+
+// Scheduled runs the daily backups if due; called by `home run`.
+func Scheduled(ctx context.Context) error {
+	if err := migrateFromHbr(); err != nil {
+		return err
 	}
+	path := config.DefaultPath()
+	if _, err := os.Stat(path); err != nil {
+		return nil // backups not set up; nothing to do
+	}
+	return dispatch(ctx, "run", nil)
 }
 
 func dispatch(ctx context.Context, cmd string, args []string) error {
-	fs := flag.NewFlagSet("hbr "+cmd, flag.ExitOnError)
+	fs := flag.NewFlagSet("home br "+cmd, flag.ExitOnError)
 	cfgPath := fs.String("config", config.DefaultPath(), "config file")
 	load := func() (*engine.Engine, error) {
 		cfg, err := config.Load(*cfgPath)
 		if err != nil {
 			return nil, err
 		}
-		return engine.New(cfg, version)
+		return engine.New(cfg, Version)
 	}
 	parse := func() { fs.Parse(reorder(args, fs)) }
 
@@ -108,7 +114,7 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		if err := status(ctx, e); err != nil {
 			return err
 		}
-		fmt.Println("\nRun `hbr help` for all commands.")
+		fmt.Println("\nRun `home br help` for all commands.")
 		return nil
 
 	case "help", "-h", "--help":
@@ -116,7 +122,7 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		return nil
 
 	case "version", "--version", "-v":
-		fmt.Printf("hbr %s (source types: %s)\n", version, strings.Join(source.Types(), ", "))
+		fmt.Printf("home br %s (source types: %s)\n", Version, strings.Join(source.Types(), ", "))
 		return nil
 
 	case "setup":
@@ -138,20 +144,20 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		parse()
 		e, err := load()
 		if err != nil {
-			return fmt.Errorf("%w\nRun `hbr setup` first", err)
+			return fmt.Errorf("%w\nRun `home br setup` first", err)
 		}
 		if *cfgPath != config.DefaultPath() {
 			return fmt.Errorf("the service reads %s; move your config there first", config.DefaultPath())
 		}
 		if !keys.Exists(e.Cfg.KeysDir) {
-			return errors.New("no encryption keys yet; run `hbr keys`")
+			return errors.New("no encryption keys yet; run `home br keys`")
 		}
 		if err := service.Install(); err != nil {
 			return err
 		}
-		fmt.Printf("\n✓ hbr runs in the background: daily at %s, catching up after sleep.\n", e.Cfg.Schedule.DailyAt)
+		fmt.Printf("\n✓ home runs in the background: daily at %s, catching up after sleep.\n", e.Cfg.Schedule.DailyAt)
 		fmt.Println("  You'll get a notification after each backup, and a warning if one can't run.")
-		fmt.Println("  Manage it with `brew services info|restart|stop hbr` or `hbr uninstall`.")
+		fmt.Println("  Manage it with `brew services info|restart|stop home` or `home br uninstall`.")
 		return nil
 
 	case "uninstall":
@@ -177,7 +183,7 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		e, err := load()
 		if err != nil {
 			// The service has nobody watching its log: say so on screen.
-			notify.Send("hbr: backups cannot run", err.Error())
+			notify.Send("home: backups cannot run", err.Error())
 			return err
 		}
 		return e.Run(ctx, *force)
@@ -267,7 +273,7 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		pwStdin := fs.Bool("password-stdin", false, "with --to: read the target password from stdin")
 		parse()
 		if fs.NArg() != 1 {
-			return errors.New("usage: hbr restore <app> [--snapshot S] [--to URL] …")
+			return errors.New("usage: home br restore <app> [--snapshot S] [--to URL] …")
 		}
 		if o.Local && o.TargetURL != "" {
 			return errors.New("use either --local or --to, not both")
@@ -308,7 +314,7 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		fmt.Println("Password changed. Existing snapshots are unaffected.")
 		return nil
 	}
-	return fmt.Errorf("unknown command %q — see `hbr help`", cmd)
+	return fmt.Errorf("unknown command %q — see `home br help`", cmd)
 }
 
 func firstRun(ctx context.Context, path string) error {
@@ -319,7 +325,7 @@ func firstRun(ctx context.Context, path string) error {
 	if err != nil {
 		return err
 	}
-	e, err := engine.New(cfg, version)
+	e, err := engine.New(cfg, Version)
 	if err != nil {
 		return err
 	}
@@ -334,17 +340,17 @@ func firstRun(ctx context.Context, path string) error {
 		}
 	}
 	if path == config.DefaultPath() {
-		if ok, _ := prompt.YesNo("\nInstall the background service now (`hbr install`)?", true); ok {
+		if ok, _ := prompt.YesNo("\nInstall the background service now (`home br install`)?", true); ok {
 			if err := service.Install(); err != nil {
 				fmt.Println("  ✗", err)
 			}
 		}
 	}
-	fmt.Println("\nDone. `hbr status` shows how things stand; `hbr help` lists every command.")
+	fmt.Println("\nDone. `home br status` shows how things stand; `home br help` lists every command.")
 	return nil
 }
 
-// reorder lets flags follow positional args (`hbr restore myapp --dry-run`).
+// reorder lets flags follow positional args (`home br restore myapp --dry-run`).
 func reorder(args []string, fs *flag.FlagSet) []string {
 	var flags, pos []string
 	for i := 0; i < len(args); i++ {
@@ -397,7 +403,7 @@ func status(ctx context.Context, e *engine.Engine) error {
 		fmt.Printf("server %s (%s): %s\n", name, h.SSH, state)
 	}
 	if !keys.Exists(e.Cfg.KeysDir) {
-		fmt.Println("keys: missing — run `hbr keys`")
+		fmt.Println("keys: missing — run `home br keys`")
 	}
 	fmt.Println(service.Describe())
 	return nil

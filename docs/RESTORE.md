@@ -1,14 +1,14 @@
-# Restoring without hbr (disaster recovery)
+# Restoring without home (disaster recovery)
 
-Use this when the Mac that ran hbr is gone. You need:
+Use this when the Mac that ran home is gone. You need:
 
 - the backup folder (e.g. from Dropbox), which contains `keys/` and one folder per app;
 - **either** your backup password **or** your recovery key (`AGE-SECRET-KEY-1…`);
 - [`age`](https://age-encryption.org) and Postgres client tools
   (`brew install age libpq`, or `apt install age postgresql-client`).
 
-The easiest path is to reinstall hbr, point it at the folder, and use
-`hbr restore … --recovery` if needed. The steps below work without it.
+The easiest path is to reinstall home, point it at the folder, and use
+`home br restore … --recovery` if needed. The steps below work without it.
 
 ## 1. Unlock a private key
 

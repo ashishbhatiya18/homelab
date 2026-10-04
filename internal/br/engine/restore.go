@@ -12,13 +12,13 @@ import (
 
 	"filippo.io/age"
 
-	"github.com/ashishbhatiya18/hbr/internal/config"
-	"github.com/ashishbhatiya18/hbr/internal/keys"
-	"github.com/ashishbhatiya18/hbr/internal/manifest"
-	"github.com/ashishbhatiya18/hbr/internal/prompt"
-	"github.com/ashishbhatiya18/hbr/internal/remote"
-	"github.com/ashishbhatiya18/hbr/internal/source"
-	"github.com/ashishbhatiya18/hbr/internal/store"
+	"github.com/ashishbhatiya18/home/internal/br/config"
+	"github.com/ashishbhatiya18/home/internal/br/keys"
+	"github.com/ashishbhatiya18/home/internal/br/manifest"
+	"github.com/ashishbhatiya18/home/internal/br/source"
+	"github.com/ashishbhatiya18/home/internal/br/store"
+	"github.com/ashishbhatiya18/home/internal/prompt"
+	"github.com/ashishbhatiya18/home/internal/remote"
 )
 
 // Verify runs a restore drill for each app: decrypt, check checksums, and let

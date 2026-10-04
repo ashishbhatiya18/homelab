@@ -1,4 +1,4 @@
-/hbr
+/home
 /dist/
 *.test
 # never commit keys, snapshots or local state

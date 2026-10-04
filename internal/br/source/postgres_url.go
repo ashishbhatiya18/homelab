@@ -9,7 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/ashishbhatiya18/hbr/internal/secret"
+	"github.com/ashishbhatiya18/home/internal/br/secret"
 )
 
 // postgres-url: a database reachable directly from this machine. The

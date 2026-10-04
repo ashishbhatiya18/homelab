@@ -13,13 +13,13 @@ import (
 
 	"filippo.io/age"
 
-	"github.com/ashishbhatiya18/hbr/internal/archive"
-	"github.com/ashishbhatiya18/hbr/internal/keys"
-	"github.com/ashishbhatiya18/hbr/internal/manifest"
-	"github.com/ashishbhatiya18/hbr/internal/notify"
-	"github.com/ashishbhatiya18/hbr/internal/retention"
-	"github.com/ashishbhatiya18/hbr/internal/state"
-	"github.com/ashishbhatiya18/hbr/internal/store"
+	"github.com/ashishbhatiya18/home/internal/br/archive"
+	"github.com/ashishbhatiya18/home/internal/br/keys"
+	"github.com/ashishbhatiya18/home/internal/br/manifest"
+	"github.com/ashishbhatiya18/home/internal/br/retention"
+	"github.com/ashishbhatiya18/home/internal/br/state"
+	"github.com/ashishbhatiya18/home/internal/br/store"
+	"github.com/ashishbhatiya18/home/internal/notify"
 )
 
 var ErrUnreachable = errors.New("host unreachable")
@@ -130,12 +130,12 @@ func (e *Engine) Run(ctx context.Context, force bool) error {
 			if recovered {
 				msg += " · earlier problem resolved"
 			}
-			notify.Send("hbr: "+a.Name+" backed up ✓", msg)
+			notify.Send("home: "+a.Name+" backed up ✓", msg)
 		}
 		e.Log.Printf("%s: backed up %s (%s)", a.Name, filepath.Base(b.Path), human(b.Size))
 		if _, err := e.Prune(a.Name, false); err != nil {
 			e.Log.Printf("%s: prune failed: %v", a.Name, err)
-			notify.Send("hbr: "+a.Name+" cleanup failed", err.Error())
+			notify.Send("home: "+a.Name+" cleanup failed", err.Error())
 		}
 	}
 	e.alerts(now)
@@ -158,7 +158,7 @@ func (e *Engine) warn(app string, st *state.App, err error, now time.Time) {
 		msg = "Server unreachable (" + strings.TrimPrefix(msg, ErrUnreachable.Error()+": ") + "). On the right network? hbr keeps retrying."
 	}
 	if msg != st.LastError || now.Sub(st.LastAlert) > e.Cfg.Alerts.RepeatEvery.Duration {
-		notify.Send("hbr: "+app+" backup could not run", msg)
+		notify.Send("home: "+app+" backup could not run", msg)
 		st.LastAlert = now
 	}
 	st.LastError = msg
@@ -170,7 +170,7 @@ func (e *Engine) alerts(now time.Time) {
 	for _, a := range e.Cfg.Apps {
 		st := e.State.App(a.Name)
 		if !st.LastSuccess.IsZero() && now.Sub(st.LastSuccess) > al.StaleAfter.Duration && now.Sub(st.LastAlert) > al.RepeatEvery.Duration {
-			notify.Send("hbr: "+a.Name+" is stale",
+			notify.Send("home: "+a.Name+" is stale",
 				fmt.Sprintf("No backup since %s. Is the homelab reachable?", st.LastSuccess.Format("Jan 2 15:04")))
 			st.LastAlert = now
 		}
@@ -179,7 +179,7 @@ func (e *Engine) alerts(now time.Time) {
 		}
 	}
 	if now.Sub(oldestVerify) > al.DrillEvery.Duration && now.Sub(e.State.LastDrillNudge) > 24*time.Hour {
-		notify.Send("hbr: restore drill due", "Run `hbr verify` to prove the backups restore.")
+		notify.Send("home: restore drill due", "Run `home br verify` to prove the backups restore.")
 		e.State.LastDrillNudge = now
 	}
 }

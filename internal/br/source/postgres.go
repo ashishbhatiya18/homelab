@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ashishbhatiya18/hbr/internal/manifest"
+	"github.com/ashishbhatiya18/home/internal/br/manifest"
 )
 
 // pgExec runs Postgres client programs against one database. Implementations

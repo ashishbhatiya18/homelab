@@ -23,8 +23,8 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/ashishbhatiya18/hbr/internal/manifest"
-	"github.com/ashishbhatiya18/hbr/internal/remote"
+	"github.com/ashishbhatiya18/home/internal/br/manifest"
+	"github.com/ashishbhatiya18/home/internal/remote"
 )
 
 // Common holds the fields every source has in the config.

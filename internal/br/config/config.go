@@ -18,10 +18,10 @@ import (
 
 // DefaultPath is used when neither --config nor HBR_CONFIG is set.
 func DefaultPath() string {
-	if p := os.Getenv("HBR_CONFIG"); p != "" {
+	if p := os.Getenv("HOME_BR_CONFIG"); p != "" {
 		return p
 	}
-	return filepath.Join(home(), ".config", "hbr", "config.yaml")
+	return filepath.Join(home(), ".config", "home", "br.yaml")
 }
 
 type Config struct {
@@ -160,7 +160,7 @@ func (c *Config) applyDefaults() {
 	}
 	c.KeysDir = Expand(c.KeysDir)
 	if c.StateDir == "" {
-		c.StateDir = filepath.Join(home(), ".local", "state", "hbr")
+		c.StateDir = filepath.Join(home(), ".local", "state", "home", "br")
 	}
 	c.StateDir = Expand(c.StateDir)
 	if c.Schedule.DailyAt == "" {

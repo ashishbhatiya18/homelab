@@ -14,7 +14,7 @@ import (
 
 // PassphraseEnv lets automated tests supply the password. Never set it for
 // the service: daily backups do not need a password at all.
-const PassphraseEnv = "HBR_PASSPHRASE"
+const PassphraseEnv = "HOME_BR_PASSPHRASE"
 
 func tty() (*os.File, error) {
 	f, err := os.OpenFile("/dev/tty", os.O_RDWR, 0)

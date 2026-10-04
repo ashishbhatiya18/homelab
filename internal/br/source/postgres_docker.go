@@ -9,7 +9,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/ashishbhatiya18/hbr/internal/remote"
+	"github.com/ashishbhatiya18/home/internal/remote"
 )
 
 // postgres-docker: a database inside a Docker container on a host reachable

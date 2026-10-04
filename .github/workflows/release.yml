@@ -50,12 +50,12 @@ jobs:
           url="https://github.com/${GITHUB_REPOSITORY}/archive/refs/tags/${TAG}.tar.gz"
           sha=$(curl -fsSL "$url" | sha256sum | cut -d' ' -f1)
           cd tap
-          sed -i -E "s#^  url \".*\"#  url \"${url}\"#; s#^  sha256 \".*\"#  sha256 \"${sha}\"#" Formula/hbr.rb
+          sed -i -E "s#^  url \".*\"#  url \"${url}\"#; s#^  sha256 \".*\"#  sha256 \"${sha}\"#" Formula/home.rb
           if git diff --quiet; then
             echo "Formula already points at ${TAG}; nothing to do."
             exit 0
           fi
-          git config user.name "hbr release bot"
+          git config user.name "home release bot"
           git config user.email "actions@users.noreply.github.com"
-          git commit -am "hbr ${TAG}"
+          git commit -am "home ${TAG}"
           git push

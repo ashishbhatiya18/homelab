@@ -10,12 +10,12 @@ import (
 	"os/exec"
 )
 
-const formula = "hbr"
+const formula = "home"
 
 func brew() (string, error) {
 	p, err := exec.LookPath("brew")
 	if err != nil {
-		return "", errors.New("Homebrew not found; hbr's service is managed by `brew services`")
+		return "", errors.New("Homebrew not found; home's service is managed by `brew services`")
 	}
 	return p, nil
 }
@@ -38,8 +38,8 @@ func Install() error {
 		return err
 	}
 	if !installedViaBrew(b) {
-		return errors.New("hbr was not installed with Homebrew, so `brew services` cannot manage it.\n" +
-			"Install it with: brew install ashishbhatiya18/tap/hbr")
+		return errors.New("home was not installed with Homebrew, so `brew services` cannot manage it.\n" +
+			"Install it with: brew install ashishbhatiya18/tap/home")
 	}
 	if Running() {
 		return brewRun(b, "services", "restart", formula)
@@ -88,10 +88,10 @@ func Describe() string {
 		return "service: Homebrew not found"
 	}
 	if !installedViaBrew(b) {
-		return "service: not available (hbr not installed via Homebrew)"
+		return "service: not available (home not installed via Homebrew)"
 	}
 	if Running() {
-		return "service: running (manage with `brew services info|stop|restart hbr`)"
+		return "service: running (manage with `brew services info|stop|restart home`)"
 	}
-	return "service: not installed — run `hbr install`"
+	return "service: not installed — run `home install`"
 }

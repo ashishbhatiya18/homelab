@@ -1,6 +1,6 @@
 # Adding a new kind of source
 
-hbr's engine (backup, encryption, retention, drills, restore) only talks to
+home br's engine (backup, encryption, retention, drills, restore) only talks to
 data through the `source.Source` interface in `internal/source/source.go`.
 Adding support for, say, MySQL or a directory of files is one new file in
 `internal/source/` — nothing else changes.
@@ -35,9 +35,9 @@ func (m *mysqlDocker) Restore(ctx context.Context, env *Env, dir string, a manif
 Optional interfaces:
 
 - `Verifier` — prove a snapshot is usable without touching production
-  (used by `hbr verify`).
+  (used by `home br verify`).
 - `PortableRestorer` — restore into an arbitrary target (used by
-  `hbr restore --to`).
+  `home br restore --to`).
 
 Then use it in the config:
 
