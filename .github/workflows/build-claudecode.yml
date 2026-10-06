@@ -1,4 +1,4 @@
-# Builds nodes/ab/claudecode into ghcr.io/ashishbhatiya18/homelab-claudecode so the gitops
+# Builds nodes/ab/claudecode into ghcr.io/ashishbhatiya18/claudecode so the gitops
 # agent on node ab only pulls (no image builds on the node).
 name: Build claudecode
 
@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/ashishbhatiya18/homelab-claudecode
+  IMAGE: ghcr.io/ashishbhatiya18/claudecode
 
 jobs:
   build:

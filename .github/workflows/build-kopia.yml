@@ -1,4 +1,4 @@
-# Builds nodes/ab/kopia into ghcr.io/ashishbhatiya18/homelab-kopia so the gitops
+# Builds nodes/ab/kopia into ghcr.io/ashishbhatiya18/kopia so the gitops
 # agent on node ab only pulls (no image builds on the node).
 name: Build kopia
 
@@ -12,7 +12,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE: ghcr.io/ashishbhatiya18/homelab-kopia
+  IMAGE: ghcr.io/ashishbhatiya18/kopia
 
 jobs:
   build:
