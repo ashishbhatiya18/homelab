@@ -15,10 +15,13 @@ import (
 	"text/tabwriter"
 	"time"
 
+	brcli "github.com/ashishbhatiya18/home/internal/br/cli"
+	"github.com/ashishbhatiya18/home/internal/check"
 	"github.com/ashishbhatiya18/home/internal/deploy"
 	"github.com/ashishbhatiya18/home/internal/homecfg"
 	"github.com/ashishbhatiya18/home/internal/node"
 	"github.com/ashishbhatiya18/home/internal/notify"
+	"github.com/ashishbhatiya18/home/internal/service"
 )
 
 func (a *app) deployer(ctx context.Context, out io.Writer, logf func(string, ...any)) *deploy.Deployer {
@@ -192,9 +195,6 @@ func saveJob(name, result string) {
 // deployJob rolls out new bundles to nodes that already run one. A node's
 // first deploy is always manual (`home deploy <node>`).
 func (a *app) deployJob(ctx context.Context) error {
-	if !a.cfg.Jobs.DeployOn() {
-		return nil
-	}
 	nodes, err := a.bundleNodes("all")
 	if err != nil {
 		return nil // no bundles configured: nothing to do
@@ -252,11 +252,9 @@ func (a *app) deployJob(ctx context.Context) error {
 }
 
 // cleanupJob reclaims unused images and caches once a day after
-// checks.daily_at, only with the cleanups marked safe to run unattended.
+// checks.daily_at (or now, with force), only with the cleanups marked safe
+// to run unattended.
 func (a *app) cleanupJob(ctx context.Context, force bool) error {
-	if !a.cfg.Jobs.CleanupOn() && !force {
-		return nil
-	}
 	if !force && !loadJobs()["cleanup"].Last.Before(a.cfg.Checks.DueSince(time.Now())) {
 		return nil
 	}
@@ -302,28 +300,42 @@ func (a *app) cleanupJob(ctx context.Context, force bool) error {
 	return nil
 }
 
+// jobsCmd lists the background jobs or runs one. The job services run
+// `home jobs run <job> --if-due`, which only does work when the job is due.
 func (a *app) jobsCmd(ctx context.Context, args []string) error {
-	if len(args) == 2 && args[0] == "run" {
-		switch args[1] {
-		case "deploy":
-			return a.deployJob(ctx)
-		case "cleanup":
-			return a.cleanupJob(ctx, true)
-		case "check":
-			return run(ctx, "check", nil)
-		case "backup":
-			return run(ctx, "br", []string{"run"})
+	if len(args) >= 2 && args[0] == "run" {
+		ifDue := len(args) == 3 && args[2] == "--if-due"
+		if len(args) > 3 || (len(args) == 3 && !ifDue) {
+			return errors.New("usage: home jobs run <backup|check|cleanup|deploy> [--if-due]")
 		}
-		return fmt.Errorf("unknown job %q (backup, check, deploy, cleanup)", args[1])
+		var err error
+		switch args[1] {
+		case "backup":
+			if ifDue {
+				err = brcli.Scheduled(ctx)
+			} else {
+				err = brcli.Run(ctx, "backup", nil)
+			}
+		case "check":
+			if ifDue {
+				err = check.Daily(ctx, a.cfg, a.r, log.Printf)
+			} else {
+				err = run(ctx, "check", nil)
+			}
+		case "cleanup":
+			err = a.cleanupJob(ctx, !ifDue)
+		case "deploy":
+			err = a.deployJob(ctx) // every run: deploys only when a new bundle exists
+		default:
+			return fmt.Errorf("unknown job %q (backup, check, cleanup, deploy)", args[1])
+		}
+		if err != nil && ifDue {
+			log.Printf("%s: %v", args[1], err)
+		}
+		return err
 	}
 	if len(args) != 0 {
-		return errors.New("usage: home jobs | home jobs run <backup|check|deploy|cleanup>")
-	}
-	onOff := func(b bool) string {
-		if b {
-			return "on"
-		}
-		return "off"
+		return errors.New("usage: home jobs | home jobs run <backup|check|cleanup|deploy> [--if-due]")
 	}
 	st := loadJobs()
 	last := func(name string) string {
@@ -333,13 +345,29 @@ func (a *app) jobsCmd(ctx context.Context, args []string) error {
 		}
 		return s.Last.Format("2006-01-02 15:04") + "  " + s.Result
 	}
+	schedule := map[string]string{
+		"backup":  "when due (br.yaml), checked every 15 min",
+		"check":   "daily after " + a.cfg.Checks.DailyAt,
+		"cleanup": "daily after " + a.cfg.Checks.DailyAt,
+		"deploy":  "every 5 min, when a new bundle exists",
+	}
+	lastRun := map[string]string{
+		"backup":  "see `home br status`",
+		"check":   "-",
+		"cleanup": last("cleanup"),
+		"deploy":  last("deploy"),
+	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
-	fmt.Fprintln(w, "JOB\tSCHEDULE\tSTATE\tLAST RUN")
-	fmt.Fprintf(w, "backup\tdaily, as set in br.yaml\ton\tsee `home br status`\n")
-	fmt.Fprintf(w, "check\tdaily after %s\ton\t-\n", a.cfg.Checks.DailyAt)
-	fmt.Fprintf(w, "deploy\tevery run (15 min)\t%s\t%s\n", onOff(a.cfg.Jobs.DeployOn()), last("deploy"))
-	fmt.Fprintf(w, "cleanup\tdaily after %s\t%s\t%s\n", a.cfg.Checks.DailyAt, onOff(a.cfg.Jobs.CleanupOn()), last("cleanup"))
+	fmt.Fprintln(w, "JOB\tBREW SERVICE\tSTATE\tSCHEDULE\tLAST RUN")
+	for _, j := range service.Jobs {
+		state := "stopped"
+		if service.Loaded(service.Formula(j)) {
+			state = "running"
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", j, service.Formula(j), state, schedule[j], lastRun[j])
+	}
 	w.Flush()
-	fmt.Println("\nJobs run from the background service (`home install`); switch deploy/cleanup in the jobs: section of config.yaml.")
+	fmt.Println("\nStart/stop with `home install|uninstall [job…]` or `brew services start|stop home-<job>`;")
+	fmt.Println("each job logs to $(brew --prefix)/var/log/home-<job>.log.")
 	return nil
 }

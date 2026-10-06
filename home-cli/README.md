@@ -25,7 +25,7 @@ passwordless `sudo` for upgrades and reboots (setup checks both).
 ```console
 brew install ashishbhatiya18/tap/home
 home              # first run starts the interactive setup
-home install      # background service: backups, daily node check, deploys, cleanup
+home install      # background jobs as brew services: backup, check, cleanup, deploy
 ```
 
 ## Nodes and stacks
@@ -105,21 +105,21 @@ restoring without `home`, e.g. after losing your Mac.
 
 ## Notifications
 
-The background service (`home install`, managed by `brew services`) runs
-every 15 minutes and runs each job when it is due (`home jobs` lists them,
-`home jobs run <job>` runs one now):
+Background jobs run as Homebrew services, one per job — `home install`
+installs and starts them all (`home install backup check` picks some),
+`home jobs` shows each one's state and last run, `home jobs run <job>` runs one
+now, and `brew services list` shows them like any other service. Each logs to
+`$(brew --prefix)/var/log/home-<job>.log`.
 
-- **Backups** (daily at your chosen time; catches up after sleep): ✓ after each
-  backup; a warning with the reason when one can't run.
-- **Node check** (daily): one summary — `ab: 13 apt updates · cd: reboot
-  required · stack updates: network` — or "all nodes healthy".
-- **Deploy** (every run; `jobs: {deploy: false}` turns it off): rolls a new
-  bundle out to nodes that already run one, with the same health check and
-  rollback as `home deploy`; notifies on every deploy and failure. A node's
-  first deploy is always manual.
-- **Cleanup** (daily, opt in with `jobs: {cleanup: true}`): reclaims what is
-  re-created on demand — dangling/unused images, build cache, apt cache and
-  rollback images older than 30 days. Never logs or the journal.
+| brew service | Every | Does |
+|---|---|---|
+| `home-backup` | 15 min | **Backups** when due (daily at your chosen time; catches up after sleep): ✓ after each backup; a warning with the reason when one can't run |
+| `home-check` | 15 min | **Node check** once a day after `checks.daily_at`: one summary — `ab: 13 apt updates · cd: reboot required · stack updates: network` — or "all nodes healthy" |
+| `home-cleanup` | 1 h | **Pruning** once a day: what is re-created on demand — dangling/unused images, build cache, apt cache and rollback images older than 30 days. Never logs or the journal |
+| `home-deploy` | 5 min | **Deploys** a new bundle to nodes that already run one, with the same health check and rollback as `home deploy`; notifies on every deploy and failure. A node's first deploy is always manual |
+
+(Homebrew allows one service per formula, so each job is a small companion
+formula in the tap that runs `home jobs run <job> --if-due`.)
 
 ## Configuration
 

@@ -134,21 +134,11 @@ jobs:
               bin.install "home"
             end
 
-            # Started by \`home install\`. Runs at login and every 15 minutes; home decides
-            # whether the daily backups and the daily node check are due.
-            service do
-              run [opt_bin/"home", "run"]
-              run_type :interval
-              interval 900
-              environment_variables PATH: "#{HOMEBREW_PREFIX}/bin:#{HOMEBREW_PREFIX}/opt/libpq/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-              log_path var/"log/home.log"
-              error_log_path var/"log/home.log"
-            end
-
             def caveats
               <<~EOS
                 Run \`home\` to set up your nodes and \`home br setup\` for backups, then
-                \`home install\` to run daily backups and node checks in the background.
+                \`home install\` to start the background jobs, one brew service each:
+                home-backup, home-check, home-cleanup, home-deploy (see \`home jobs\`).
                 Coming from hbr? \`home br\` picks up your hbr settings automatically.
               EOS
             end
@@ -159,12 +149,66 @@ jobs:
           end
           RUBY
 
+          # Homebrew allows one service per formula, so each background job is
+          # a companion formula whose service runs `home jobs run <job> --if-due`.
+          # They reuse the home archive (downloaded once) and install a launcher.
+          job() { # job <name> <interval seconds> <description>
+            local cls
+            cls="Home$(tr '[:lower:]' '[:upper:]' <<< "${1:0:1}")${1:1}"
+            cat > "tap/Formula/home-$1.rb" <<RUBY
+          class ${cls} < Formula
+            desc "home background job: $3"
+            homepage "https://github.com/${GITHUB_REPOSITORY}/tree/main/home-cli"
+            version "${VERSION}"
+            license "MIT"
+
+            on_arm do
+              url "${base}$(sha arm64)"
+              sha256 "$(sha arm64)"
+            end
+            on_intel do
+              url "${base}$(sha amd64)"
+              sha256 "$(sha amd64)"
+            end
+
+            depends_on "ashishbhatiya18/tap/home"
+
+            def install
+              (libexec/"home-$1").write <<~SH
+                #!/bin/sh
+                exec "#{HOMEBREW_PREFIX}/bin/home" jobs run $1 --if-due
+              SH
+              (libexec/"home-$1").chmod 0755
+            end
+
+            # Started by \`home install\` (or \`brew services start home-$1\`).
+            service do
+              run [opt_libexec/"home-$1"]
+              run_type :interval
+              interval $2
+              environment_variables PATH: "#{HOMEBREW_PREFIX}/bin:#{HOMEBREW_PREFIX}/opt/libpq/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+              log_path var/"log/home-$1.log"
+              error_log_path var/"log/home-$1.log"
+            end
+
+            test do
+              assert_predicate libexec/"home-$1", :executable?
+            end
+          end
+          RUBY
+          }
+          job backup 900 "encrypted backups (home br) when due"
+          job check 900 "daily node and update check with a notification"
+          job cleanup 3600 "daily pruning of unused images and caches on every node"
+          job deploy 300 "deploys new node bundles with health checks and rollback"
+
           cd tap
-          if git diff --quiet; then
+          if [ -z "$(git status --porcelain)" ]; then
             echo "Formula already points at ${TAG}; nothing to do."
             exit 0
           fi
           git config user.name "home release bot"
           git config user.email "actions@users.noreply.github.com"
-          git commit -am "home ${VERSION}"
+          git add Formula
+          git commit -m "home ${VERSION}"
           git push

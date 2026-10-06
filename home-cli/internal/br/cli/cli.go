@@ -152,20 +152,20 @@ func dispatch(ctx context.Context, cmd string, args []string) error {
 		if !keys.Exists(e.Cfg.KeysDir) {
 			return errors.New("no encryption keys yet; run `home br keys`")
 		}
-		if err := service.Install(); err != nil {
+		if err := service.Install("backup"); err != nil {
 			return err
 		}
-		fmt.Printf("\n✓ home runs in the background: daily at %s, catching up after sleep.\n", e.Cfg.Schedule.DailyAt)
+		fmt.Printf("\n✓ the home-backup service backs up daily at %s, catching up after sleep.\n", e.Cfg.Schedule.DailyAt)
 		fmt.Println("  You'll get a notification after each backup, and a warning if one can't run.")
-		fmt.Println("  Manage it with `brew services info|restart|stop home` or `home br uninstall`.")
+		fmt.Println("  Manage it with `brew services info|restart|stop home-backup` or `home br uninstall`.")
 		return nil
 
 	case "uninstall":
 		parse()
-		if err := service.Uninstall(); err != nil {
+		if err := service.Uninstall("backup"); err != nil {
 			return err
 		}
-		fmt.Println("Service stopped. Backups, config and keys are untouched.")
+		fmt.Println("home-backup service stopped. Backups, config and keys are untouched.")
 		return nil
 
 	case "check":
@@ -341,7 +341,7 @@ func firstRun(ctx context.Context, path string) error {
 	}
 	if path == config.DefaultPath() {
 		if ok, _ := prompt.YesNo("\nInstall the background service now (`home br install`)?", true); ok {
-			if err := service.Install(); err != nil {
+			if err := service.Install("backup"); err != nil {
 				fmt.Println("  ✗", err)
 			}
 		}

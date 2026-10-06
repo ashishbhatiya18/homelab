@@ -81,14 +81,15 @@ Upgrade:
 Backups:
   home br …                         encrypted Postgres backups (see ` + "`home br help`" + `)
 
-Background jobs:
-  home jobs                         backup, check, deploy, cleanup: schedule and last run
-  home jobs run <job>               run one now
+Background jobs (each its own brew service: home-backup, home-check, home-cleanup, home-deploy):
+  home jobs                         every job: service state, schedule, last run
+  home jobs run <job>               run one now (backup, check, cleanup, deploy)
+  home install [job…]               install and start the services (all by default)
+  home uninstall [job…]             stop them
 
 Setup:
   home registry login <host>        read-only login to check private images (Keychain)
   home setup                        nodes and stacks (runs automatically the first time)
-  home install | uninstall          background service (every 15 min) running the jobs
   home version
 `
 
@@ -196,15 +197,13 @@ func run(ctx context.Context, cmd string, args []string) error {
 	case "setup":
 		return homesetup.Run(ctx, homecfg.DefaultPath())
 	case "install":
-		if err := service.Install(); err != nil {
+		if err := service.Install(args...); err != nil {
 			return err
 		}
-		fmt.Println("✓ home runs in the background every 15 minutes: backups, the daily node check,")
-		fmt.Println("  bundle deploys and (if enabled) cleanup — see `home jobs`.")
-		fmt.Println("  Manage it with `brew services info|restart|stop home` or `home uninstall`.")
+		fmt.Println("✓ background jobs running as brew services — see `home jobs` and `brew services list`.")
 		return nil
 	case "uninstall":
-		return service.Uninstall()
+		return service.Uninstall(args...)
 	case "run":
 		return scheduled(ctx)
 	case "registry":
@@ -260,8 +259,9 @@ func run(ctx context.Context, cmd string, args []string) error {
 	return fmt.Errorf("unknown command %q — see `home help`", cmd)
 }
 
-// scheduled is the service entry point (every 15 minutes): backups and the
-// daily check when due, bundle deploys, and the daily cleanup when enabled.
+// scheduled is the entry point of the single service of versions before
+// 0.5 (`home run`): backups and the daily check when due, and bundle deploys.
+// Current installs run each job as its own service instead (`home install`).
 func scheduled(ctx context.Context) error {
 	var errs []string
 	if err := brcli.Scheduled(ctx); err != nil {
@@ -278,9 +278,6 @@ func scheduled(ctx context.Context) error {
 			}
 			if err := check.Daily(ctx, a.cfg, a.r, log.Printf); err != nil {
 				errs = append(errs, "check: "+err.Error())
-			}
-			if err := a.cleanupJob(ctx, false); err != nil {
-				errs = append(errs, "cleanup: "+err.Error())
 			}
 		}
 	}
