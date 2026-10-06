@@ -405,6 +405,6 @@ rustpad
 | oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values, mark skip-worktree |
 | Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
 | Vaultwarden fails to connect to DB | `DATABASE_URL` password mismatch | Must match password used in `CREATE ROLE vaultwarden` |
-| ESPHome config missing | `homeautomation/config/esphome/` not restored | Restore from backup — this dir is gitignored |
-| Syncthing won't start | `syncthing/config/` not present | Restore from backup — this dir is gitignored |
+| ESPHome config missing | `/home/dietpi/localstack/data/esphome/` not restored | Restore from backup (kopia) |
+| Syncthing won't start | `/home/dietpi/localstack/data/syncthing/` not present | Restore from backup (kopia); an empty dir is seeded from `config.xml.template` |
 | Agent not deploying a stack | Syntax error in compose | `docker compose -f nodes/ab/<stack>/compose.yaml config` |

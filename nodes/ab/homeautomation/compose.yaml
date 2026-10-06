@@ -6,7 +6,7 @@ services:
     networks:
       - network-layer
     volumes:
-      - ./config/esphome:/config
+      - /home/dietpi/localstack/data/esphome:/config
       - /etc/localtime:/etc/localtime:ro
     env_file: /home/dietpi/localstack/secrets/ab-homeautomation.env
     labels:

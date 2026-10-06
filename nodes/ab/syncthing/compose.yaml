@@ -8,7 +8,8 @@ services:
     restart: always
     env_file: /home/dietpi/localstack/secrets/ab-syncthing.env
     volumes:
-      - ./config:/config
+      - /home/dietpi/localstack/data/syncthing:/config
+      - ./config.xml.template:/seed/config.xml:ro
       - /home/dietpi/localstack/secrets/syncthing:/secrets:ro
       - ./init/symlink-secrets.sh:/custom-cont-init.d/01-symlink-secrets.sh:ro
       - /home/dietpi/music:/music
