@@ -66,7 +66,7 @@ Set `bundle:` on the node in config.yaml and `stacks_dir` to e.g.
 
 | Command | What it does |
 |---|---|
-| `home deploy [node\|all] [--dry-run]` | pull the newest bundle on the node, sync changed files into `stacks_dir`, start the changed stacks in the node's start order (running their pre-update hooks first), wait until each is healthy; **rolls back** to the previous release if one is not |
+| `home deploy [node\|all] [--dry-run]` | pull the newest bundle on the node, sync changed files into `stacks_dir`, start the changed stacks phase by phase — the node's `ORDER` stacks one at a time, then all others in parallel — running their pre-update hooks first and waiting until every stack of a phase is healthy; **rolls back** to the previous release if one is not |
 | `home deploy <node> --tag <sha>` | deploy a specific bundle |
 | `home deploy <node> --rollback` | back to the release before the current one |
 | `home deploy <node> --recreate` | every stack with fresh containers, e.g. after moving `stacks_dir` |

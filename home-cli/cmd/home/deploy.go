@@ -142,11 +142,16 @@ func printPlan(p *deploy.Plan) {
 		fmt.Println("  first deploy: every stack is started from the bundle; containers whose")
 		fmt.Println("  bind-mounted files moved are recreated once")
 	}
-	switch {
-	case p.Recreate && len(p.Changed) > 0:
-		fmt.Println("  recreate (in order): " + strings.Join(p.Changed, ", "))
-	case len(p.Changed) > 0:
-		fmt.Println("  start (in order): " + strings.Join(p.Changed, ", "))
+	verb := "start"
+	if p.Recreate {
+		verb = "recreate"
+	}
+	for i, ph := range p.Phases {
+		how := ""
+		if len(ph) > 1 {
+			how = " (in parallel)"
+		}
+		fmt.Printf("  %d. %s%s: %s\n", i+1, verb, how, strings.Join(ph, ", "))
 	}
 	if len(p.Files) > 0 {
 		fmt.Println("  node files:       " + strings.Join(p.Files, ", "))

@@ -12,18 +12,21 @@
 // Deploying syncs the new release into stacks_dir (changed files are
 // rewritten in place, so single-file bind mounts see them; files the release
 // dropped are deleted; files that never came from a release are left alone),
-// then starts every changed stack with node.sh in the node's start order,
-// waiting for each to be healthy. If one is not, the previous release is
+// then starts the changed stacks with node.sh phase by phase (stacks in the
+// node's ORDER one at a time, then all others together), waiting until every
+// stack of a phase is healthy before the next. If one is not, the previous release is
 // synced back and the stacks started so far are started again from it.
 package deploy
 
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"path"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ashishbhatiya18/home/internal/homecfg"
@@ -133,11 +136,12 @@ func (d *Deployer) Latest(ctx context.Context, n homecfg.Node, tag string) (stri
 // Plan is what deploying one release to one node would change.
 type Plan struct {
 	Node    homecfg.Node
-	From    Release  // deployed now (zero on a first deploy)
-	To      Release  // Revision, Digest, Image of the new release
-	Changed []string // stacks to start, in the node's start order
-	Removed []string // stacks gone from the release; left running
-	Files   []string // node-level files that change (node.sh, node.conf)
+	From    Release    // deployed now (zero on a first deploy)
+	To      Release    // Revision, Digest, Image of the new release
+	Changed []string   // stacks to start, in the node's start order
+	Phases  [][]string // Changed grouped into start phases (from node.sh phases)
+	Removed []string   // stacks gone from the release; left running
+	Files   []string   // node-level files that change (node.sh, node.conf)
 	// Recreate starts every stack with fresh containers (node.sh recreate),
 	// not only the changed ones.
 	Recreate bool
@@ -172,7 +176,7 @@ for d in "$live"/*/; do
   s=$(basename "$d"); [ -d "$new/$s" ] || echo "removed=$s"
 done
 for f in node.sh node.conf; do cmp -s "$new/$f" "$live/$f" || echo "file=$f"; done
-bash "$new/node.sh" order | sed 's/^/order=/'
+bash "$new/node.sh" phases | sed 's/^/phase=/'
 `
 
 // Prepare pulls the release (by digest) on the node, extracts it next to the
@@ -191,7 +195,7 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 	}
 	plan := &Plan{Node: n, From: from, To: Release{Digest: digest, Image: n.Bundle}, Recreate: recreate}
 	changed := map[string]bool{}
-	var order []string
+	var phases [][]string
 	sc := bufio.NewScanner(strings.NewReader(out))
 	for sc.Scan() {
 		k, v, _ := strings.Cut(sc.Text(), "=")
@@ -204,13 +208,20 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 			plan.Removed = append(plan.Removed, v)
 		case "file":
 			plan.Files = append(plan.Files, v)
-		case "order":
-			order = append(order, v)
+		case "phase":
+			phases = append(phases, strings.Fields(v))
 		}
 	}
-	for _, s := range order {
-		if changed[s] || recreate {
-			plan.Changed = append(plan.Changed, s)
+	for _, ph := range phases {
+		var keep []string
+		for _, s := range ph {
+			if changed[s] || recreate {
+				keep = append(keep, s)
+			}
+		}
+		if len(keep) > 0 {
+			plan.Phases = append(plan.Phases, keep)
+			plan.Changed = append(plan.Changed, keep...)
 		}
 	}
 	return plan, nil
@@ -244,16 +255,26 @@ func (d *Deployer) sync(ctx context.Context, n homecfg.Node, to, from Release) e
 	return d.R.Run(ctx, n.Name, "cat > "+f+".tmp && mv "+f+".tmp "+f, strings.NewReader(rec), nil)
 }
 
-func (d *Deployer) start(ctx context.Context, n homecfg.Node, name string, recreate bool) error {
-	s := stack.Stack{Node: n.Name, Name: name, Dir: pathsOf(n).live}
-	run := d.SM.Start
-	if recreate {
-		run = d.SM.Recreate
-	}
-	if err := run(ctx, s, d.Out); err != nil {
+// start starts one phase's stacks with a single node.sh call (which runs
+// them in parallel) and waits until all of them are healthy.
+func (d *Deployer) start(ctx context.Context, n homecfg.Node, names []string, recreate bool) error {
+	dir := pathsOf(n).live
+	if err := d.SM.StartMany(ctx, n.Name, dir, names, recreate, d.Out); err != nil {
 		return err
 	}
-	return d.SM.WaitHealthy(ctx, s)
+	errs := make([]error, len(names))
+	var wg sync.WaitGroup
+	for i, name := range names {
+		wg.Add(1)
+		go func(i int, name string) {
+			defer wg.Done()
+			if err := d.SM.WaitHealthy(ctx, stack.Stack{Node: n.Name, Name: name, Dir: dir}); err != nil {
+				errs[i] = fmt.Errorf("%s: %w", name, err)
+			}
+		}(i, name)
+	}
+	wg.Wait()
+	return errors.Join(errs...)
 }
 
 // Apply deploys a prepared plan. On a stack that does not come up healthy it
@@ -266,20 +287,26 @@ func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
 	if err := d.sync(ctx, n, to, p.From); err != nil {
 		return fmt.Errorf("syncing release: %w", err)
 	}
-	var started []string
-	for _, s := range p.Changed {
-		id := n.Name + "/" + s
-		if d.Hook != nil {
-			if h := d.Hook(id); h != nil {
-				if err := h(); err != nil {
-					return d.rollback(ctx, p, started, fmt.Errorf("%s: pre-update hook: %w", id, err))
+	var started [][]string
+	for _, phase := range p.Phases {
+		for _, s := range phase {
+			id := n.Name + "/" + s
+			if d.Hook != nil {
+				if h := d.Hook(id); h != nil {
+					if err := h(); err != nil {
+						return d.rollback(ctx, p, started, fmt.Errorf("%s: pre-update hook: %w", id, err))
+					}
 				}
 			}
 		}
-		d.Logf("%s: starting %s", n.Name, s)
-		started = append(started, s)
-		if err := d.start(ctx, n, s, p.Recreate); err != nil {
-			return d.rollback(ctx, p, started, fmt.Errorf("%s: %w", id, err))
+		if len(phase) == 1 {
+			d.Logf("%s: starting %s", n.Name, phase[0])
+		} else {
+			d.Logf("%s: starting in parallel: %s", n.Name, strings.Join(phase, ", "))
+		}
+		started = append(started, phase)
+		if err := d.start(ctx, n, phase, p.Recreate); err != nil {
+			return d.rollback(ctx, p, started, fmt.Errorf("%s: %w", n.Name, err))
 		}
 	}
 	for _, s := range p.Removed {
@@ -290,7 +317,7 @@ func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
 	return nil
 }
 
-func (d *Deployer) rollback(ctx context.Context, p *Plan, started []string, cause error) error {
+func (d *Deployer) rollback(ctx context.Context, p *Plan, started [][]string, cause error) error {
 	n := p.Node
 	if p.From.Digest == "" {
 		return fmt.Errorf("%w — first deploy on %s, nothing to roll back to", cause, n.Name)
@@ -305,9 +332,9 @@ func (d *Deployer) rollback(ctx context.Context, p *Plan, started []string, caus
 		return fmt.Errorf("%w — AND rollback failed: %v", cause, err)
 	}
 	var errs []string
-	for _, s := range started {
-		if err := d.start(ctx, n, s, false); err != nil {
-			errs = append(errs, s+": "+err.Error())
+	for _, phase := range started {
+		if err := d.start(ctx, n, phase, false); err != nil {
+			errs = append(errs, err.Error())
 		}
 	}
 	if len(errs) > 0 {

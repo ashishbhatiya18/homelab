@@ -125,6 +125,20 @@ func (m *Manager) Start(ctx context.Context, s Stack, out io.Writer) error {
 	return m.lifecycle(ctx, s, "start", out, "up", "-d", "--remove-orphans")
 }
 
+// StartMany starts several stacks of a node with one `node.sh start|recreate`
+// (stacks outside the node's ORDER start in parallel there). Needs node.sh.
+func (m *Manager) StartMany(ctx context.Context, n, dir string, names []string, recreate bool, out io.Writer) error {
+	action := "start"
+	if recreate {
+		action = "recreate"
+	}
+	q := []string{"bash", remote.Quote(nodeScript(dir)), action}
+	for _, name := range names {
+		q = append(q, remote.Quote(name))
+	}
+	return m.R.Run(ctx, n, strings.Join(q, " "), nil, out)
+}
+
 // Recreate starts the stack with fresh containers, even when nothing changed.
 func (m *Manager) Recreate(ctx context.Context, s Stack, out io.Writer) error {
 	return m.lifecycle(ctx, s, "recreate", out, "up", "-d", "--force-recreate", "--remove-orphans")
