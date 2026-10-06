@@ -223,9 +223,7 @@ func isConnError(err error) bool {
 }
 
 type StackManager struct {
-	hosts            []*DockerHost
-	stacksPath       string
-	remoteStacksPath string
+	hosts []*DockerHost
 }
 
 // parseDockerHost parses DOCKER_HOST into one or more named Docker hosts.
@@ -249,9 +247,9 @@ func parseDockerHost(s string) ([]*DockerHost, error) {
 			rawURL = strings.TrimSpace(entry[idx+1:])
 		}
 		hosts = append(hosts, &DockerHost{
-			Name:  name,
+			Name:   name,
 			rawURL: rawURL,
-			isSSH: strings.HasPrefix(rawURL, "ssh://"),
+			isSSH:  strings.HasPrefix(rawURL, "ssh://"),
 		})
 	}
 	if len(hosts) == 0 {
@@ -262,15 +260,6 @@ func parseDockerHost(s string) ([]*DockerHost, error) {
 
 func main() {
 	godotenv.Load()
-
-	stacksPath := os.Getenv("STACKS_PATH")
-	if stacksPath == "" {
-		stacksPath = "/localstack/nodes"
-	}
-	remoteStacksPath := os.Getenv("REMOTE_STACKS_PATH")
-	if remoteStacksPath == "" {
-		remoteStacksPath = stacksPath
-	}
 
 	dockerHostEnv := os.Getenv("DOCKER_HOST")
 	if dockerHostEnv == "" {
@@ -305,7 +294,7 @@ func main() {
 		}
 	}()
 
-	sm := &StackManager{hosts: hosts, stacksPath: stacksPath, remoteStacksPath: remoteStacksPath}
+	sm := &StackManager{hosts: hosts}
 
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
@@ -384,12 +373,12 @@ type StackDetail struct {
 }
 
 type ServiceStatus struct {
-	Name        string `json:"name"`
-	Status      string `json:"status"`
-	State       string `json:"state"`
-	URL         string `json:"url,omitempty"`
-	Image       string `json:"image,omitempty"`
-	ImageTag    string `json:"imageTag,omitempty"`
+	Name     string `json:"name"`
+	Status   string `json:"status"`
+	State    string `json:"state"`
+	URL      string `json:"url,omitempty"`
+	Image    string `json:"image,omitempty"`
+	ImageTag string `json:"imageTag,omitempty"`
 }
 
 type HealthCheckResult struct {
@@ -459,31 +448,6 @@ func extractTraefikURL(labels map[string]string) string {
 		}
 	}
 	return ""
-}
-
-func (sm *StackManager) envFromWorkdir(workDir string) string {
-	for _, base := range []string{sm.remoteStacksPath, sm.stacksPath} {
-		if base == "" {
-			continue
-		}
-		rel, err := filepath.Rel(base, workDir)
-		if err != nil {
-			continue
-		}
-		rel = filepath.ToSlash(rel)
-		if strings.HasPrefix(rel, "..") {
-			continue
-		}
-		parts := strings.SplitN(rel, "/", 2)
-		if parts[0] != "" {
-			return parts[0]
-		}
-	}
-	parts := strings.Split(strings.TrimRight(filepath.ToSlash(workDir), "/"), "/")
-	if len(parts) >= 2 {
-		return parts[len(parts)-2]
-	}
-	return "unknown"
 }
 
 func parseImage(image string) (name, tag string) {
@@ -579,7 +543,7 @@ func (sm *StackManager) listStacks(c *gin.Context) {
 					cfgFiles = filepath.Base(first)
 				}
 				projects[project] = &projectMeta{
-					env:         sm.envFromWorkdir(workDir),
+					env:         host.Name,
 					path:        workDir,
 					composeFile: cfgFiles,
 				}

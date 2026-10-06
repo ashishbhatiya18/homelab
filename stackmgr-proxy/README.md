@@ -85,7 +85,6 @@ Access at: http://localhost:3000
 
 ```env
 PORT=8080
-STACKS_PATH=/localstack/nodes
 AUTH_URL=https://auth.ab18.in
 DOCKER_SOCK=/var/run/docker.sock
 ```

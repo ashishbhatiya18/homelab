@@ -3,11 +3,12 @@ services:
     image: nickfedor/watchtower
     container_name: watchtower
     restart: always
+    # WATCHTOWER_HTTP_API_TOKEN (secrets, not the repo)
+    env_file: /home/dietpi/localstack/secrets/cd-watchtower.env
     environment:
       - WATCHTOWER_UPDATE_ON_START=true
       - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_HTTP_API_METRICS=true
-      - WATCHTOWER_HTTP_API_TOKEN=abcde
       # Detect new images but never apply them; updates are done with
       # `home stack update` / `home upgrade` (backup first, auto-rollback).
       - WATCHTOWER_MONITOR_ONLY=true

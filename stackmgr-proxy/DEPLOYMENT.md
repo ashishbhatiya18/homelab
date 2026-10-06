@@ -46,7 +46,6 @@ docker run -d \
   -p 8080:8080 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /localstack:/localstack:ro \
-  -e STACKS_PATH=/localstack/nodes \
   -e AUTH_URL=https://auth.ab18.in \
   --restart unless-stopped \
   stackmgr-proxy:latest
@@ -66,7 +65,6 @@ Requires=docker.service
 Type=simple
 User=root
 WorkingDirectory=/opt/stackmgr-proxy/backend
-Environment="STACKS_PATH=/localstack/nodes"
 Environment="AUTH_URL=https://auth.ab18.in"
 Environment="PORT=8080"
 ExecStart=/usr/bin/stackmgr-proxy
@@ -230,6 +228,5 @@ For multiple environments or larger deployments:
 - Check network connectivity
 
 ### Services not showing in list
-- Verify STACKS_PATH points to correct localstack directory
 - Check directory structure: `ls -la /localstack/nodes/ab/`
 - Review backend logs for parsing errors

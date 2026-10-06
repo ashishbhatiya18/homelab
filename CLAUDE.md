@@ -9,8 +9,8 @@ A GitOps homelab monorepo. Two physical nodes (`ab` at 10.10.10.11, `cd` at 10.1
 Directory layout:
 - `nodes/<node>/<stack>/compose.yaml` — one stack per subdirectory, one file per stack
 - `nodes/<node>/node.conf` — the node's start order (`ORDER=(…)`) and Docker networks (`network <name> <driver> [args…]`)
-- `nodes/node.sh` — shared lifecycle script, shipped in every bundle as `nodes/<node>/node.sh`: `start|stop|restart [stack…]`, `down <stack>`, `status`, `order`, `list`, `compose <stack> <args…>`. Every stack operation (by `home` or by hand) goes through it.
-- `scripts/bundle.Dockerfile` — the node bundle (FROM scratch: `nodes/<node>/` + `node.sh`)
+- `nodes/node.sh` — shared lifecycle script, shipped in every bundle next to the stacks: `start|stop|restart|recreate [stack…]`, `down <stack>`, `status`, `order`, `list`, `compose <stack> <args…>`. Every stack operation (by `home` or by hand) goes through it.
+- `scripts/bundle.Dockerfile` — the node bundle (FROM scratch: `/stacks` = `nodes/<node>/` + `node.sh`)
 - `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups); released as `home-cli-v*` tags to the Homebrew tap
 - `webauthn-proxy/` — the passkey forward-auth proxy (image `ghcr.io/ashishbhatiya18/webauthn-proxy`)
 - `terraform/` — Cloudflare DNS, tunnel ingress, and Tailscale ACLs (HCP Terraform remote state)
@@ -51,7 +51,7 @@ home jobs                                        # the background deploy job doe
 
 (`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode, stackmgr-proxy, webauthn-proxy) are built by their own workflows.
 
-On a node, by hand: `~/localstack/nodes/<node>/node.sh start|stop|restart|status [stack…]`. Deployed files are in `/home/dietpi/localstack/nodes/<node>/` (with `.release`), extracted bundles in `/home/dietpi/localstack/releases/`.
+On a node, by hand: `~/localstack/stacks/node.sh start|stop|restart|status [stack…]`. Each node's `/home/dietpi/localstack/` holds exactly: `stacks/` (deployed files, with `.release`), `releases/` (extracted bundles), `data/` (state) and `secrets/`.
 
 ## Terraform
 

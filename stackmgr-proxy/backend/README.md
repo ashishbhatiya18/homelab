@@ -12,7 +12,6 @@ Go REST API for LocalStack management with lifecycle operations and health check
 ## Environment Variables
 
 - `PORT`: Server port (default: 8080)
-- `STACKS_PATH`: Path to stack definitions (default: /localstack/nodes)
 - `AUTH_URL`: Authentication service URL (default: https://auth.ab18.in)
 - `DOCKER_SOCK`: Docker socket path (default: /var/run/docker.sock)
 

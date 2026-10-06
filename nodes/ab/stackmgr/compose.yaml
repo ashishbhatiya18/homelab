@@ -11,11 +11,9 @@ services:
       - stackmgr_cd_ssh_key
     environment:
       PORT: "8080"
-      # local=ab node socket, cd=remote node via SSH
-      DOCKER_HOST: "local=unix:///var/run/docker.sock,cd=ssh://dietpi@10.10.10.12"
+      # Node names as shown in the UI: ab = this node's socket, cd = over SSH
+      DOCKER_HOST: "ab=unix:///var/run/docker.sock,cd=ssh://dietpi@10.10.10.12"
       SSH_KEY_FILE: /run/secrets/stackmgr_cd_ssh_key
-      STACKS_PATH: /home/dietpi/localstack/nodes
-      REMOTE_STACKS_PATH: /home/dietpi/localstack/nodes
     labels:
       - traefik.enable=true
       - traefik.http.routers.stackmgr.rule=Host(`stack.ab18.in`)

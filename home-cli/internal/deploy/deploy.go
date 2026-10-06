@@ -1,15 +1,15 @@
 // Package deploy rolls node bundles out to nodes over SSH — no agent and no
 // git checkout on the node.
 //
-// A bundle is a FROM-scratch image (built by CI) holding nodes/<name>/: the
-// node's stacks plus node.sh and node.conf. On the node, with stacks_dir =
-// <base>/nodes/<name>:
+// A bundle is a FROM-scratch image (built by CI) holding /stacks: the node's
+// stacks plus node.sh and node.conf. On the node, with stacks_dir =
+// <base>/stacks:
 //
-//	<base>/releases/<digest>/   each bundle, extracted (the newest few are kept)
-//	<base>/nodes/<name>/        the deployed files compose runs from
-//	<base>/nodes/<name>/.release  what is deployed: revision, digest, previous
+//	<base>/releases/<digest>/stacks/  each bundle, extracted (the newest few are kept)
+//	<base>/stacks/                    the deployed files compose runs from
+//	<base>/stacks/.release            what is deployed: revision, digest, previous
 //
-// Deploying syncs the new release into nodes/<name> (changed files are
+// Deploying syncs the new release into stacks_dir (changed files are
 // rewritten in place, so single-file bind mounts see them; files the release
 // dropped are deleted; files that never came from a release are left alone),
 // then starts every changed stack with node.sh in the node's start order,
@@ -64,16 +64,19 @@ func (r Release) Short() string {
 	return r.Revision
 }
 
-type paths struct{ live, releases, name string }
+type paths struct{ live, releases string }
 
 func pathsOf(n homecfg.Node) paths {
 	live := strings.TrimRight(n.StacksDir, "/")
-	return paths{live: live, releases: path.Join(path.Dir(path.Dir(live)), "releases"), name: path.Base(live)}
+	return paths{live: live, releases: path.Join(path.Dir(live), "releases")}
 }
 
 func (p paths) releaseDir(digest string) string {
 	return p.releases + "/" + strings.TrimPrefix(digest, "sha256:")
 }
+
+// content is where a release's stacks are, inside its release dir.
+func (p paths) content(digest string) string { return p.releaseDir(digest) + "/stacks" }
 
 func repoOf(bundle string) string {
 	if i := strings.LastIndex(bundle, ":"); i > strings.LastIndex(bundle, "/") {
@@ -135,24 +138,27 @@ type Plan struct {
 	Changed []string // stacks to start, in the node's start order
 	Removed []string // stacks gone from the release; left running
 	Files   []string // node-level files that change (node.sh, node.conf)
+	// Recreate starts every stack with fresh containers (node.sh recreate),
+	// not only the changed ones.
+	Recreate bool
 }
 
 func (p *Plan) Empty() bool { return len(p.Changed)+len(p.Removed)+len(p.Files) == 0 }
 
 const prepareScript = `set -euo pipefail
-ref=%[1]s rel=%[2]s dir=%[3]s live=%[4]s name=%[5]s
+ref=%[1]s rel=%[2]s dir=%[3]s live=%[4]s
 mkdir -p "$rel"
 if [ ! -d "$dir" ]; then
   docker pull -q "$ref" >/dev/null
   tmp="$dir.tmp"; rm -rf "$tmp"; mkdir -p "$tmp"
   cid=$(docker create "$ref" none)
   trap 'docker rm -f "$cid" >/dev/null 2>&1 || true' EXIT
-  docker export "$cid" | tar -x -C "$tmp" nodes
+  docker export "$cid" | tar -x -C "$tmp" stacks
   docker image inspect -f '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$ref" > "$tmp/REVISION"
   mv "$tmp" "$dir"
 fi
-new="$dir/nodes/$name"
-[ -d "$new" ] || { echo "the bundle has no nodes/$name" >&2; exit 1; }
+new="$dir/stacks"
+[ -d "$new" ] || { echo "the bundle has no /stacks" >&2; exit 1; }
 echo "revision=$(cat "$dir/REVISION")"
 for d in "$new"/*/; do
   s=$(basename "$d"); [ -f "$d/compose.yaml" ] || continue
@@ -171,19 +177,19 @@ bash "$new/node.sh" order | sed 's/^/order=/'
 
 // Prepare pulls the release (by digest) on the node, extracts it next to the
 // others and works out what deploying it changes. Nothing deployed changes.
-func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string) (*Plan, error) {
+func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, recreate bool) (*Plan, error) {
 	from, err := d.Current(ctx, n)
 	if err != nil {
 		return nil, err
 	}
 	p := pathsOf(n)
 	ref := repoOf(n.Bundle) + "@" + digest
-	script := fmt.Sprintf(prepareScript, remote.Quote(ref), remote.Quote(p.releases), remote.Quote(p.releaseDir(digest)), remote.Quote(p.live), remote.Quote(p.name))
+	script := fmt.Sprintf(prepareScript, remote.Quote(ref), remote.Quote(p.releases), remote.Quote(p.releaseDir(digest)), remote.Quote(p.live))
 	out, err := d.R.Output(ctx, n.Name, "bash -s <<'HOME_EOF'\n"+script+"HOME_EOF")
 	if err != nil {
 		return nil, fmt.Errorf("preparing release on %s: %w", n.Name, err)
 	}
-	plan := &Plan{Node: n, From: from, To: Release{Digest: digest, Image: n.Bundle}}
+	plan := &Plan{Node: n, From: from, To: Release{Digest: digest, Image: n.Bundle}, Recreate: recreate}
 	changed := map[string]bool{}
 	var order []string
 	sc := bufio.NewScanner(strings.NewReader(out))
@@ -203,7 +209,7 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string) (
 		}
 	}
 	for _, s := range order {
-		if changed[s] {
+		if changed[s] || recreate {
 			plan.Changed = append(plan.Changed, s)
 		}
 	}
@@ -226,9 +232,9 @@ func (d *Deployer) sync(ctx context.Context, n homecfg.Node, to, from Release) e
 	p := pathsOf(n)
 	old := ""
 	if from.Digest != "" {
-		old = p.releaseDir(from.Digest) + "/nodes/" + p.name
+		old = p.content(from.Digest)
 	}
-	script := fmt.Sprintf(syncScript, remote.Quote(p.releaseDir(to.Digest)+"/nodes/"+p.name), remote.Quote(old), remote.Quote(p.live))
+	script := fmt.Sprintf(syncScript, remote.Quote(p.content(to.Digest)), remote.Quote(old), remote.Quote(p.live))
 	if err := d.R.Run(ctx, n.Name, "bash -s <<'HOME_EOF'\n"+script+"HOME_EOF", nil, d.Out); err != nil {
 		return err
 	}
@@ -238,9 +244,13 @@ func (d *Deployer) sync(ctx context.Context, n homecfg.Node, to, from Release) e
 	return d.R.Run(ctx, n.Name, "cat > "+f+".tmp && mv "+f+".tmp "+f, strings.NewReader(rec), nil)
 }
 
-func (d *Deployer) start(ctx context.Context, n homecfg.Node, name string) error {
+func (d *Deployer) start(ctx context.Context, n homecfg.Node, name string, recreate bool) error {
 	s := stack.Stack{Node: n.Name, Name: name, Dir: pathsOf(n).live}
-	if err := d.SM.Start(ctx, s, d.Out); err != nil {
+	run := d.SM.Start
+	if recreate {
+		run = d.SM.Recreate
+	}
+	if err := run(ctx, s, d.Out); err != nil {
 		return err
 	}
 	return d.SM.WaitHealthy(ctx, s)
@@ -268,7 +278,7 @@ func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
 		}
 		d.Logf("%s: starting %s", n.Name, s)
 		started = append(started, s)
-		if err := d.start(ctx, n, s); err != nil {
+		if err := d.start(ctx, n, s, p.Recreate); err != nil {
 			return d.rollback(ctx, p, started, fmt.Errorf("%s: %w", id, err))
 		}
 	}
@@ -286,7 +296,7 @@ func (d *Deployer) rollback(ctx context.Context, p *Plan, started []string, caus
 		return fmt.Errorf("%w — first deploy on %s, nothing to roll back to", cause, n.Name)
 	}
 	d.Logf("%s: %v; rolling back to %s", n.Name, cause, p.From.Short())
-	if _, err := d.Prepare(ctx, n, p.From.Digest); err != nil { // re-extracts it if it was pruned
+	if _, err := d.Prepare(ctx, n, p.From.Digest, false); err != nil { // re-extracts it if it was pruned
 		return fmt.Errorf("%w — AND rollback failed: %v", cause, err)
 	}
 	to := p.To
@@ -296,7 +306,7 @@ func (d *Deployer) rollback(ctx context.Context, p *Plan, started []string, caus
 	}
 	var errs []string
 	for _, s := range started {
-		if err := d.start(ctx, n, s); err != nil {
+		if err := d.start(ctx, n, s, false); err != nil {
 			errs = append(errs, s+": "+err.Error())
 		}
 	}

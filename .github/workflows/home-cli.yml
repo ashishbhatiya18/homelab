@@ -1,6 +1,8 @@
 # home-cli: test on every change. On a home-cli-vX.Y.Z tag: build the macOS
-# binaries, publish them as a GitHub release, and rewrite Formula/home.rb in
-# ashishbhatiya18/homebrew-tap to download them (`brew install
+# binaries, publish them as the package ghcr.io/ashishbhatiya18/home-cli
+# (:X.Y.Z and :latest, one archive per architecture), and rewrite
+# Formula/home.rb in ashishbhatiya18/homebrew-tap to download them from GHCR
+# by digest — the way Homebrew fetches its own bottles (`brew install
 # ashishbhatiya18/tap/home` is unchanged for users).
 #
 # Pushing to the tap uses a deploy key that can write to that one repository
@@ -52,9 +54,11 @@ jobs:
     if: startsWith(inputs.tag || github.ref_name, 'home-cli-v')
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
+      packages: write
     env:
       TAG: ${{ inputs.tag || github.ref_name }}
+      PACKAGE: ghcr.io/ashishbhatiya18/home-cli
     steps:
       - uses: actions/checkout@v6
         with:
@@ -79,19 +83,22 @@ jobs:
           done
           cd ../dist && shasum -a 256 *.tar.gz > checksums.txt && cat checksums.txt
 
-      - name: Create GitHub release (if missing)
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - uses: oras-project/setup-oras@v1
+
+      - name: Publish the package
         run: |
           set -euo pipefail
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/* --clobber
-            exit 0
-          fi
-          # Notes: home-cli commits since the previous home-cli release only.
-          PREV=$(git tag --list 'home-cli-v*' --sort=-v:refname | grep -vx "$TAG" | head -1 || true)
-          git log --format='- %s' ${PREV:+$PREV..}"$TAG" -- home-cli > notes.md
-          gh release create "$TAG" dist/* --title "home $VERSION" --notes-file notes.md --verify-tag
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          cd dist
+          # Each archive becomes a blob whose digest is its sha256, so the
+          # formula can fetch it directly by digest.
+          oras push "$PACKAGE:$VERSION,latest" \
+            --artifact-type application/vnd.ashishbhatiya18.home-cli \
+            --annotation "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --annotation "org.opencontainers.image.version=$VERSION" \
+            --annotation "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+            home_darwin_arm64.tar.gz:application/gzip \
+            home_darwin_amd64.tar.gz:application/gzip
 
       - name: Update formula in the tap
         env:
@@ -103,7 +110,7 @@ jobs:
           export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
           git clone git@github.com:ashishbhatiya18/homebrew-tap.git tap
 
-          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          base="https://ghcr.io/v2/ashishbhatiya18/home-cli/blobs/sha256:"
           sha() { awk -v f="home_darwin_$1.tar.gz" '$2 == f { print $1 }' dist/checksums.txt; }
           cat > tap/Formula/home.rb <<RUBY
           class Home < Formula
@@ -113,11 +120,11 @@ jobs:
             license "MIT"
 
             on_arm do
-              url "${base}/home_darwin_arm64.tar.gz"
+              url "${base}$(sha arm64)"
               sha256 "$(sha arm64)"
             end
             on_intel do
-              url "${base}/home_darwin_amd64.tar.gz"
+              url "${base}$(sha amd64)"
               sha256 "$(sha amd64)"
             end
 

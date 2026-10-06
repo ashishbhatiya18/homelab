@@ -125,6 +125,11 @@ func (m *Manager) Start(ctx context.Context, s Stack, out io.Writer) error {
 	return m.lifecycle(ctx, s, "start", out, "up", "-d", "--remove-orphans")
 }
 
+// Recreate starts the stack with fresh containers, even when nothing changed.
+func (m *Manager) Recreate(ctx context.Context, s Stack, out io.Writer) error {
+	return m.lifecycle(ctx, s, "recreate", out, "up", "-d", "--force-recreate", "--remove-orphans")
+}
+
 func (m *Manager) Logs(ctx context.Context, s Stack, follow bool, tail int, svc []string, out io.Writer) error {
 	args := []string{"logs", "--tail", fmt.Sprint(tail)}
 	if follow {

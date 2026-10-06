@@ -169,7 +169,7 @@ No secrets needed — this workflow is read-only.
 For each node whose files changed (both when `nodes/node.sh` or the bundle definition
 changes): validates **every** compose file of that node, then publishes
 `ghcr.io/ashishbhatiya18/node-<node>` (`:latest` and `:<commit sha>`), a `FROM scratch`
-image holding `nodes/<node>/` plus `node.sh`. Nodes have no checkout and no agent: `home
+image holding the node's stacks plus `node.sh` under `/stacks`. Nodes have no checkout and no agent: `home
 deploy` (and its background job on the Mac) rolls the bundle out over SSH. Runs are
 queued in commit order so an older run never overwrites `:latest`. Can be run by hand for
 one node or both.

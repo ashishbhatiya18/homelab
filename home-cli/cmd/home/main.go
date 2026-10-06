@@ -54,6 +54,7 @@ Deploy (node bundles):
                                     changed stacks in order, verify health; auto-rollback
   home deploy <node> --tag <sha>    deploy a specific bundle (a commit)
   home deploy <node> --rollback     back to the release deployed before the current one
+  home deploy <node> --recreate     every stack with fresh containers (e.g. after moving stacks_dir)
 
 Stacks:
   home stack list [node] [--updates]         every stack with health (--updates: check images)

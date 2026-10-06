@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
-# Lifecycle for one node's stacks. Shipped in every node bundle as
-# nodes/<node>/node.sh next to that node's stacks and node.conf, so on a node:
+# Lifecycle for one node's stacks. Shipped in every node bundle next to that
+# node's stacks and node.conf (deployed to ~/localstack/stacks), so on a node:
 #
-#   ~/localstack/nodes/<node>/node.sh start   [stack...]   networks, then up -d in start order
-#   ~/localstack/nodes/<node>/node.sh stop    [stack...]   stop, in reverse start order
-#   ~/localstack/nodes/<node>/node.sh restart [stack...]   stop, then start
-#   ~/localstack/nodes/<node>/node.sh down    <stack...>   remove a stack's containers
-#   ~/localstack/nodes/<node>/node.sh status               every stack's containers
-#   ~/localstack/nodes/<node>/node.sh order                stacks in start order
-#   ~/localstack/nodes/<node>/node.sh list                 stacks, alphabetically
-#   ~/localstack/nodes/<node>/node.sh compose <stack> <args…>  docker compose for one
+#   ~/localstack/stacks/node.sh start   [stack...]   networks, then up -d in start order
+#   ~/localstack/stacks/node.sh stop    [stack...]   stop, in reverse start order
+#   ~/localstack/stacks/node.sh restart [stack...]   stop, then start
+#   ~/localstack/stacks/node.sh recreate [stack...]  networks, then up -d --force-recreate
+#   ~/localstack/stacks/node.sh down    <stack...>   remove a stack's containers
+#   ~/localstack/stacks/node.sh status               every stack's containers
+#   ~/localstack/stacks/node.sh order                stacks in start order
+#   ~/localstack/stacks/node.sh list                 stacks, alphabetically
+#   ~/localstack/stacks/node.sh compose <stack> <args…>  docker compose for one
 #                                                          stack (logs, ps, exec, pull…)
 #
 # No stack names means every stack. Everything `home` does to a stack goes
@@ -80,6 +81,13 @@ cmd_start() {
   for s in $list; do log "start $s"; compose "$s" up -d --remove-orphans; done
 }
 
+cmd_recreate() {
+  local s list
+  list=$(selected "$@")
+  ensure_networks
+  for s in $list; do log "recreate $s"; compose "$s" up -d --force-recreate --remove-orphans; done
+}
+
 cmd_stop() {
   local s list
   list=$(selected "$@")
@@ -105,6 +113,7 @@ case "${1:-}" in
   start)   shift; cmd_start "$@" ;;
   stop)    shift; cmd_stop "$@" ;;
   restart) shift; cmd_stop "$@"; cmd_start "$@" ;;
+  recreate) shift; cmd_recreate "$@" ;;
   down)    shift; cmd_down "$@" ;;
   status)  cmd_status ;;
   order)   ordered ;;
@@ -115,5 +124,5 @@ case "${1:-}" in
     s="$1"; shift
     exec docker compose -f "$DIR/$s/compose.yaml" "$@" ;;
   networks) ensure_networks ;;
-  *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

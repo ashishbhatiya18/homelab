@@ -70,6 +70,7 @@ func (a *app) deployCmd(ctx context.Context, args []string) error {
 	tag := fs.String("tag", "latest", "bundle tag to deploy, e.g. a commit sha")
 	back := fs.Bool("rollback", false, "go back to the release deployed before the current one")
 	force := fs.Bool("force", false, "re-apply even when the release is already deployed")
+	recreate := fs.Bool("recreate", false, "start every stack with fresh containers (implies --force)")
 	fs.Parse(reorder(args))
 	target := "all"
 	if fs.NArg() > 0 {
@@ -101,12 +102,12 @@ func (a *app) deployCmd(ctx context.Context, args []string) error {
 		} else if digest, err = d.Latest(ctx, n, *tag); err != nil {
 			return fmt.Errorf("%s: %w", n.Name, err)
 		}
-		if digest == cur.Digest && !*force {
+		if digest == cur.Digest && !*force && !*recreate {
 			fmt.Printf("%s: %s is deployed and current\n", n.Name, cur.Short())
 			continue
 		}
 		logf("%s: preparing release", n.Name)
-		p, err := d.Prepare(ctx, n, digest)
+		p, err := d.Prepare(ctx, n, digest, *recreate)
 		if err != nil {
 			return err
 		}
@@ -141,7 +142,10 @@ func printPlan(p *deploy.Plan) {
 		fmt.Println("  first deploy: every stack is started from the bundle; containers whose")
 		fmt.Println("  bind-mounted files moved are recreated once")
 	}
-	if len(p.Changed) > 0 {
+	switch {
+	case p.Recreate && len(p.Changed) > 0:
+		fmt.Println("  recreate (in order): " + strings.Join(p.Changed, ", "))
+	case len(p.Changed) > 0:
 		fmt.Println("  start (in order): " + strings.Join(p.Changed, ", "))
 	}
 	if len(p.Files) > 0 {
@@ -214,7 +218,7 @@ func (a *app) deployJob(ctx context.Context) error {
 		if latest == cur.Digest {
 			continue
 		}
-		p, err := d.Prepare(ctx, n, latest)
+		p, err := d.Prepare(ctx, n, latest, false)
 		if err == nil {
 			err = d.Apply(ctx, p)
 		}

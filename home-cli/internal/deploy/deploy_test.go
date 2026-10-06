@@ -7,12 +7,12 @@ import (
 )
 
 func TestPathsOf(t *testing.T) {
-	p := pathsOf(homecfg.Node{StacksDir: "/home/dietpi/localstack/nodes/ab/"})
-	if p.live != "/home/dietpi/localstack/nodes/ab" || p.releases != "/home/dietpi/localstack/releases" || p.name != "ab" {
+	p := pathsOf(homecfg.Node{StacksDir: "/home/dietpi/localstack/stacks/"})
+	if p.live != "/home/dietpi/localstack/stacks" || p.releases != "/home/dietpi/localstack/releases" {
 		t.Fatalf("got %+v", p)
 	}
-	if d := p.releaseDir("sha256:abc"); d != "/home/dietpi/localstack/releases/abc" {
-		t.Fatalf("releaseDir = %s", d)
+	if d := p.content("sha256:abc"); d != "/home/dietpi/localstack/releases/abc/stacks" {
+		t.Fatalf("content = %s", d)
 	}
 }
 

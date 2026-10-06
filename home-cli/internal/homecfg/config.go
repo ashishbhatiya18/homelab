@@ -42,8 +42,8 @@ type Node struct {
 	// StacksDir holds one directory per stack, each with a compose file.
 	StacksDir string `yaml:"stacks_dir"`
 	// Bundle is the image `home deploy` rolls out to this node (e.g.
-	// ghcr.io/me/node-ab): a FROM-scratch image holding nodes/<name>/, where
-	// <name> is the last element of StacksDir. Empty: no bundle deploys.
+	// ghcr.io/me/node-ab): a FROM-scratch image holding /stacks, deployed to
+	// StacksDir; releases are kept next to it. Empty: no bundle deploys.
 	Bundle string `yaml:"bundle,omitempty"`
 }
 

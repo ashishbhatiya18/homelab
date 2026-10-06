@@ -59,19 +59,20 @@ logs, exec, health checks and pulls via `node.sh compose <stack> …`.
 ## Deploys from node bundles
 
 Instead of a git checkout and an agent on every node, CI can publish one
-**bundle** per node: a `FROM scratch` image holding `nodes/<name>/` — that
-node's stacks plus `node.sh` (lifecycle) and `node.conf` (start order and
-networks). Set `bundle:` on the node in config.yaml and `stacks_dir` to
-`<base>/nodes/<name>`; then:
+**bundle** per node: a `FROM scratch` image holding `/stacks` — that node's
+stacks plus `node.sh` (lifecycle) and `node.conf` (start order and networks).
+Set `bundle:` on the node in config.yaml and `stacks_dir` to e.g.
+`<base>/stacks`; then:
 
 | Command | What it does |
 |---|---|
 | `home deploy [node\|all] [--dry-run]` | pull the newest bundle on the node, sync changed files into `stacks_dir`, start the changed stacks in the node's start order (running their pre-update hooks first), wait until each is healthy; **rolls back** to the previous release if one is not |
 | `home deploy <node> --tag <sha>` | deploy a specific bundle |
 | `home deploy <node> --rollback` | back to the release before the current one |
+| `home deploy <node> --recreate` | every stack with fresh containers, e.g. after moving `stacks_dir` |
 
-Releases are extracted to `<base>/releases/<digest>/` (the newest five are
-kept) and `stacks_dir/.release` records what is deployed. Changed files are
+Releases are extracted to `releases/<digest>/` next to `stacks_dir` (the
+newest five are kept) and `stacks_dir/.release` records what is deployed. Changed files are
 rewritten in place, so single-file bind mounts see them; files a release drops
 are deleted; files that never came from a release are left alone. A stack
 removed from the bundle keeps running until `node.sh down <stack>`.

@@ -53,7 +53,7 @@ In `~/.config/home/config.yaml`:
 nodes:
   - name: dietpi
     ssh: dietpi@10.10.10.12
-    stacks_dir: /home/dietpi/localstack/nodes/cd
+    stacks_dir: /home/dietpi/localstack/stacks
     bundle: ghcr.io/ashishbhatiya18/node-cd
 ```
 
@@ -116,6 +116,9 @@ echo "xoxb-..." > secrets/peripheral/slack/token.txt
 ```sh
 # Arcane env vars (add any required vars, can be empty)
 touch secrets/cd-localstack.env
+
+# Watchtower HTTP API token (metrics at watchtower.citrusdental.in)
+printf 'WATCHTOWER_HTTP_API_TOKEN=%s\n' "$(openssl rand -hex 32)" > secrets/cd-watchtower.env
 ```
 
 ### 3d — Set permissions
@@ -126,6 +129,7 @@ chmod 600 secrets/cloudflare_tunnel_token \
           secrets/cf_dns_api_token \
           secrets/pihole_web_password \
           secrets/cd-localstack.env \
+          secrets/cd-watchtower.env \
           secrets/api/env \
           secrets/peripheral/env \
           secrets/peripheral/gauth/credentials.json \
@@ -179,7 +183,7 @@ Seed Pi-hole's state directory from the repo (Pi-hole owns it from then on):
 
 ```sh
 # after the first deploy has synced nodes/cd (or from the extracted release):
-cp -a /home/dietpi/localstack/nodes/cd/network/config/pihole /home/dietpi/localstack/data/pihole
+cp -a /home/dietpi/localstack/stacks/network/config/pihole /home/dietpi/localstack/data/pihole
 ```
 
 ---
@@ -192,11 +196,11 @@ home deploy dietpi
 ```
 
 This creates the node's networks (from `nodes/cd/node.conf`), syncs the bundle into
-`/home/dietpi/localstack/nodes/cd/` and starts every stack in start order, waiting for
+`/home/dietpi/localstack/stacks/` and starts every stack in start order, waiting for
 each to be healthy. After that, the `home` background job deploys new bundles by itself;
 `home deploy dietpi --rollback` returns to the previous release.
 
-On the node, `~/localstack/nodes/cd/node.sh start|stop|restart|status [stack…]` runs the
+On the node, `~/localstack/stacks/node.sh start|stop|restart|status [stack…]` runs the
 same lifecycle by hand.
 
 ---
@@ -264,7 +268,7 @@ Edit terraform/cloudflare.tf  →  git push main
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `home deploy` cannot pull the bundle | No GHCR login on the node | `docker login ghcr.io` (read:packages token) |
-| `network internal_bridge not found` | Stack started without node.sh | `~/localstack/nodes/cd/node.sh start <stack>` (creates networks first) |
+| `network internal_bridge not found` | Stack started without node.sh | `~/localstack/stacks/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
 | macvlan creation fails | Wrong parent interface name | `ip link` to find correct name, edit `node.conf` |
 | `api` or `peripheral` won't start | Missing secret file | Check `secrets/api/env`, `secrets/peripheral/env` and credential files exist |

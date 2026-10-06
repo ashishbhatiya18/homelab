@@ -90,7 +90,7 @@ In `~/.config/home/config.yaml`:
 nodes:
   - name: dietpi-l
     ssh: dietpi@10.10.10.11
-    stacks_dir: /home/dietpi/localstack/nodes/ab
+    stacks_dir: /home/dietpi/localstack/stacks
     bundle: ghcr.io/ashishbhatiya18/node-ab
 ```
 
@@ -288,7 +288,7 @@ secrets directory and fill in the real values there (the repo checkout stays unt
 
 ```sh
 mkdir -p /home/dietpi/localstack/secrets/oauth2-proxy
-cp /home/dietpi/localstack/nodes/ab/network/config/oauth2-proxy/config.toml \
+cp /home/dietpi/localstack/stacks/network/config/oauth2-proxy/config.toml \
    /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
 chmod 600 /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
 nano /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
@@ -324,11 +324,11 @@ home deploy dietpi-l
 ```
 
 This creates the node's networks (from `nodes/ab/node.conf`), syncs the bundle into
-`/home/dietpi/localstack/nodes/ab/` and starts every stack in start order, waiting for
+`/home/dietpi/localstack/stacks/` and starts every stack in start order, waiting for
 each to be healthy. After that, the `home` background job deploys new bundles by itself;
 `home deploy dietpi-l --rollback` returns to the previous release.
 
-On the node, `~/localstack/nodes/ab/node.sh start|stop|restart|status [stack…]` runs the
+On the node, `~/localstack/stacks/node.sh start|stop|restart|status [stack…]` runs the
 same lifecycle by hand.
 
 ---
@@ -363,7 +363,7 @@ rustpad
 | Symptom | Likely cause | Fix |
 |---|---|---|
 | `home deploy` cannot pull the bundle | No GHCR login on the node | `docker login ghcr.io` (read:packages token) |
-| `network internal_bridge not found` | Stack started without node.sh | `~/localstack/nodes/ab/node.sh start <stack>` (creates networks first) |
+| `network internal_bridge not found` | Stack started without node.sh | `~/localstack/stacks/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
 | cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
 | oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values in `secrets/oauth2-proxy/config.toml` |
