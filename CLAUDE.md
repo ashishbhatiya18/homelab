@@ -4,31 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this repo is
 
-A GitOps homelab monorepo. Two physical nodes (`ab` at 10.10.10.11, `cd` at 10.10.10.12) each run a set of Docker Compose stacks. A systemd `gitops-agent` service on each node polls this repo and redeploys any stack whose `compose.yaml` was touched in the latest push.
+A GitOps homelab monorepo. Two physical nodes (`ab` at 10.10.10.11, `cd` at 10.10.10.12) each run a set of Docker Compose stacks. Nodes have **no git checkout and no agent**: CI publishes one bundle per node (`ghcr.io/ashishbhatiya18/node-<node>`), and the `home` CLI on the Mac (`home-cli/`) deploys it over SSH — manually with `home deploy`, or automatically from its background job.
 
 Directory layout:
 - `nodes/<node>/<stack>/compose.yaml` — one stack per subdirectory, one file per stack
-- `nodes/<node>/networks.sh` — creates Docker networks that stacks depend on
-- `scripts/gitops-agent.sh` — the polling agent (deployed as a systemd unit)
-- `scripts/install-agent.sh` — bootstrap script for a fresh node
+- `nodes/<node>/node.conf` — the node's start order (`ORDER=(…)`) and Docker networks (`network <name> <driver> [args…]`)
+- `nodes/node.sh` — shared lifecycle script, shipped in every bundle as `nodes/<node>/node.sh`: `start|stop|restart [stack…]`, `down <stack>`, `status`, `order`, `list`, `compose <stack> <args…>`. Every stack operation (by `home` or by hand) goes through it.
+- `scripts/bundle.Dockerfile` — the node bundle (FROM scratch: `nodes/<node>/` + `node.sh`)
+- `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups); released as `home-cli-v*` tags to the Homebrew tap
+- `webauthn-proxy/` — the passkey forward-auth proxy (image `ghcr.io/ashishbhatiya18/webauthn-proxy`)
 - `terraform/` — Cloudflare DNS, tunnel ingress, and Tailscale ACLs (HCP Terraform remote state)
 - `stackmgr-proxy/` — Go backend + Next.js frontend for a web UI to manage stacks
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, stackmgr.
+**Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, stackmgr.
 
-**Node cd**: network (traefik + pihole + dnsdist), localstack, citrusdental.
+**Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (dockerproxy + watchtower + arcane), citrusdental, costaebella, smiledesign.
 
-All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries.
+All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI/Terraform setup is in `docs/github-actions.md`.
 
 ## Networking
 
-Each node has two Docker networks:
+Networks used by stacks as `external`, declared in each `node.conf` and created by `node.sh start` before any stack starts:
 - `internal_bridge` — used by the network/reverse-proxy stack and all app stacks that need Traefik routing
 - `data-layer` (ab only) — isolated network for postgres/redis; only stacks that need DB access join it
-
-`nodes/<node>/networks.sh` creates these. They must exist before any stack starts.
+- `pihole_macvlan` (cd only) — Pi-hole's LAN address 10.10.10.10 on eth0
 
 ## Traefik routing pattern
 
@@ -39,17 +40,18 @@ Each node has two Docker networks:
 
 ## Deploying changes
 
-Push to `main`. The gitops-agent detects changed `compose.yaml` files and runs `docker compose up -d --remove-orphans` for each affected stack only. If the compose file has a `build:` directive, it rebuilds the image first.
+Push to `main`. `.github/workflows/node-bundles.yml` validates **every** compose file of each changed node and publishes its bundle (`:latest` and `:<sha>`). Then, from the Mac:
 
-To manually redeploy a stack on a node:
 ```sh
-docker compose -f /home/dietpi/localstack/repo/nodes/<node>/<stack>/compose.yaml up -d --remove-orphans
+home deploy [dietpi-l|dietpi|all] [--dry-run]   # sync changed files, start changed stacks in order,
+                                                 # health check, auto-rollback on failure
+home deploy <node> --rollback                    # previous release
+home jobs                                        # the background deploy job does this every 15 min
 ```
 
-To monitor the agent:
-```sh
-journalctl -u gitops-agent -f
-```
+(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode, stackmgr-proxy, webauthn-proxy) are built by their own workflows.
+
+On a node, by hand: `~/localstack/nodes/<node>/node.sh start|stop|restart|status [stack…]`. Deployed files are in `/home/dietpi/localstack/nodes/<node>/` (with `.release`), extracted bundles in `/home/dietpi/localstack/releases/`.
 
 ## Terraform
 
@@ -68,7 +70,9 @@ CI runs plan on PRs and plan+apply on pushes to `main`.
 
 `.github/workflows/validate.yml` runs on every push/PR:
 - **Compose validation**: runs `docker compose config --quiet` on any changed `compose.yaml`. Stub env files are generated automatically so missing secrets don't block validation.
-- **Shell lint**: `shellcheck scripts/*.sh`
+- **Shell lint**: `shellcheck nodes/node.sh`
+
+`node-bundles.yml` validates all compose files of a node again before publishing its bundle, so an invalid stack never reaches a node.
 
 Always ensure `docker compose -f nodes/<node>/<stack>/compose.yaml config` passes before pushing a compose change.
 
@@ -95,8 +99,8 @@ To add a service health check, edit `getHealthCheckEndpoints()` in `stackmgr-pro
 
 ## Files intentionally not in git
 
-- `nodes/ab/network/config/traefik/acme.json` — TLS certs (must be `chmod 600`)
-- `nodes/ab/network/config/oauth2-proxy/config.toml` real values (use `git update-index --skip-worktree` after filling in on node)
-- `nodes/ab/homeautomation/config/` — ESPHome device configs
-- `nodes/ab/syncthing/config/` — Syncthing state (partially committed)
-- `terraform/secrets.auto.tfvars` — Terraform variable values
+Everything node-local is outside the deployed files, under `/home/dietpi/localstack/` on the node:
+- `data/traefik/acme.json` — TLS certs (must be `chmod 600`), both nodes
+- `data/esphome/`, `data/syncthing/` (ab), `data/pihole/` (cd) — app state; the repo's `syncthing/config.xml.template` and `config/pihole/` only seed a new node
+- `secrets/` — env files, Docker secrets, and `secrets/oauth2-proxy/config.toml` (oauth2-proxy is disabled)
+- `terraform/secrets.auto.tfvars` (on the Mac) — Terraform variable values

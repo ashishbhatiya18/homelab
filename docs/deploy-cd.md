@@ -19,7 +19,7 @@ ssh dietpi@10.10.10.12
 
 docker version           # Docker Engine
 docker compose version   # Compose plugin (not standalone)
-git --version
+rsync --version | head -1
 ls /dev/net/tun          # required by Tailscale
 ```
 
@@ -32,43 +32,29 @@ sudo usermod -aG docker dietpi
 
 ---
 
-## Phase 1 — Git access (deploy key)
+## Phase 1 — Registry access
 
-Generate a read-only deploy key on the node:
+Each node runs from its **bundle** (`ghcr.io/ashishbhatiya18/node-cd`), published by
+`.github/workflows/node-bundles.yml` on every push to `main` that touches `nodes/`.
+There is no git checkout and no agent on the node: `home` (on your Mac) deploys over
+SSH. The node only needs a read-only GHCR login for private images:
+
 ```sh
-ssh-keygen -t ed25519 -C "cd-node-deploy" -f ~/.ssh/deploy_key -N ""
-cat ~/.ssh/deploy_key.pub   # copy this
-```
-
-Add the public key to the repo:
-**GitHub → repo → Settings → Deploy keys → Add deploy key**
-- Title: `cd-node`
-- Key: paste output above
-- Allow write access: **no**
-
-Configure SSH to use the key:
-```sh
-cat >> ~/.ssh/config <<'EOF'
-
-Host github.com
-  IdentityFile ~/.ssh/deploy_key
-  IdentitiesOnly yes
-EOF
-chmod 600 ~/.ssh/config
-```
-
-Test:
-```sh
-ssh -T git@github.com
-# Hi YOUR_USER/localstack! You've successfully authenticated...
+docker login ghcr.io -u ashishbhatiya18   # token with read:packages
 ```
 
 ---
 
-## Phase 2 — Clone the repo
+## Phase 2 — Add the node to `home` (on your Mac)
 
-```sh
-git clone git@github.com:YOUR_USER/localstack.git /home/dietpi/localstack/repo
+In `~/.config/home/config.yaml`:
+
+```yaml
+nodes:
+  - name: dietpi
+    ssh: dietpi@10.10.10.12
+    stacks_dir: /home/dietpi/localstack/nodes/cd
+    bundle: ghcr.io/ashishbhatiya18/node-cd
 ```
 
 ---
@@ -164,26 +150,17 @@ The full secrets layout:
       token.json
     slack/
       token.txt
-  gitops-agent.env          ← created automatically by install-agent.sh
 ```
 
 ---
 
-## Phase 4 — Bootstrap Docker networks
+## Phase 4 — Networks
 
-Networks are pre-created outside of any compose stack so startup order never matters.
-
-```sh
-bash /home/dietpi/localstack/repo/nodes/cd/networks.sh
-```
-
-Verify both are present:
-```sh
-docker network ls | grep -E "internal_bridge|pihole_macvlan"
-```
+Networks are declared in `nodes/cd/node.conf` and created by `node.sh start` (and so by
+`home deploy`) before any stack starts.
 
 > **Note:** The macvlan uses `parent=eth0`. If your LAN interface is named differently
-> (check with `ip link`), edit `nodes/cd/networks.sh` before running.
+> (check with `ip link`), change it in `nodes/cd/node.conf`.
 
 ---
 
@@ -201,65 +178,35 @@ chmod 600 /home/dietpi/localstack/data/traefik/acme.json
 Seed Pi-hole's state directory from the repo (Pi-hole owns it from then on):
 
 ```sh
-cp -a /home/dietpi/localstack/repo/nodes/cd/network/config/pihole /home/dietpi/localstack/data/pihole
+# after the first deploy has synced nodes/cd (or from the extracted release):
+cp -a /home/dietpi/localstack/nodes/cd/network/config/pihole /home/dietpi/localstack/data/pihole
 ```
 
 ---
 
-## Phase 6 — Deploy the network stack first
-
-The network stack (Traefik + Tailscale + Pi-hole) must be up before other stacks can be
-routed externally. Deploy it once manually before the gitops agent takes over.
+## Phase 6 — First deploy (from your Mac)
 
 ```sh
-docker compose \
-  -f /home/dietpi/localstack/repo/nodes/cd/network/compose.yaml \
-  up -d
-
-docker compose \
-  -f /home/dietpi/localstack/repo/nodes/cd/network/compose.yaml \
-  ps
+home deploy dietpi --dry-run   # what will start, in node.conf order
+home deploy dietpi
 ```
+
+This creates the node's networks (from `nodes/cd/node.conf`), syncs the bundle into
+`/home/dietpi/localstack/nodes/cd/` and starts every stack in start order, waiting for
+each to be healthy. After that, the `home` background job deploys new bundles by itself;
+`home deploy dietpi --rollback` returns to the previous release.
+
+On the node, `~/localstack/nodes/cd/node.sh start|stop|restart|status [stack…]` runs the
+same lifecycle by hand.
+
+---
 
 **Pi-hole note:** Pi-hole rewrites `pihole.toml` (password hash, settings) at runtime. That
-happens in `data/pihole/`, so the repo checkout stays clean and the gitops agent never
-touches it.
-
-Check Traefik is up and connected to Cloudflare DNS for ACME:
-```sh
-docker logs traefik 2>&1 | grep -i "acme\|certificate\|error" | tail -20
-```
+happens in `data/pihole/`, so a deploy never touches it.
 
 ---
 
-## Phase 7 — Install the gitops agent
-
-The install script clones the repo (or pulls if already cloned), writes the env file,
-installs two systemd units, and starts the agent.
-
-```sh
-bash /home/dietpi/localstack/repo/scripts/install-agent.sh \
-  git@github.com:YOUR_USER/localstack.git \
-  cd
-```
-
-Two units are installed:
-- `docker-networks.service` — runs `nodes/cd/networks.sh` on every boot before anything else
-- `gitops-agent.service` — polls git every 60 s, deploys changed stacks automatically
-
-Verify both are active:
-```sh
-systemctl status docker-networks.service
-systemctl status gitops-agent.service
-journalctl -u gitops-agent -f
-```
-
-The agent does a full deploy of all stacks on first start. Watch for `DEPLOY` lines — one
-per stack.
-
----
-
-## Phase 8 — Verify all containers
+## Phase 7 — Verify all containers
 
 ```sh
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
@@ -293,14 +240,15 @@ docker exec traefik traefik version
 
 ---
 
-## Phase 9 — GitOps workflow
+## Phase 8 — GitOps workflow
 
 From this point no manual deployments are needed.
 
 ```
 Edit compose or config in repo  →  git commit  →  git push main
-  └─► gitops-agent detects new commit within 60 s
-        └─► docker compose up -d  (changed stacks only)
+  └─► GitHub Actions: validate every compose file of the node, publish node-cd bundle
+        └─► home deploy job (every 15 min, from your Mac): sync changed files,
+            start changed stacks in order, health check, rollback on failure
 ```
 
 For Cloudflare DNS / cache rules:
@@ -315,9 +263,9 @@ Edit terraform/cloudflare.tf  →  git push main
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `Permission denied (publickey)` on clone | Deploy key not added to repo | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
-| `network internal_bridge not found` | networks.sh not run | `bash nodes/cd/networks.sh` |
+| `home deploy` cannot pull the bundle | No GHCR login on the node | `docker login ghcr.io` (read:packages token) |
+| `network internal_bridge not found` | Stack started without node.sh | `~/localstack/nodes/cd/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
-| macvlan creation fails | Wrong parent interface name | `ip link` to find correct name, edit `networks.sh` |
+| macvlan creation fails | Wrong parent interface name | `ip link` to find correct name, edit `node.conf` |
 | `api` or `peripheral` won't start | Missing secret file | Check `secrets/api/env`, `secrets/peripheral/env` and credential files exist |
-| Agent not deploying a stack | Syntax error in compose | Run `docker compose -f nodes/cd/<stack>/compose.yaml config` to validate |
+| A push is not deployed | Bundle build failed validation, or the Mac was asleep | Check the *Node bundles* run in Actions; `home jobs` / `home deploy dietpi` |

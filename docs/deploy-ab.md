@@ -56,7 +56,7 @@ ssh dietpi@10.10.10.11
 
 docker version
 docker compose version
-git --version
+rsync --version | head -1
 ls /dev/net/tun          # required by Tailscale
 ```
 
@@ -69,37 +69,29 @@ sudo usermod -aG docker dietpi
 
 ---
 
-## Phase 1 — Git access (deploy key)
+## Phase 1 — Registry access
+
+Each node runs from its **bundle** (`ghcr.io/ashishbhatiya18/node-ab`), published by
+`.github/workflows/node-bundles.yml` on every push to `main` that touches `nodes/`.
+There is no git checkout and no agent on the node: `home` (on your Mac) deploys over
+SSH. The node only needs a read-only GHCR login for private images:
 
 ```sh
-ssh-keygen -t ed25519 -C "ab-node-deploy" -f ~/.ssh/deploy_key -N ""
-cat ~/.ssh/deploy_key.pub   # copy this
-```
-
-Add to GitHub: **repo → Settings → Deploy keys → Add deploy key**
-- Title: `ab-node`
-- Key: paste above
-- Allow write access: **no**
-
-```sh
-cat >> ~/.ssh/config <<'EOF'
-
-Host github.com
-  IdentityFile ~/.ssh/deploy_key
-  IdentitiesOnly yes
-EOF
-chmod 600 ~/.ssh/config
-
-# Verify
-ssh -T git@github.com
+docker login ghcr.io -u ashishbhatiya18   # token with read:packages
 ```
 
 ---
 
-## Phase 2 — Clone the repo
+## Phase 2 — Add the node to `home` (on your Mac)
 
-```sh
-git clone git@github.com:YOUR_USER/localstack.git /home/dietpi/localstack/repo
+In `~/.config/home/config.yaml`:
+
+```yaml
+nodes:
+  - name: dietpi-l
+    ssh: dietpi@10.10.10.11
+    stacks_dir: /home/dietpi/localstack/nodes/ab
+    bundle: ghcr.io/ashishbhatiya18/node-ab
 ```
 
 ---
@@ -285,7 +277,6 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
   ab-rustpad.env
   ab-excalidraw.env
   ab-homeautomation.env
-  gitops-agent.env          ← created by install-agent.sh
 ```
 
 ---
@@ -297,7 +288,7 @@ secrets directory and fill in the real values there (the repo checkout stays unt
 
 ```sh
 mkdir -p /home/dietpi/localstack/secrets/oauth2-proxy
-cp /home/dietpi/localstack/repo/nodes/ab/network/config/oauth2-proxy/config.toml \
+cp /home/dietpi/localstack/nodes/ab/network/config/oauth2-proxy/config.toml \
    /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
 chmod 600 /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
 nano /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
@@ -312,18 +303,7 @@ nano /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
 
 ---
 
-## Phase 5 — Bootstrap Docker networks
-
-```sh
-bash /home/dietpi/localstack/repo/nodes/ab/networks.sh
-
-# Verify
-docker network ls | grep -E "internal_bridge|data-layer"
-```
-
----
-
-## Phase 6 — Create Traefik acme.json
+## Phase 5 — Create Traefik acme.json
 
 Traefik requires this file with strict permissions. It is node state, so it lives in
 `data/`, outside the repo checkout.
@@ -336,42 +316,24 @@ chmod 600 /home/dietpi/localstack/data/traefik/acme.json
 
 ---
 
-## Phase 7 — Deploy the network stack first
+## Phase 7 — First deploy (from your Mac)
 
 ```sh
-docker compose \
-  -f /home/dietpi/localstack/repo/nodes/ab/network/compose.yaml \
-  up -d
-
-docker compose \
-  -f /home/dietpi/localstack/repo/nodes/ab/network/compose.yaml \
-  ps
+home deploy dietpi-l --dry-run   # what will start, in node.conf order
+home deploy dietpi-l
 ```
 
-Verify Traefik is issuing certificates and cloudflared connects:
-```sh
-docker logs traefik    2>&1 | grep -i "acme\|certificate\|error" | tail -20
-docker logs cloudflared 2>&1 | tail -20
-```
+This creates the node's networks (from `nodes/ab/node.conf`), syncs the bundle into
+`/home/dietpi/localstack/nodes/ab/` and starts every stack in start order, waiting for
+each to be healthy. After that, the `home` background job deploys new bundles by itself;
+`home deploy dietpi-l --rollback` returns to the previous release.
+
+On the node, `~/localstack/nodes/ab/node.sh start|stop|restart|status [stack…]` runs the
+same lifecycle by hand.
 
 ---
 
-## Phase 8 — Install the gitops agent
-
-```sh
-bash /home/dietpi/localstack/repo/scripts/install-agent.sh \
-  git@github.com:YOUR_USER/localstack.git \
-  ab
-```
-
-Monitor the first full deploy:
-```sh
-journalctl -u gitops-agent -f
-```
-
----
-
-## Phase 9 — Verify all containers
+## Phase 8 — Verify all containers
 
 ```sh
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
@@ -400,11 +362,11 @@ rustpad
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `Permission denied (publickey)` on clone | Deploy key not added | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
-| `network internal_bridge not found` | networks.sh not run | `bash nodes/ab/networks.sh` |
+| `home deploy` cannot pull the bundle | No GHCR login on the node | `docker login ghcr.io` (read:packages token) |
+| `network internal_bridge not found` | Stack started without node.sh | `~/localstack/nodes/ab/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
 | cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
-| oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values, mark skip-worktree |
+| oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values in `secrets/oauth2-proxy/config.toml` |
 | Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
 | Vaultwarden fails to connect to DB | `DATABASE_URL` password mismatch | Must match password used in `CREATE ROLE vaultwarden` |
 | ESPHome config missing | `/home/dietpi/localstack/data/esphome/` not restored | Restore from backup (kopia) |
