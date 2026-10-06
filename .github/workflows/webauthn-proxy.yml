@@ -1,0 +1,77 @@
+# webauthn-proxy: test on every change; on main, push a multi-arch image to
+# ghcr.io/ashishbhatiya18/webauthn-proxy (:latest + :<sha>), which node ab pulls.
+# A webauthn-proxy-vX.Y.Z tag additionally publishes :X.Y.Z / :X.Y / :X.
+name: webauthn-proxy
+
+on:
+  push:
+    branches: [main]
+    tags: ["webauthn-proxy-v*"]
+    paths:
+      - webauthn-proxy/**
+      - .github/workflows/webauthn-proxy.yml
+  pull_request:
+    paths:
+      - webauthn-proxy/**
+      - .github/workflows/webauthn-proxy.yml
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/ashishbhatiya18/webauthn-proxy
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webauthn-proxy
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: webauthn-proxy/go.mod
+          cache-dependency-path: webauthn-proxy/go.sum
+      - run: go vet ./...
+      - run: go test -race -count=1 ./...
+      - run: go build ./...
+
+  image:
+    name: Image
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/metadata-action@v6
+        id: meta
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,format=long,prefix=
+            type=match,pattern=webauthn-proxy-v(\d+\.\d+\.\d+),group=1
+            type=match,pattern=webauthn-proxy-v(\d+\.\d+)\.\d+,group=1
+            type=match,pattern=webauthn-proxy-v(\d+)\.\d+\.\d+,group=1
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: webauthn-proxy
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=webauthn-proxy
+          cache-to: type=gha,mode=max,scope=webauthn-proxy

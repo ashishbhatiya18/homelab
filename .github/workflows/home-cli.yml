@@ -1,0 +1,163 @@
+# home-cli: test on every change. On a home-cli-vX.Y.Z tag: build the macOS
+# binaries, publish them as a GitHub release, and rewrite Formula/home.rb in
+# ashishbhatiya18/homebrew-tap to download them (`brew install
+# ashishbhatiya18/tap/home` is unchanged for users).
+#
+# Pushing to the tap uses a deploy key that can write to that one repository
+# only: the private half is the TAP_DEPLOY_KEY secret of this repository, the
+# public half is a read-write deploy key on homebrew-tap.
+#
+# Every release step is idempotent, so it can be re-run by hand for an
+# existing tag (Actions → home-cli → Run workflow).
+name: home-cli
+
+on:
+  push:
+    branches: [main]
+    tags: ["home-cli-v*"]
+    paths:
+      - home-cli/**
+      - .github/workflows/home-cli.yml
+  pull_request:
+    paths:
+      - home-cli/**
+      - .github/workflows/home-cli.yml
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (e.g. home-cli-v0.3.2)"
+        required: true
+
+jobs:
+  test:
+    # macOS: home shells out to osascript/security and its tests expect it.
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: home-cli
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: home-cli/go.mod
+          cache-dependency-path: home-cli/go.sum
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build -o home ./cmd/home && ./home version
+
+  release:
+    needs: test
+    if: startsWith(inputs.tag || github.ref_name, 'home-cli-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: home-cli/go.mod
+          cache-dependency-path: home-cli/go.sum
+
+      - name: Build macOS binaries
+        working-directory: home-cli
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#home-cli-v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p ../dist
+          for arch in arm64 amd64; do
+            CGO_ENABLED=0 GOOS=darwin GOARCH=$arch \
+              go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "build/$arch/home" ./cmd/home
+            tar -C "build/$arch" -czf "../dist/home_darwin_$arch.tar.gz" home
+          done
+          cd ../dist && shasum -a 256 *.tar.gz > checksums.txt && cat checksums.txt
+
+      - name: Create GitHub release (if missing)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+            exit 0
+          fi
+          # Notes: home-cli commits since the previous home-cli release only.
+          PREV=$(git tag --list 'home-cli-v*' --sort=-v:refname | grep -vx "$TAG" | head -1 || true)
+          git log --format='- %s' ${PREV:+$PREV..}"$TAG" -- home-cli > notes.md
+          gh release create "$TAG" dist/* --title "home $VERSION" --notes-file notes.md --verify-tag
+
+      - name: Update formula in the tap
+        env:
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$TAP_DEPLOY_KEY" > ~/.ssh/tap_key && chmod 600 ~/.ssh/tap_key
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone git@github.com:ashishbhatiya18/homebrew-tap.git tap
+
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          sha() { awk -v f="home_darwin_$1.tar.gz" '$2 == f { print $1 }' dist/checksums.txt; }
+          cat > tap/Formula/home.rb <<RUBY
+          class Home < Formula
+            desc "Run your homelab from your Mac: nodes, stacks, upgrades and encrypted backups"
+            homepage "https://github.com/${GITHUB_REPOSITORY}/tree/main/home-cli"
+            version "${VERSION}"
+            license "MIT"
+
+            on_arm do
+              url "${base}/home_darwin_arm64.tar.gz"
+              sha256 "$(sha arm64)"
+            end
+            on_intel do
+              url "${base}/home_darwin_amd64.tar.gz"
+              sha256 "$(sha amd64)"
+            end
+
+            depends_on "libpq" # pg_restore/psql/pg_dump for backup validation and restores
+
+            def install
+              bin.install "home"
+            end
+
+            # Started by \`home install\`. Runs at login and every 15 minutes; home decides
+            # whether the daily backups and the daily node check are due.
+            service do
+              run [opt_bin/"home", "run"]
+              run_type :interval
+              interval 900
+              environment_variables PATH: "#{HOMEBREW_PREFIX}/bin:#{HOMEBREW_PREFIX}/opt/libpq/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+              log_path var/"log/home.log"
+              error_log_path var/"log/home.log"
+            end
+
+            def caveats
+              <<~EOS
+                Run \`home\` to set up your nodes and \`home br setup\` for backups, then
+                \`home install\` to run daily backups and node checks in the background.
+                Coming from hbr? \`home br\` picks up your hbr settings automatically.
+              EOS
+            end
+
+            test do
+              assert_match "home", shell_output("#{bin}/home version")
+            end
+          end
+          RUBY
+
+          cd tap
+          if git diff --quiet; then
+            echo "Formula already points at ${TAG}; nothing to do."
+            exit 0
+          fi
+          git config user.name "home release bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -am "home ${VERSION}"
+          git push

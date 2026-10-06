@@ -1,0 +1,47 @@
+# Builds nodes/ab/kopia into ghcr.io/ashishbhatiya18/homelab-kopia so the gitops
+# agent on node ab only pulls (no image builds on the node).
+name: Build kopia
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - nodes/ab/kopia/**
+      - "!nodes/ab/kopia/compose.yaml"
+      - .github/workflows/build-kopia.yml
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/ashishbhatiya18/homelab-kopia
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: nodes/ab/kopia
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=kopia
+          cache-to: type=gha,mode=max,scope=kopia

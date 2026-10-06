@@ -1,17 +1,25 @@
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: /
+    directory: /webauthn-proxy
     schedule:
       interval: weekly
     groups:
-      all-go:
+      webauthn-proxy-go:
         patterns: ["*"]
 
   - package-ecosystem: docker
-    directory: /
+    directory: /webauthn-proxy
     schedule:
       interval: weekly
+
+  - package-ecosystem: gomod
+    directory: /home-cli
+    schedule:
+      interval: weekly
+    groups:
+      home-cli-go:
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /

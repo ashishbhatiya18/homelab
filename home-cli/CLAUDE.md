@@ -23,7 +23,7 @@ HOME_BR_PASSPHRASE=…           # test-only: answers the backup-password prompt
 
 All prompts read `/dev/tty`, so interactive flows (`home setup`, `home br setup`) can't be driven by piping stdin; use `expect`.
 
-Releasing: push a `vX.Y.Z` tag. `.github/workflows/release.yml` runs vet/tests, creates the GitHub release, and rewrites `url`/`sha256` in `Formula/home.rb` in the tap repo using the `TAP_DEPLOY_KEY` secret (a write deploy key scoped to the tap). It can be re-run by hand for an existing tag (`workflow_dispatch`, input `tag`) and is idempotent.
+This project lives in `home-cli/` of the homelab repo. Releasing: push a `home-cli-vX.Y.Z` tag. `.github/workflows/home-cli.yml` (repo root) runs vet/tests, cross-builds `home` for darwin arm64/amd64, attaches the archives to a GitHub release, and rewrites `Formula/home.rb` in the tap repo (prebuilt binaries via `on_arm`/`on_intel`, explicit `version`) using the `TAP_DEPLOY_KEY` secret (a write deploy key scoped to the tap). It can be re-run by hand for an existing tag (`workflow_dispatch`, input `tag`) and is idempotent.
 
 ## Architecture
 
