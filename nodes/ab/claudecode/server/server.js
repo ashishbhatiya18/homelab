@@ -6,6 +6,7 @@ const path = require('path');
 const crypto = require('crypto');
 const WebSocket = require('ws');
 const pty = require('node-pty');
+const share = require('./lib/share');
 
 const PORT = Number(process.env.PORT || 7681);
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -18,6 +19,11 @@ const TERMINAL_CWD = process.env.TERMINAL_CWD || process.env.HOME || '/workspace
 // memory unbounded, and a connection loop can't fork unlimited PTYs/processes.
 const MAX_WS_PAYLOAD_BYTES = Number(process.env.MAX_WS_PAYLOAD_BYTES || 64 * 1024);
 const MAX_CONCURRENT_SESSIONS = Number(process.env.MAX_CONCURRENT_SESSIONS || 8);
+// Origins allowed to open /ws. Defaults to the page's own host, which is all
+// the terminal UI needs. Documents served from /share/raw run in a CSP
+// sandbox and send "Origin: null", so this is also what stops a published
+// HTML page from driving the shell.
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -70,8 +76,25 @@ function serveStatic(req, res) {
   });
 }
 
-const server = http.createServer(serveStatic);
-const wss = new WebSocket.Server({ server, path: '/ws', maxPayload: MAX_WS_PAYLOAD_BYTES });
+function isAllowedOrigin({ origin, req }) {
+  if (ALLOWED_ORIGINS.length) return ALLOWED_ORIGINS.includes(origin);
+  const host = req.headers.host;
+  return Boolean(host) && (origin === `https://${host}` || origin === `http://${host}`);
+}
+
+const server = http.createServer((req, res) => {
+  if (!share.handle(req, res)) serveStatic(req, res);
+});
+const wss = new WebSocket.Server({
+  server,
+  path: '/ws',
+  maxPayload: MAX_WS_PAYLOAD_BYTES,
+  verifyClient: (info) => {
+    const ok = isAllowedOrigin(info);
+    if (!ok) console.warn(`rejecting websocket from origin ${JSON.stringify(info.origin)}`);
+    return ok;
+  },
+});
 
 let activeSessions = 0;
 

@@ -38,7 +38,8 @@ html, body {
 #status.disconnected { color: #f85149; }
 #status.reconnecting { color: #d29922; }
 
-#toolbar button {
+#toolbar button,
+#toolbar a {
   background: #21262d;
   color: #c9d1d9;
   border: 1px solid #30363d;
@@ -47,9 +48,11 @@ html, body {
   font-size: 12px;
   cursor: pointer;
   margin-left: 6px;
+  text-decoration: none;
 }
 
-#toolbar button:hover {
+#toolbar button:hover,
+#toolbar a:hover {
   background: #30363d;
 }
 

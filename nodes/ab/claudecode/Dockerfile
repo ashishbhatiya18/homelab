@@ -45,9 +45,14 @@ RUN npm install --omit=dev \
         @xterm/addon-search@0.16.0 \
         @xterm/addon-unicode11@0.9.0 \
         @xterm/addon-webgl@0.19.0 \
-        @xterm/addon-serialize@0.14.0
+        @xterm/addon-serialize@0.14.0 \
+        marked@18.1.0 \
+        dompurify@3.4.16 \
+        @highlightjs/cdn-assets@11.12.0
 
 COPY server/server.js ./
+COPY server/lib ./lib
+COPY server/hooks ./hooks
 COPY server/public ./public
 
 # Vendor the xterm.js frontend assets into public/vendor so nothing is
@@ -63,7 +68,11 @@ RUN mkdir -p public/vendor \
     && cp node_modules/@xterm/addon-unicode11/lib/addon-unicode11.js public/vendor/ \
     && cp node_modules/@xterm/addon-webgl/lib/addon-webgl.js public/vendor/ \
     && cp node_modules/@xterm/addon-serialize/lib/addon-serialize.js public/vendor/ \
-    && rm -rf node_modules/@xterm
+    && cp node_modules/marked/lib/marked.umd.js public/vendor/ \
+    && cp node_modules/dompurify/dist/purify.min.js public/vendor/ \
+    && cp node_modules/@highlightjs/cdn-assets/highlight.min.js public/vendor/ \
+    && cp node_modules/@highlightjs/cdn-assets/styles/github-dark.min.css public/vendor/ \
+    && rm -rf node_modules/@xterm node_modules/marked node_modules/dompurify node_modules/@highlightjs
 
 FROM node:20-bookworm-slim
 
@@ -83,8 +92,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # node:20-bookworm-slim already ships a non-root "node" user at uid/gid
 # 1000 — reused here so it matches PUID=1000 used by the codeserver stack
 # that shares the /home/dietpi/repos workspace.
-RUN mkdir -p /workspace /app \
-    && chown -R node:node /workspace /app /home/node
+RUN mkdir -p /workspace /app /share \
+    && chown -R node:node /workspace /app /home/node /share
+
+# Managed (system-wide, non-overridable) Claude Code config: registers the
+# SessionStart hook that sets up each session's share space, grants access to
+# /share, and adds the "Share space" rules. Baked into the image so it's
+# versioned here rather than living in the ~/.claude volume.
+COPY server/managed/managed-settings.json server/managed/CLAUDE.md /etc/claude-code/
 
 # Only /home/node/.claude (session/auth state) is meant to be bind-mounted
 # at runtime — NOT all of /home/node, which would shadow .local/bin below.
@@ -97,6 +112,7 @@ ENV HOME=/home/node
 ENV PATH="/home/node/.local/bin:${PATH}"
 ENV PORT=7681
 ENV TERMINAL_CWD=/workspace
+ENV SHARE_DIR=/share
 EXPOSE 7681
 
 ENTRYPOINT ["node", "/app/server.js"]

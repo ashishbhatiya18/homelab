@@ -27,9 +27,17 @@ services:
       # behind the passkey gate). Raise if you regularly need more than this
       # many simultaneous terminal tabs/connections open at once.
       - MAX_CONCURRENT_SESSIONS=8
+      # Public URL of the share viewer (served by this same container at
+      # /share) — injected into each Claude session by the SessionStart hook.
+      - SHARE_BASE_URL=https://term.ab18.in/share
     volumes:
       - /home/dietpi/localstack/data/claudecode_claude:/home/node/.claude
       - /home/dietpi/repos:/workspace
+      # Documents Claude publishes per session, shown at term.ab18.in/share.
+      # Create it owned by uid 1000 before first deploy, or Docker creates it
+      # as root and the container can't write to it:
+      #   mkdir -p /home/dietpi/localstack/data/claudecode_share && chown 1000:1000 $_
+      - /home/dietpi/localstack/data/claudecode_share:/share
     networks:
       - network-layer
     labels:

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "additionalDirectories": ["/share"]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node /app/hooks/session-start.js",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}
