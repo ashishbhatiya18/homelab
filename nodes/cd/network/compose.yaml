@@ -13,7 +13,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml
       - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
-      - ./config/traefik/acme.json:/etc/acme/acme.json
+      - /home/dietpi/localstack/data/traefik/acme.json:/etc/acme/acme.json
     environment:
       - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token
     labels:
@@ -105,7 +105,9 @@ services:
       - CAP_SYS_TIME
       - NET_ADMIN
     volumes:
-      - ./config/pihole:/etc/pihole
+      # Pi-hole rewrites everything in /etc/pihole at runtime, so it is node
+      # state in data/. The files in ./config/pihole only seed a new node.
+      - /home/dietpi/localstack/data/pihole:/etc/pihole
       - ./config/pihole/dnsmasq.d:/etc/dnsmasq.d
     secrets:
       - pihole_web_password

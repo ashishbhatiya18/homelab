@@ -189,11 +189,19 @@ docker network ls | grep -E "internal_bridge|pihole_macvlan"
 
 ## Phase 5 — Create Traefik acme.json
 
-Traefik requires this file to exist with strict permissions before it starts. It is gitignored.
+Traefik requires this file to exist with strict permissions before it starts. It is node
+state, so it lives in `data/`, outside the repo checkout.
 
 ```sh
-touch /home/dietpi/localstack/repo/nodes/cd/network/config/traefik/acme.json
-chmod 600 /home/dietpi/localstack/repo/nodes/cd/network/config/traefik/acme.json
+mkdir -p /home/dietpi/localstack/data/traefik
+touch /home/dietpi/localstack/data/traefik/acme.json
+chmod 600 /home/dietpi/localstack/data/traefik/acme.json
+```
+
+Seed Pi-hole's state directory from the repo (Pi-hole owns it from then on):
+
+```sh
+cp -a /home/dietpi/localstack/repo/nodes/cd/network/config/pihole /home/dietpi/localstack/data/pihole
 ```
 
 ---
@@ -213,13 +221,9 @@ docker compose \
   ps
 ```
 
-**Pi-hole first-start note:** Pi-hole writes a password hash into `config/pihole/pihole.toml`
-on first start. To prevent the gitops agent from overwriting this on every sync:
-
-```sh
-git -C /home/dietpi/localstack/repo \
-  update-index --skip-worktree nodes/cd/network/config/pihole/pihole.toml
-```
+**Pi-hole note:** Pi-hole rewrites `pihole.toml` (password hash, settings) at runtime. That
+happens in `data/pihole/`, so the repo checkout stays clean and the gitops agent never
+touches it.
 
 Check Traefik is up and connected to Cloudflare DNS for ACME:
 ```sh
@@ -313,8 +317,7 @@ Edit terraform/cloudflare.tf  →  git push main
 |---|---|---|
 | `Permission denied (publickey)` on clone | Deploy key not added to repo | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
 | `network internal_bridge not found` | networks.sh not run | `bash nodes/cd/networks.sh` |
-| Traefik fails to start | `acme.json` missing or wrong permissions | `touch ... acme.json && chmod 600 ...` |
-| Pi-hole keeps losing password | pwhash overwritten by git reset | `git update-index --skip-worktree nodes/cd/network/config/pihole/pihole.toml` |
+| Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
 | macvlan creation fails | Wrong parent interface name | `ip link` to find correct name, edit `networks.sh` |
 | `api` or `peripheral` won't start | Missing secret file | Check `secrets/api/env`, `secrets/peripheral/env` and credential files exist |
 | Agent not deploying a stack | Syntax error in compose | Run `docker compose -f nodes/cd/<stack>/compose.yaml config` to validate |
