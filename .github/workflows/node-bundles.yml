@@ -1,0 +1,111 @@
+# Publishes one bundle per node — ghcr.io/ashishbhatiya18/node-<node>
+# (:latest + :<commit sha>) — holding that node's stacks, node.conf and
+# node.sh. `home deploy` rolls a bundle out to its node over SSH, so a node
+# never needs a git checkout. Every compose file of the node is validated
+# first: an invalid stack never reaches a node.
+name: Node bundles
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - nodes/**
+      - scripts/bundle.Dockerfile*
+      - .github/workflows/node-bundles.yml
+  workflow_dispatch:
+    inputs:
+      node:
+        description: "Node to publish"
+        required: true
+        type: choice
+        options: [both, ab, cd]
+
+# Publish releases in commit order: a slower older run must never overwrite
+# :latest after a newer one.
+concurrency:
+  group: node-bundles
+  cancel-in-progress: false
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      nodes: ${{ steps.pick.outputs.nodes }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: pick
+        env:
+          BEFORE: ${{ github.event.before }}
+          INPUT_NODE: ${{ inputs.node }}
+        run: |
+          set -euo pipefail
+          all='["ab","cd"]'
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            if [[ "$INPUT_NODE" == both ]]; then echo "nodes=$all"; else echo "nodes=[\"$INPUT_NODE\"]"; fi >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # Unknown base (new branch / force push): publish both.
+          if ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "nodes=$all" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          files=$(git diff --name-only "$BEFORE" "$GITHUB_SHA")
+          # Shared files (nodes/node.sh, the bundle definition, this
+          # workflow) ship to every node.
+          if grep -qvE '^nodes/[^/]+/' <<< "$files"; then
+            echo "nodes=$all" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          nodes=$(grep -oE '^nodes/[^/]+' <<< "$files" | cut -d/ -f2 | sort -u | jq -Rnc '[inputs]')
+          echo "nodes=$nodes" >> "$GITHUB_OUTPUT"
+
+  bundle:
+    needs: changes
+    if: needs.changes.outputs.nodes != '[]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ${{ fromJSON(needs.changes.outputs.nodes) }}
+    env:
+      IMAGE: ghcr.io/ashishbhatiya18/node-${{ matrix.node }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate every compose file of node ${{ matrix.node }}
+        run: |
+          set -euo pipefail
+          sudo pip install pyyaml -q
+          files=$(find "nodes/${{ matrix.node }}" -name compose.yaml | sort)
+          # shellcheck disable=SC2086
+          sudo python3 scripts/stub_envfiles.py $files
+          rc=0
+          for f in $files; do
+            docker compose -f "$f" config --quiet || { echo "::error file=$f::invalid compose file"; rc=1; }
+          done
+          exit $rc
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v4
+
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: scripts/bundle.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            NODE=${{ matrix.node }}
+            REVISION=${{ github.sha }}
+          push: true
+          provenance: false
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}

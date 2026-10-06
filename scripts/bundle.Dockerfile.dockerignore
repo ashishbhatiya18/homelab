@@ -1,0 +1,3 @@
+# Build context is the repo root; only node files may enter a node bundle.
+*
+!nodes/
