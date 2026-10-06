@@ -1,9 +1,8 @@
 services:
   claudecode:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: claudecode:latest
+    # Built by .github/workflows/build-claudecode.yml from this directory
+    # (private image: it contains the Claude Code binary).
+    image: ghcr.io/ashishbhatiya18/claudecode:latest
     container_name: claudecode
     restart: always
     user: "1000:1000"
@@ -17,7 +16,8 @@ services:
     environment:
       - TZ=Asia/Kolkata
       # Root filesystem is read-only, so the self-updater can't write to
-      # ~/.local/bin — updates are handled by rebuilding the image instead.
+      # ~/.local/bin — updates come from rebuilding the image instead
+      # (Actions → Build claudecode → Run workflow, then pull on the node).
       - DISABLE_AUTOUPDATER=1
       # Makes claude-code write .claude.json inside the ~/.claude volume
       # below, instead of a separate top-level ~/.claude.json that would
