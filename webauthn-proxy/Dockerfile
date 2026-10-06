@@ -1,6 +1,6 @@
 # The builder runs on the CI host's own architecture and cross-compiles for the
 # target, so multi-arch builds need no QEMU emulation.
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS builder
 ARG TARGETOS TARGETARCH
 WORKDIR /src
 COPY go.mod go.sum ./
