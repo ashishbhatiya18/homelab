@@ -46,8 +46,14 @@ Overview:
   home status                       nodes: OS/DietPi, pending updates, reboot, disk, problems
   home stacks [node]                stacks with health and available image updates
   home check                        full check now (refreshes package lists); notifies
-  home doctor [node]                drift and risks: GitOps, restart policies, log growth,
-                                    inline secrets, TLS and Tailscale expiry, Watchtower mode
+  home doctor [node]                drift and risks: deployed release, restart policies, log
+                                    growth, inline secrets, TLS and Tailscale expiry, Watchtower mode
+
+Deploy (node bundles):
+  home deploy [node|all] [--dry-run] [--yes]   roll out the newest bundle: sync files, start
+                                    changed stacks in order, verify health; auto-rollback
+  home deploy <node> --tag <sha>    deploy a specific bundle (a commit)
+  home deploy <node> --rollback     back to the release deployed before the current one
 
 Stacks:
   home stack list [node] [--updates]         every stack with health (--updates: check images)
@@ -74,14 +80,18 @@ Upgrade:
 Backups:
   home br …                         encrypted Postgres backups (see ` + "`home br help`" + `)
 
+Background jobs:
+  home jobs                         backup, check, deploy, cleanup: schedule and last run
+  home jobs run <job>               run one now
+
 Setup:
   home registry login <host>        read-only login to check private images (Keychain)
   home setup                        nodes and stacks (runs automatically the first time)
-  home install | uninstall          background service: daily backups + daily node check
+  home install | uninstall          background service (every 15 min) running the jobs
   home version
 `
 
-func init() { check.Creds = registryCreds }
+func init() { check.Creds, doctor.Creds = registryCreds, registryCreds }
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -188,7 +198,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 		if err := service.Install(); err != nil {
 			return err
 		}
-		fmt.Println("✓ home runs in the background: daily backups (home br) and a daily node check.")
+		fmt.Println("✓ home runs in the background every 15 minutes: backups, the daily node check,")
+		fmt.Println("  bundle deploys and (if enabled) cleanup — see `home jobs`.")
 		fmt.Println("  Manage it with `brew services info|restart|stop home` or `home uninstall`.")
 		return nil
 	case "uninstall":
@@ -240,11 +251,16 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return a.nodeCmd(ctx, args)
 	case "upgrade":
 		return a.upgrade(ctx, args)
+	case "deploy":
+		return a.deployCmd(ctx, args)
+	case "jobs":
+		return a.jobsCmd(ctx, args)
 	}
 	return fmt.Errorf("unknown command %q — see `home help`", cmd)
 }
 
-// scheduled is the service entry point: daily backups and the daily check.
+// scheduled is the service entry point (every 15 minutes): backups and the
+// daily check when due, bundle deploys, and the daily cleanup when enabled.
 func scheduled(ctx context.Context) error {
 	var errs []string
 	if err := brcli.Scheduled(ctx); err != nil {
@@ -255,8 +271,16 @@ func scheduled(ctx context.Context) error {
 		if err != nil {
 			notify.Send("home: node check cannot run", err.Error())
 			errs = append(errs, err.Error())
-		} else if err := check.Daily(ctx, a.cfg, a.r, log.Printf); err != nil {
-			errs = append(errs, "check: "+err.Error())
+		} else {
+			if err := a.deployJob(ctx); err != nil {
+				errs = append(errs, "deploy: "+err.Error())
+			}
+			if err := check.Daily(ctx, a.cfg, a.r, log.Printf); err != nil {
+				errs = append(errs, "check: "+err.Error())
+			}
+			if err := a.cleanupJob(ctx, false); err != nil {
+				errs = append(errs, "cleanup: "+err.Error())
+			}
 		}
 	}
 	if len(errs) > 0 {
@@ -477,12 +501,11 @@ func (a *app) stackExec(ctx context.Context, action string, args []string) error
 	if err != nil {
 		return err
 	}
-	file := remote.Quote(s.Dir + "/" + s.Name + "/compose.yaml")
 	svc := ""
 	if len(before) == 2 {
 		svc = before[1]
 	} else {
-		out, err := a.r.Output(ctx, s.Node, "docker compose -f "+file+" ps --services --status running")
+		out, err := a.r.Output(ctx, s.Node, stack.ComposeCmd(s.Dir, s.Name, "ps", "--services", "--status", "running"))
 		if err != nil {
 			return err
 		}
@@ -507,20 +530,17 @@ func (a *app) stackExec(ctx context.Context, action string, args []string) error
 	if action == "shell" && !tty {
 		return errors.New("home stack shell needs an interactive terminal; use `home stack exec … -- <command>` in scripts")
 	}
-	remoteCmd := "docker compose -f " + file + " exec "
+	execArgs := []string{"exec"}
 	if !tty {
-		remoteCmd += "-T "
+		execArgs = append(execArgs, "-T")
 	}
-	remoteCmd += remote.Quote(svc) + " "
+	execArgs = append(execArgs, svc)
 	if action == "shell" {
-		remoteCmd += `sh -c 'command -v bash >/dev/null 2>&1 && exec bash || exec sh'`
+		execArgs = append(execArgs, "sh", "-c", "command -v bash >/dev/null 2>&1 && exec bash || exec sh")
 	} else {
-		q := make([]string, len(cmd))
-		for i, c := range cmd {
-			q[i] = remote.Quote(c)
-		}
-		remoteCmd += strings.Join(q, " ")
+		execArgs = append(execArgs, cmd...)
 	}
+	remoteCmd := stack.ComposeCmd(s.Dir, s.Name, execArgs...)
 	if !tty {
 		return a.r.Run(ctx, s.Node, remoteCmd, os.Stdin, os.Stdout)
 	}
@@ -933,7 +953,8 @@ func reorder(args []string) []string {
 	for i := 0; i < len(args); i++ {
 		if strings.HasPrefix(args[i], "-") {
 			flags = append(flags, args[i])
-			if args[i] == "--tail" || args[i] == "-tail" {
+			switch args[i] {
+			case "--tail", "-tail", "--tag", "-tag", "--rollback-days", "-rollback-days":
 				if i+1 < len(args) {
 					flags = append(flags, args[i+1])
 					i++

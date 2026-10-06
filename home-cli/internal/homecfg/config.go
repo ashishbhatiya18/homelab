@@ -30,6 +30,7 @@ type Config struct {
 	Nodes   []Node  `yaml:"nodes"`
 	Upgrade Upgrade `yaml:"upgrade"`
 	Checks  Checks  `yaml:"checks"`
+	Jobs    Jobs    `yaml:"jobs,omitempty"`
 	// Hooks run before a stack update, keyed by "node/stack". Each entry is a
 	// `home` command line, e.g. "br backup myapp".
 	Hooks map[string][]string `yaml:"pre_update_hooks,omitempty"`
@@ -40,6 +41,10 @@ type Node struct {
 	SSH  string `yaml:"ssh"`
 	// StacksDir holds one directory per stack, each with a compose file.
 	StacksDir string `yaml:"stacks_dir"`
+	// Bundle is the image `home deploy` rolls out to this node (e.g.
+	// ghcr.io/me/node-ab): a FROM-scratch image holding nodes/<name>/, where
+	// <name> is the last element of StacksDir. Empty: no bundle deploys.
+	Bundle string `yaml:"bundle,omitempty"`
 }
 
 type Upgrade struct {
@@ -59,6 +64,20 @@ type Checks struct {
 	// NotifyWhenClear also notifies when nothing needs attention.
 	NotifyWhenClear *bool `yaml:"notify_when_clear,omitempty"`
 }
+
+// Jobs switches the background service's optional jobs (`home run`, every
+// 15 minutes) on or off; backups and the daily check always run.
+type Jobs struct {
+	// Deploy rolls out new node bundles on every run (default on; only
+	// nodes with a bundle are affected).
+	Deploy *bool `yaml:"deploy,omitempty"`
+	// Cleanup reclaims unused images and caches on every node once a day,
+	// after checks.daily_at (default off).
+	Cleanup *bool `yaml:"cleanup,omitempty"`
+}
+
+func (j Jobs) DeployOn() bool  { return j.Deploy == nil || *j.Deploy }
+func (j Jobs) CleanupOn() bool { return j.Cleanup != nil && *j.Cleanup }
 
 func (c Checks) WhenClear() bool { return c.NotifyWhenClear == nil || *c.NotifyWhenClear }
 

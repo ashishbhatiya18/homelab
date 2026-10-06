@@ -58,17 +58,30 @@ type Manager struct {
 
 func composeFile(dir, name string) string { return dir + "/" + name + "/compose.yaml" }
 
-func (m *Manager) compose(ctx context.Context, n, dir, name string, out io.Writer, args ...string) error {
-	q := []string{"docker", "compose", "-f", remote.Quote(composeFile(dir, name))}
-	for _, a := range args {
-		q = append(q, remote.Quote(a))
+// nodeScript is the stacks dir's node.sh. When a node has one, every stack
+// operation goes through it (`node.sh compose <stack> …` for plain compose
+// commands); without it, compose is called directly.
+func nodeScript(dir string) string { return dir + "/node.sh" }
+
+// ComposeCmd is the remote command running `docker compose <args>` for one
+// stack, via node.sh when the node has it.
+func ComposeCmd(dir, name string, args ...string) string {
+	q := make([]string, len(args))
+	for i, a := range args {
+		q[i] = remote.Quote(a)
 	}
-	return m.R.Run(ctx, n, strings.Join(q, " "), nil, out)
+	a := strings.Join(q, " ")
+	return fmt.Sprintf("if [ -f %[1]s ]; then exec bash %[1]s compose %[2]s %[3]s; else exec docker compose -f %[4]s %[3]s; fi",
+		remote.Quote(nodeScript(dir)), remote.Quote(name), a, remote.Quote(composeFile(dir, name)))
+}
+
+func (m *Manager) compose(ctx context.Context, n, dir, name string, out io.Writer, args ...string) error {
+	return m.R.Run(ctx, n, ComposeCmd(dir, name, args...), nil, out)
 }
 
 // List returns the node's stacks with their containers.
 func (m *Manager) List(ctx context.Context, n string, dir string, st *node.Status) ([]Stack, error) {
-	out, err := m.R.Output(ctx, n, fmt.Sprintf(`for d in %s/*/; do [ -f "$d/compose.yaml" ] && basename "$d"; done`, remote.Quote(dir)))
+	out, err := m.R.Output(ctx, n, fmt.Sprintf(`if [ -f %[2]s ]; then bash %[2]s list; else for d in %[1]s/*/; do [ -f "$d/compose.yaml" ] && basename "$d"; done; fi`, remote.Quote(dir), remote.Quote(nodeScript(dir))))
 	if err != nil {
 		return nil, err
 	}
@@ -85,16 +98,31 @@ func (m *Manager) List(ctx context.Context, n string, dir string, st *node.Statu
 	return stacks, nil
 }
 
+// lifecycle runs `node.sh <action> <stack>` when the stacks dir has one (it
+// knows the node's networks), and the plain compose command otherwise.
+func (m *Manager) lifecycle(ctx context.Context, s Stack, action string, out io.Writer, composeArgs ...string) error {
+	q := make([]string, len(composeArgs))
+	for i, a := range composeArgs {
+		q[i] = remote.Quote(a)
+	}
+	cmd := fmt.Sprintf("if [ -f %[1]s ]; then bash %[1]s %[2]s %[3]s; else docker compose -f %[4]s %[5]s; fi",
+		remote.Quote(nodeScript(s.Dir)), action, remote.Quote(s.Name), remote.Quote(composeFile(s.Dir, s.Name)), strings.Join(q, " "))
+	return m.R.Run(ctx, s.Node, cmd, nil, out)
+}
+
 func (m *Manager) Restart(ctx context.Context, s Stack, svc []string, out io.Writer) error {
-	return m.compose(ctx, s.Node, s.Dir, s.Name, out, append([]string{"restart"}, svc...)...)
+	if len(svc) > 0 {
+		return m.compose(ctx, s.Node, s.Dir, s.Name, out, append([]string{"restart"}, svc...)...)
+	}
+	return m.lifecycle(ctx, s, "restart", out, "restart")
 }
 
 func (m *Manager) Stop(ctx context.Context, s Stack, out io.Writer) error {
-	return m.compose(ctx, s.Node, s.Dir, s.Name, out, "stop")
+	return m.lifecycle(ctx, s, "stop", out, "stop")
 }
 
 func (m *Manager) Start(ctx context.Context, s Stack, out io.Writer) error {
-	return m.compose(ctx, s.Node, s.Dir, s.Name, out, "up", "-d", "--remove-orphans")
+	return m.lifecycle(ctx, s, "start", out, "up", "-d", "--remove-orphans")
 }
 
 func (m *Manager) Logs(ctx context.Context, s Stack, follow bool, tail int, svc []string, out io.Writer) error {
@@ -281,7 +309,7 @@ func (m *Manager) Update(ctx context.Context, s Stack, hook func() error, out io
 	if err := m.compose(ctx, s.Node, s.Dir, s.Name, out, "up", "-d", "--remove-orphans"); err != nil {
 		return snap.Changed, m.rollbackAfter(ctx, s, snap, fmt.Errorf("up: %w", err), out)
 	}
-	if err := m.waitHealthy(ctx, s); err != nil {
+	if err := m.WaitHealthy(ctx, s); err != nil {
 		return snap.Changed, m.rollbackAfter(ctx, s, snap, err, out)
 	}
 	m.Logf("%s: updated and healthy", s.ID())
@@ -315,12 +343,12 @@ func (m *Manager) applySnapshot(ctx context.Context, s Stack, snap Snapshot, out
 	if err := m.compose(ctx, s.Node, s.Dir, s.Name, out, "up", "-d", "--remove-orphans"); err != nil {
 		return err
 	}
-	return m.waitHealthy(ctx, s)
+	return m.WaitHealthy(ctx, s)
 }
 
-// waitHealthy waits until every container of the stack is running, not
+// WaitHealthy waits until every container of the stack is running, not
 // restarting and (if it has a health check) healthy, and stays so.
-func (m *Manager) waitHealthy(ctx context.Context, s Stack) error {
+func (m *Manager) WaitHealthy(ctx context.Context, s Stack) error {
 	deadline := time.Now().Add(3 * time.Minute)
 	stable := 0
 	for {

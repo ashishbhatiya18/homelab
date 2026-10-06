@@ -25,7 +25,7 @@ passwordless `sudo` for upgrades and reboots (setup checks both).
 ```console
 brew install ashishbhatiya18/tap/home
 home              # first run starts the interactive setup
-home install      # background service: daily backups + a daily node check
+home install      # background service: backups, daily node check, deploys, cleanup
 ```
 
 ## Nodes and stacks
@@ -37,7 +37,7 @@ home install      # background service: daily backups + a daily node check
 | `home stack list [node] [--updates]` | every stack with its health; `--updates` adds the image check |
 | `home stacks [node]` | every stack's health and whether newer images exist (registry digest check — nothing is pulled) |
 | `home check` | refresh package lists and run every check now |
-| `home doctor [node]` | drift and risk: GitOps checkout behind, stray containers, stacks not running, missing restart policies, crash loops, unbounded logs, secrets inline in compose files, clock sync, Watchtower not monitor-only, Tailscale key and TLS certificate expiry |
+| `home doctor [node]` | drift and risk: deployed bundle behind (or GitOps checkout behind), stray containers, stacks not running, missing restart policies, crash loops, unbounded logs, secrets inline in compose files, clock sync, Watchtower not monitor-only, Tailscale key and TLS certificate expiry |
 | `home stack restart\|stop\|start <node>/<stack>` | lifecycle |
 | `home stack logs <node>/<stack> [svc] [-f] [--tail N]` | logs |
 | `home stack shell <node>/<stack> [svc]` | interactive shell in a container |
@@ -52,8 +52,29 @@ home install      # background service: daily backups + a daily node check
 
 Stacks are discovered from a directory per node with one subdirectory per
 stack (each holding `compose.yaml`) — the layout used by most GitOps-style
-homelab repos. `home` works alongside a GitOps agent: it never edits compose
-files, it only applies newer images for the tags you already use.
+homelab repos. If that directory has a `node.sh` (see below), every stack
+operation goes through it: start/stop/restart in the node's start order, and
+logs, exec, health checks and pulls via `node.sh compose <stack> …`.
+
+## Deploys from node bundles
+
+Instead of a git checkout and an agent on every node, CI can publish one
+**bundle** per node: a `FROM scratch` image holding `nodes/<name>/` — that
+node's stacks plus `node.sh` (lifecycle) and `node.conf` (start order and
+networks). Set `bundle:` on the node in config.yaml and `stacks_dir` to
+`<base>/nodes/<name>`; then:
+
+| Command | What it does |
+|---|---|
+| `home deploy [node\|all] [--dry-run]` | pull the newest bundle on the node, sync changed files into `stacks_dir`, start the changed stacks in the node's start order (running their pre-update hooks first), wait until each is healthy; **rolls back** to the previous release if one is not |
+| `home deploy <node> --tag <sha>` | deploy a specific bundle |
+| `home deploy <node> --rollback` | back to the release before the current one |
+
+Releases are extracted to `<base>/releases/<digest>/` (the newest five are
+kept) and `stacks_dir/.release` records what is deployed. Changed files are
+rewritten in place, so single-file bind mounts see them; files a release drops
+are deleted; files that never came from a release are left alone. A stack
+removed from the bundle keeps running until `node.sh down <stack>`.
 
 **Private images**: `home registry login ghcr.io` saves a read-only token in
 the macOS Keychain so private images are checked too.
@@ -84,12 +105,20 @@ restoring without `home`, e.g. after losing your Mac.
 ## Notifications
 
 The background service (`home install`, managed by `brew services`) runs
-every 15 minutes and does two things when they are due:
+every 15 minutes and runs each job when it is due (`home jobs` lists them,
+`home jobs run <job>` runs one now):
 
 - **Backups** (daily at your chosen time; catches up after sleep): ✓ after each
   backup; a warning with the reason when one can't run.
 - **Node check** (daily): one summary — `ab: 13 apt updates · cd: reboot
   required · stack updates: network` — or "all nodes healthy".
+- **Deploy** (every run; `jobs: {deploy: false}` turns it off): rolls a new
+  bundle out to nodes that already run one, with the same health check and
+  rollback as `home deploy`; notifies on every deploy and failure. A node's
+  first deploy is always manual.
+- **Cleanup** (daily, opt in with `jobs: {cleanup: true}`): reclaims what is
+  re-created on demand — dangling/unused images, build cache, apt cache and
+  rollback images older than 30 days. Never logs or the journal.
 
 ## Configuration
 

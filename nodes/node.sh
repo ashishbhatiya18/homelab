@@ -8,9 +8,13 @@
 #   ~/localstack/nodes/<node>/node.sh down    <stack...>   remove a stack's containers
 #   ~/localstack/nodes/<node>/node.sh status               every stack's containers
 #   ~/localstack/nodes/<node>/node.sh order                stacks in start order
+#   ~/localstack/nodes/<node>/node.sh list                 stacks, alphabetically
+#   ~/localstack/nodes/<node>/node.sh compose <stack> <args…>  docker compose for one
+#                                                          stack (logs, ps, exec, pull…)
 #
-# No stack names means every stack. `home deploy` and `home stack …` use the
-# same commands, so the node behaves the same whether driven from home or here.
+# No stack names means every stack. Everything `home` does to a stack goes
+# through these commands, so the node behaves the same whether driven from
+# home or here.
 # Within a stack, compose's depends_on still decides the order of services.
 set -euo pipefail
 
@@ -104,6 +108,12 @@ case "${1:-}" in
   down)    shift; cmd_down "$@" ;;
   status)  cmd_status ;;
   order)   ordered ;;
+  list)    all_stacks ;;
+  compose)
+    shift; (( $# )) || die "compose needs a stack name"
+    selected "$1" >/dev/null   # exits on an unknown stack name
+    s="$1"; shift
+    exec docker compose -f "$DIR/$s/compose.yaml" "$@" ;;
   networks) ensure_networks ;;
-  *) sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
+  *) sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac

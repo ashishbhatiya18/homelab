@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/ashishbhatiya18/home/internal/homecfg"
+	"github.com/ashishbhatiya18/home/internal/registry"
 	"github.com/ashishbhatiya18/home/internal/remote"
 )
 
@@ -53,7 +54,8 @@ if [ -n "$top" ]; then
   echo "git_branch=$br"
   echo "git_remote=$(timeout 20 git -C "$top" ls-remote origin "refs/heads/$br" 2>/dev/null | cut -f1)"
 fi
-echo "gitops=$(systemctl is-active gitops-agent 2>/dev/null || true)"
+systemctl cat gitops-agent >/dev/null 2>&1 && echo "gitops=$(systemctl is-active gitops-agent 2>/dev/null || true)"
+[ -f %[1]s/.release ] && sed 's/^/release_/' %[1]s/.release
 echo "ntp=$(timedatectl show -p NTPSynchronized --value 2>/dev/null)"
 echo "logdriver=$(docker info --format '{{.LoggingDriver}}' 2>/dev/null)"
 grep -q '"max-size"' /etc/docker/daemon.json 2>/dev/null && echo logmax=1 || echo logmax=0
@@ -138,8 +140,9 @@ func diagnose(ctx context.Context, n homecfg.Node, r *remote.Runner) Report {
 		}
 	}
 
-	// GitOps
 	switch {
+	case n.Bundle != "":
+		releaseFindings(ctx, &rep, n, kv)
 	case kv["git_head"] == "":
 		rep.add(Warn, "stacks directory is not a git checkout", "GitOps drift cannot be checked")
 	case kv["git_remote"] == "":
@@ -149,7 +152,10 @@ func diagnose(ctx context.Context, n homecfg.Node, r *remote.Runner) Report {
 	default:
 		rep.add(OK, "GitOps checkout matches origin/"+kv["git_branch"], "")
 	}
-	if g := kv["gitops"]; g != "" && g != "active" {
+	switch g := kv["gitops"]; {
+	case n.Bundle != "" && g == "active":
+		rep.add(Warn, "the legacy gitops-agent still runs next to bundle deploys", "remove it: sudo systemctl disable --now gitops-agent")
+	case n.Bundle == "" && g != "" && g != "active":
 		rep.add(Fail, "gitops-agent is "+g, "sudo systemctl restart gitops-agent")
 	}
 
@@ -326,4 +332,42 @@ func shorten(s string) string {
 		return s[:80] + "…"
 	}
 	return s
+}
+
+// Creds looks up a saved registry login (see `home registry login`).
+var Creds func(host string) *registry.Cred
+
+// releaseFindings compares the release deployed on a bundle node with the
+// registry's newest bundle.
+func releaseFindings(ctx context.Context, rep *Report, n homecfg.Node, kv map[string]string) {
+	rev := kv["release_revision"]
+	if len(rev) > 12 {
+		rev = rev[:12]
+	}
+	if kv["release_digest"] == "" {
+		rep.add(Fail, "no bundle release deployed", "home deploy "+n.Name)
+		return
+	}
+	repo := n.Bundle
+	if i := strings.LastIndex(repo, ":"); i > strings.LastIndex(repo, "/") {
+		repo = repo[:i]
+	}
+	ref, err := registry.Parse(repo + ":latest")
+	if err != nil {
+		rep.add(Warn, "bundle "+n.Bundle+": "+err.Error(), "")
+		return
+	}
+	var cred *registry.Cred
+	if Creds != nil {
+		cred = Creds(ref.Registry)
+	}
+	latest, err := registry.Digest(ctx, ref, cred)
+	switch {
+	case err != nil:
+		rep.add(Warn, "could not check the newest bundle: "+err.Error(), "home registry login "+ref.Registry+" (if the bundle is private)")
+	case latest != kv["release_digest"]:
+		rep.add(Warn, "a newer bundle is waiting (deployed: "+rev+")", "home deploy "+n.Name+" — or let the deploy job pick it up")
+	default:
+		rep.add(OK, "deployed bundle is the newest ("+rev+")", "")
+	}
 }

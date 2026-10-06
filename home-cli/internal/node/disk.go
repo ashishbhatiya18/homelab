@@ -33,7 +33,10 @@ type Dir struct {
 type Cleanup struct {
 	Name, Detail string
 	Bytes        int64
-	cmd          string
+	// Unattended: safe for the scheduled cleanup job (only things that are
+	// re-created or re-pulled on demand; never logs or the journal).
+	Unattended bool
+	cmd        string
 }
 
 const diskScript = `
@@ -96,7 +99,7 @@ func (c *Client) Disk(ctx context.Context, rollbackDays int) (*DiskReport, error
 			}
 		case "buildcache":
 			if b := ParseSize(strings.Fields(v + " ")[0]); b > 0 {
-				r.Cleanups = append(r.Cleanups, Cleanup{Name: "Docker build cache", Detail: "rebuilt automatically when needed", Bytes: b, cmd: "docker builder prune -af"})
+				r.Cleanups = append(r.Cleanups, Cleanup{Unattended: true, Name: "Docker build cache", Detail: "rebuilt automatically when needed", Bytes: b, cmd: "docker builder prune -af"})
 			}
 		case "log":
 			if len(f) == 2 {
@@ -115,19 +118,19 @@ func (c *Client) Disk(ctx context.Context, rollbackDays int) (*DiskReport, error
 			}
 		case "aptcache":
 			if b, _ := strconv.ParseInt(v, 10, 64); b > 50<<20 {
-				r.Cleanups = append(r.Cleanups, Cleanup{Name: "apt package cache", Detail: "downloaded .deb files", Bytes: b, cmd: "sudo -n apt-get clean"})
+				r.Cleanups = append(r.Cleanups, Cleanup{Unattended: true, Name: "apt package cache", Detail: "downloaded .deb files", Bytes: b, cmd: "sudo -n apt-get clean"})
 			}
 		}
 	}
 	if len(dangling) > 0 {
-		r.Cleanups = append(r.Cleanups, Cleanup{Name: "Dangling images", Detail: fmt.Sprintf("%d untagged leftovers of old pulls/builds", len(dangling)), Bytes: danglingB, cmd: "docker image prune -f"})
+		r.Cleanups = append(r.Cleanups, Cleanup{Unattended: true, Name: "Dangling images", Detail: fmt.Sprintf("%d untagged leftovers of old pulls/builds", len(dangling)), Bytes: danglingB, cmd: "docker image prune -f"})
 	}
 	if len(unused) > 0 {
-		r.Cleanups = append(r.Cleanups, Cleanup{Name: "Unused images", Detail: fmt.Sprintf("%d images no container uses (re-pulled if needed)", len(unused)), Bytes: unusedB,
+		r.Cleanups = append(r.Cleanups, Cleanup{Unattended: true, Name: "Unused images", Detail: fmt.Sprintf("%d images no container uses (re-pulled if needed)", len(unused)), Bytes: unusedB,
 			cmd: "docker rmi " + quoteAll(unused) + " 2>/dev/null; true"})
 	}
 	if len(rollback) > 0 {
-		r.Cleanups = append(r.Cleanups, Cleanup{Name: "Old rollback images", Detail: fmt.Sprintf("%d kept by `home stack update`, older than %d days", len(rollback), rollbackDays), Bytes: rollbackB,
+		r.Cleanups = append(r.Cleanups, Cleanup{Unattended: true, Name: "Old rollback images", Detail: fmt.Sprintf("%d kept by `home stack update`, older than %d days", len(rollback), rollbackDays), Bytes: rollbackB,
 			cmd: "docker rmi " + quoteAll(rollback) + " 2>/dev/null; true"})
 	}
 	if len(logs) > 0 {

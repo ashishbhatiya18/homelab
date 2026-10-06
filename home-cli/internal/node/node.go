@@ -52,7 +52,8 @@ echo "apt=$(apt list --upgradable 2>/dev/null | grep -c upgradable)"
 echo "disk=$(df --output=pcent / | tail -1 | tr -dc 0-9)"
 echo "mem=$(free | awk '/^Mem:/{printf "%d", ($2-$7)*100/$2}')"
 echo "load=$(cut -d' ' -f1-3 /proc/loadavg)"
-echo "gitops=$(systemctl is-active gitops-agent 2>/dev/null || true)"
+# Only nodes that still have the legacy agent installed report it.
+systemctl cat gitops-agent >/dev/null 2>&1 && echo "gitops=$(systemctl is-active gitops-agent 2>/dev/null || true)"
 docker ps -a --format 'ctr={{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Label "com.docker.compose.project"}}'
 `
 
