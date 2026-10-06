@@ -292,11 +292,15 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
 
 ## Phase 4 — Fill in OAuth2-proxy secrets
 
-The `config.toml` is committed with placeholder values. Fill in the real values on the node
-and mark the file so git does not overwrite them:
+The `config.toml` in the repo is a template with placeholder values. Copy it into the
+secrets directory and fill in the real values there (the repo checkout stays untouched):
 
 ```sh
-nano /home/dietpi/localstack/repo/nodes/ab/network/config/oauth2-proxy/config.toml
+mkdir -p /home/dietpi/localstack/secrets/oauth2-proxy
+cp /home/dietpi/localstack/repo/nodes/ab/network/config/oauth2-proxy/config.toml \
+   /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
+chmod 600 /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
+nano /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
 # Replace:
 #   client_id    = "REPLACE_WITH_GOOGLE_CLIENT_ID"
 #   client_secret = "REPLACE_WITH_GOOGLE_CLIENT_SECRET"
@@ -304,10 +308,6 @@ nano /home/dietpi/localstack/repo/nodes/ab/network/config/oauth2-proxy/config.to
 #
 # Generate a cookie secret:
 #   openssl rand -base64 24
-
-git -C /home/dietpi/localstack/repo \
-  update-index --skip-worktree \
-  nodes/ab/network/config/oauth2-proxy/config.toml
 ```
 
 ---
@@ -325,11 +325,13 @@ docker network ls | grep -E "internal_bridge|data-layer"
 
 ## Phase 6 — Create Traefik acme.json
 
-Traefik requires this file with strict permissions. It is gitignored.
+Traefik requires this file with strict permissions. It is node state, so it lives in
+`data/`, outside the repo checkout.
 
 ```sh
-touch /home/dietpi/localstack/repo/nodes/ab/network/config/traefik/acme.json
-chmod 600 /home/dietpi/localstack/repo/nodes/ab/network/config/traefik/acme.json
+mkdir -p /home/dietpi/localstack/data/traefik
+touch /home/dietpi/localstack/data/traefik/acme.json
+chmod 600 /home/dietpi/localstack/data/traefik/acme.json
 ```
 
 ---
@@ -400,7 +402,7 @@ rustpad
 |---|---|---|
 | `Permission denied (publickey)` on clone | Deploy key not added | Add `~/.ssh/deploy_key.pub` to repo Deploy Keys |
 | `network internal_bridge not found` | networks.sh not run | `bash nodes/ab/networks.sh` |
-| Traefik fails to start | `acme.json` missing or wrong permissions | `touch acme.json && chmod 600 acme.json` |
+| Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
 | cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
 | oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values, mark skip-worktree |
 | Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |

@@ -13,7 +13,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml
       - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
-      - ./config/traefik/acme.json:/etc/acme/acme.json
+      - /home/dietpi/localstack/data/traefik/acme.json:/etc/acme/acme.json
     environment:
       - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token
     labels:
@@ -102,7 +102,7 @@ services:
   #   networks:
   #     - network-layer
   #   volumes:
-  #     - ./config/oauth2-proxy/config.toml:/etc/oauth2-proxy.cfg:ro
+  #     - /home/dietpi/localstack/secrets/oauth2-proxy/config.toml:/etc/oauth2-proxy.cfg:ro
   #     - ./config/oauth2-proxy/emails.txt:/etc/emails.txt:ro
   #   command:
   #     - --config=/etc/oauth2-proxy.cfg
