@@ -162,66 +162,49 @@ type Update struct {
 
 // CheckUpdates checks every stack on one node: local digests come from a
 // single SSH call, registry digests are fetched in parallel. Nothing is pulled.
+//
+// Each container is judged by the image it runs, not by what its tag points
+// to now: when a newer image was pulled but not applied (e.g. by Watchtower in
+// monitor mode), `docker ps` shows the old image's ID instead of its name, and
+// the container is still behind.
 func (m *Manager) CheckUpdates(ctx context.Context, stacks []Stack) map[string][]Update {
 	res := map[string][]Update{}
-	if len(stacks) == 0 {
-		return res
-	}
-	images := map[string]bool{}
+	var names []string
 	for _, s := range stacks {
 		for _, c := range s.Containers {
-			images[c.Image] = true
+			names = append(names, remote.Quote(c.Name))
 		}
 	}
-	if len(images) == 0 {
+	if len(names) == 0 {
 		return res
 	}
-	var list []string
-	for i := range images {
-		list = append(list, i)
-	}
-	sort.Strings(list)
-	q := make([]string, len(list))
-	for i, img := range list {
-		q[i] = remote.Quote(img)
-	}
-	out, err := m.R.Output(ctx, stacks[0].Node, "for i in "+strings.Join(q, " ")+`; do printf '%s\t' "$i"; docker image inspect --format '{{json .RepoDigests}}' "$i" 2>/dev/null || echo '[]'; done`)
+	out, err := m.R.Output(ctx, stacks[0].Node, "for c in "+strings.Join(names, " ")+`; do
+  r=$(docker inspect --format '{{.Config.Image}}|{{.Image}}' "$c" 2>/dev/null) || continue
+  printf '%s|%s|' "$c" "$r"; docker image inspect --format '{{json .RepoDigests}}' "${r#*|}" 2>/dev/null || echo '[]'
+done`)
 	if err != nil {
 		for _, s := range stacks {
 			res[s.Name] = append(res[s.Name], Update{Image: "*", Err: err})
 		}
 		return res
 	}
-	local := map[string]map[string]bool{}
-	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
-		img, js, ok := strings.Cut(line, "\t")
-		if !ok {
-			continue
-		}
-		var rds []string
-		json.Unmarshal([]byte(js), &rds)
-		d := map[string]bool{}
-		for _, rd := range rds {
-			if _, digest, ok := strings.Cut(rd, "@"); ok {
-				d[digest] = true
-			}
-		}
-		local[img] = d
-	}
+	refs, local := parseRunning(out)
 
 	type result struct {
-		newer bool
-		err   error
+		digest string
+		err    error
 	}
 	results := map[string]result{}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, 8)
-	for _, img := range list {
+	seen := map[string]bool{}
+	for ctr, img := range refs {
 		ref, err := registry.Parse(img)
-		if err != nil || len(local[img]) == 0 {
-			continue // pinned by digest, or built locally
+		if err != nil || len(local[ctr]) == 0 || seen[img] {
+			continue // pinned by digest, built locally, or already queued
 		}
+		seen[img] = true
 		wg.Add(1)
 		go func(img string, ref registry.Ref) {
 			defer wg.Done()
@@ -233,25 +216,48 @@ func (m *Manager) CheckUpdates(ctx context.Context, stacks []Stack) map[string][
 			}
 			d, err := registry.Digest(ctx, ref, cred)
 			mu.Lock()
-			results[img] = result{newer: err == nil && !local[img][d], err: err}
+			results[img] = result{digest: d, err: err}
 			mu.Unlock()
 		}(img, ref)
 	}
 	wg.Wait()
 	for _, s := range stacks {
-		seen := map[string]bool{}
+		shown := map[string]bool{}
 		for _, c := range s.Containers {
-			r, ok := results[c.Image]
-			if !ok || seen[c.Image] {
+			img := refs[c.Name]
+			r, ok := results[img]
+			if !ok || shown[img] {
 				continue
 			}
-			seen[c.Image] = true
-			if r.err != nil || r.newer {
-				res[s.Name] = append(res[s.Name], Update{Container: c.Name, Image: c.Image, Err: r.err})
+			if r.err != nil || !local[c.Name][r.digest] {
+				shown[img] = true
+				res[s.Name] = append(res[s.Name], Update{Container: c.Name, Image: img, Err: r.err})
 			}
 		}
 	}
 	return res
+}
+
+// parseRunning reads "container|configured image|image ID|[repo digests]"
+// lines into each container's image ref and the digests of the image it runs.
+func parseRunning(out string) (refs map[string]string, local map[string]map[string]bool) {
+	refs, local = map[string]string{}, map[string]map[string]bool{}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		f := strings.SplitN(line, "|", 4)
+		if len(f) != 4 {
+			continue
+		}
+		var rds []string
+		json.Unmarshal([]byte(f[3]), &rds)
+		d := map[string]bool{}
+		for _, rd := range rds {
+			if _, digest, ok := strings.Cut(rd, "@"); ok {
+				d[digest] = true
+			}
+		}
+		refs[f[0]], local[f[0]] = f[1], d
+	}
+	return refs, local
 }
 
 // ---- update and rollback --------------------------------------------------------
@@ -280,6 +286,30 @@ func (m *Manager) imageIDs(ctx context.Context, s Stack) (map[string]string, err
 	return ids, nil
 }
 
+// runningIDs maps each image ref to the image ID the stack's containers run.
+// It differs from imageIDs when a newer image was pulled but never applied.
+func (m *Manager) runningIDs(ctx context.Context, s Stack) map[string]string {
+	ids := map[string]string{}
+	var cs strings.Builder
+	if m.compose(ctx, s.Node, s.Dir, s.Name, &cs, "ps", "-aq") != nil {
+		return ids
+	}
+	q := strings.Fields(cs.String())
+	if len(q) == 0 {
+		return ids
+	}
+	out, err := m.R.Output(ctx, s.Node, "docker inspect --format '{{.Config.Image}}|{{.Image}}' "+strings.Join(q, " "))
+	if err != nil {
+		return ids
+	}
+	for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
+		if ref, id, ok := strings.Cut(l, "|"); ok {
+			ids[ref] = id
+		}
+	}
+	return ids
+}
+
 // Update pulls new images, applies them and verifies health, rolling back
 // automatically on failure. hook runs after the pull and before anything
 // changes (e.g. a database backup). Returns the changed images.
@@ -287,6 +317,13 @@ func (m *Manager) Update(ctx context.Context, s Stack, hook func() error, out io
 	before, err := m.imageIDs(ctx, s)
 	if err != nil {
 		return nil, err
+	}
+	// Compare against what actually runs: an image pulled earlier but never
+	// applied (e.g. by Watchtower in monitor mode) is still an update.
+	for ref, id := range m.runningIDs(ctx, s) {
+		if _, ok := before[ref]; ok {
+			before[ref] = id
+		}
 	}
 	m.Logf("%s: pulling images", s.ID())
 	if err := m.compose(ctx, s.Node, s.Dir, s.Name, out, "pull", "--ignore-buildable", "-q"); err != nil {
