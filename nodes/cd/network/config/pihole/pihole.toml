@@ -257,7 +257,8 @@
     "whoami.ab18.in,ab18.in",
     "home.ab18.in,ab18.in",
     "docker.citrusdental.in,citrusdental.in",
-    "files.ab18.in,ab18.in"
+    "files.ab18.in,ab18.in",
+    "treasuredash.ab18.in,ab18.in"
   ] ### CHANGED, default = []
 
   # Port used by the DNS server

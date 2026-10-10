@@ -1,0 +1,39 @@
+# Treasure Dash – association treasury app (ghcr.io/ashishbhatiya18/treasure-dash).
+# No login of its own: guarded by webauthn-proxy through the `auth` middleware.
+# PostgreSQL: database/schema/role `treasuredash` on the data stack's postgres.
+# Secrets: /home/dietpi/localstack/secrets/ab-treasuredash.env
+#   DATABASE_URL=postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable
+# State: uploaded bills in /home/dietpi/localstack/data/treasuredash (owned by 65532).
+services:
+  treasuredash:
+    image: ghcr.io/ashishbhatiya18/treasure-dash:latest
+    container_name: treasuredash
+    restart: always
+    user: "65532:65532"
+    env_file: /home/dietpi/localstack/secrets/ab-treasuredash.env
+    environment:
+      TZ: Asia/Kolkata
+    volumes:
+      - /home/dietpi/localstack/data/treasuredash:/data
+    networks:
+      - network-layer
+      - data-layer
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/treasuredash", "-healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=internal_bridge
+      - traefik.http.routers.treasuredash.rule=Host(`treasuredash.ab18.in`)
+      - traefik.http.routers.treasuredash.middlewares=auth
+      - traefik.http.services.treasuredash.loadbalancer.server.port=8080
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
+  data-layer:
+    external: true
