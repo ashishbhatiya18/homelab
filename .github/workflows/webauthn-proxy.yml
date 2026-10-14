@@ -27,8 +27,8 @@ jobs:
       run:
         working-directory: webauthn-proxy
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: webauthn-proxy/go.mod
           cache-dependency-path: webauthn-proxy/go.sum
@@ -44,7 +44,7 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: docker/setup-buildx-action@v4
 
       - name: Log in to GHCR
