@@ -40,6 +40,7 @@ This project lives in `home-cli/` of the homelab repo. Releasing: push a `home-c
 - `check`: builds per-node reports for `home status`/`check`/`upgrade` and the single daily summary notification.
 - `doctor`: one diagnostic bash script per node, evaluated locally into OK/Warn/Fail findings with hints; TLS expiry is checked from the Mac for every `Host()` in Traefik router labels (hosts that don't resolve locally are skipped). Env vars ending in `_FILE` are paths to secret files and are not flagged.
 - `node/disk.go`: `home node disk` never offers anything in use — images used by any container, volumes and directories are report-only; `home-rollback/*` images are only offered past `--rollback-days`.
+- `node edit` (`cmd/home/edit.go`) copies a node file to a private temp dir, runs the local editor and writes it back in place (`tee`, same inode/owner/mode, so single-file bind mounts update) after checking its sha256 is unchanged; `--sudo` reads and writes with `sudo -n`. Relative paths resolve next to `stacks_dir`. Files under `stacks_dir` are reverted by the next deploy.
 - `stack exec`/`shell` use `ssh -t` via `remote.Interactive` when attached to a terminal, and `docker compose exec -T` otherwise.
 
 **Backup side (`internal/br/…`)**

@@ -72,6 +72,7 @@ Nodes:
   home node dietpi check|upgrade <node|all> [--yes]
   home node reboot <node> [--yes]            waits until every container is back
   home node disk <node> [--clean]            where the space goes; pick what to reclaim
+  home node edit <node> <path> [--sudo]      edit a file on a node in $EDITOR (secrets/app.env, …)
 
 Upgrade:
   home upgrade <node|all> [--dry-run] [--yes] [--no-reboot]
@@ -659,7 +660,7 @@ func (a *app) pkgCmd(ctx context.Context, kind string, args []string) error {
 	return nil
 }
 
-const nodeUsage = "usage: home node list | home node apt|dietpi check|upgrade <node|all> | home node reboot <node> | home node disk <node> [--clean]"
+const nodeUsage = "usage: home node list | home node apt|dietpi check|upgrade <node|all> | home node reboot <node> | home node disk <node> [--clean] | home node edit <node> <path> [--sudo]"
 
 // listNodes prints every configured node and whether it is reachable.
 func (a *app) listNodes(ctx context.Context) error {
@@ -781,6 +782,8 @@ func (a *app) nodeCmd(ctx context.Context, args []string) error {
 		return a.pkgCmd(ctx, args[0], args[1:])
 	case "disk":
 		return a.diskCmd(ctx, args[1:])
+	case "edit":
+		return a.editCmd(ctx, args[1:])
 	case "list":
 		return a.listNodes(ctx)
 	case "reboot":

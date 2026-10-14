@@ -48,6 +48,7 @@ home install      # background jobs as brew services: backup, check, cleanup, de
 | `home node dietpi check\|upgrade <node\|all>` | DietPi's own updater, non-interactive |
 | `home node reboot <node>` | reboot and wait until every container that was running is healthy again |
 | `home node disk <node> [--clean]` | where the space goes (largest directories, Docker usage) and what can be reclaimed — dangling/unused images, build cache, old rollback images, oversized container logs, journal, apt cache — each chosen individually; nothing in use is touched |
+| `home node edit <node> <path> [--sudo]` | open a file on the node in `$VISUAL`/`$EDITOR` and write it back in place if it changed; relative paths start next to `stacks_dir` (`secrets/app.env`); refuses to overwrite a file that changed meanwhile |
 | `home upgrade <node\|all>` | apt → DietPi → stack updates → reboot if required, node by node in your upgrade order; stops at the first failure |
 
 Stacks are discovered from a directory per node with one subdirectory per
