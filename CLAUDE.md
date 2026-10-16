@@ -14,11 +14,10 @@ Directory layout:
 - `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups); released as `home-cli-v*` tags to the Homebrew tap
 - `webauthn-proxy/` — the passkey forward-auth proxy (image `ghcr.io/ashishbhatiya18/webauthn-proxy`)
 - `terraform/` — Cloudflare DNS, tunnel ingress, and Tailscale ACLs (HCP Terraform remote state)
-- `stackmgr-proxy/` — Go backend + Next.js frontend for a web UI to manage stacks
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, stackmgr.
+**Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock.
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (dockerproxy + watchtower + arcane), citrusdental, costaebella, smiledesign.
 
@@ -49,7 +48,7 @@ home deploy <node> --rollback                    # previous release
 home jobs                                        # the background deploy job does this every 15 min
 ```
 
-(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode, stackmgr-proxy, webauthn-proxy) are built by their own workflows.
+(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode, webauthn-proxy) are built by their own workflows.
 
 On a node, by hand: `~/localstack/stacks/node.sh start|stop|restart|status [stack…]`. Each node's `/home/dietpi/localstack/` holds exactly: `stacks/` (deployed files, with `.release`), `releases/` (extracted bundles), `data/` (state) and `secrets/`.
 
@@ -75,27 +74,6 @@ CI runs plan on PRs and plan+apply on pushes to `main`.
 `node-bundles.yml` validates all compose files of a node again before publishing its bundle, so an invalid stack never reaches a node.
 
 Always ensure `docker compose -f nodes/<node>/<stack>/compose.yaml config` passes before pushing a compose change.
-
-## stackmgr-proxy
-
-Go backend + Next.js frontend deployed as a Docker container on node ab (exposed at `stack.ab18.in`). It mounts `/var/run/docker.sock` and connects to node cd over SSH.
-
-Local development:
-```sh
-# Backend
-cd stackmgr-proxy/backend
-go mod download
-go run main.go
-
-# Frontend
-cd stackmgr-proxy/frontend
-npm install
-npm run dev        # http://localhost:3000
-```
-
-The backend image is built and pushed to GHCR by `.github/workflows/build-stackmgr-proxy.yml` on changes under `stackmgr-proxy/`.
-
-To add a service health check, edit `getHealthCheckEndpoints()` in `stackmgr-proxy/backend/main.go`.
 
 ## Files intentionally not in git
 
