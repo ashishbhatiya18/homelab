@@ -4,11 +4,11 @@
 # auth applies instead: deny-all by default, a login for reading, a write-only
 # token per publisher. Containers on internal_bridge can post to http://ntfy.
 # One-time setup (users, ACLs, tokens are stored in data/ntfy/user.db):
-#   home stack exec ab/ntfy -- ntfy user add <you>
-#   home stack exec ab/ntfy -- ntfy access <you> 'homelab*' read-write
-#   home stack exec ab/ntfy -- ntfy user add publisher
-#   home stack exec ab/ntfy -- ntfy access publisher 'homelab*' write-only
-#   home stack exec ab/ntfy -- ntfy token add --label=<sender> publisher
+#   home stack exec dietpi-l/ntfy -- ntfy user add <you>
+#   home stack exec dietpi-l/ntfy -- ntfy access <you> 'homelab*' read-write
+#   home stack exec dietpi-l/ntfy -- ntfy user add publisher
+#   home stack exec dietpi-l/ntfy -- ntfy access publisher 'homelab*' write-only
+#   home stack exec dietpi-l/ntfy -- ntfy token add --label=<sender> publisher
 # State: /home/dietpi/localstack/data/ntfy (message cache + user database).
 services:
   ntfy:
