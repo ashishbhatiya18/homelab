@@ -11,3 +11,6 @@ LABEL homelab.bundle=true \
       org.opencontainers.image.source=https://github.com/ashishbhatiya18/homelab
 COPY nodes/$NODE/ /stacks/
 COPY nodes/node.sh /stacks/node.sh
+# Shared by every node: inside the localstack stack, so editing it redeploys
+# that stack (see nodes/heartbeat.sh).
+COPY nodes/heartbeat.sh /stacks/localstack/heartbeat.sh

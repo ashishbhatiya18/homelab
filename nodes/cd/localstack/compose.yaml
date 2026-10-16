@@ -21,18 +21,28 @@ services:
       - traefik.enable=true
       - traefik.http.routers.watchtower.rule=Host(`watchtower.citrusdental.in`)
       - traefik.http.services.watchtower.loadbalancer.port=8080
-  # Heartbeat for Healthchecks.io: pings every 5 min; when pings stop (node,
-  # Docker or the internet down — incl. power cuts that take out both nodes),
-  # Healthchecks.io alerts the fallback ntfy topic on ntfy.sh.
-  # HC_PING_URL=https://hc-ping.com/<uuid> in secrets/cd-heartbeat.env
+  # Heartbeat (nodes/heartbeat.sh, copied here by the bundle): every 5 min it
+  # pings Healthchecks.io — when pings stop (node, Docker, or the home's
+  # internet/power down) Healthchecks.io alerts the fallback ntfy topic on
+  # ntfy.sh — and pushes disk-space level changes of the host's / to ntfy.
+  # secrets/cd-heartbeat.env: HC_PING_URL=https://hc-ping.com/<uuid>,
+  #   NTFY_TOKEN=tk_… (write-only token for homelab*)
   heartbeat:
     image: curlimages/curl:latest
     container_name: heartbeat
     restart: always
     env_file: /home/dietpi/localstack/secrets/cd-heartbeat.env
-    entrypoint: ["sh", "-c"]
-    command:
-      - while true; do curl -fsS -m 10 --retry 3 -o /dev/null "$$HC_PING_URL" || echo "ping failed"; sleep 300; done
+    environment:
+      NODE: cd
+      NTFY_URL: https://ntfy-lan.ab18.in/homelab
+    # A fresh run each round, so a deployed edit applies without a restart.
+    entrypoint: ["sh", "-c", "while true; do sh /heartbeat.sh; sleep 300; done"]
+    volumes:
+      - ./heartbeat.sh:/heartbeat.sh:ro
+      - /:/host:ro
+    # ntfy on ab over the LAN (its LAN-only alias, see nodes/ab/ntfy).
+    extra_hosts:
+      - ntfy-lan.ab18.in:10.10.10.11
     networks:
       - internal_bridge
 networks:
