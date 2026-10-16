@@ -1,0 +1,104 @@
+# Gatus — https://github.com/TwiN/gatus
+# Checks run on cd. Alerts about the path to ntfy itself (group `path`: ab, its
+# Traefik, the ntfy container, the Cloudflare tunnel) go to the fallback topic
+# on ntfy.sh, since ntfy on ab can't deliver them; groups ab and cd go to ntfy.
+# ${…} come from secrets/cd-monitor.env (see compose.yaml).
+
+storage:
+  type: sqlite
+  path: /data/gatus.db
+
+alerting:
+  # Default: the fallback topic on ntfy.sh, without a token. The ab and cd
+  # groups override it with ntfy on ab, posted over the LAN (ntfy-lan) so they
+  # are queued there even while the tunnel is down. (Not the other way round:
+  # an empty token in an override inherits the default's, which ntfy.sh rejects.)
+  ntfy:
+    url: https://ntfy.sh
+    topic: ${NTFY_FALLBACK_TOPIC}
+    priority: 5
+    default-alert:
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+    overrides:
+      - group: ab
+        url: https://ntfy-lan.ab18.in
+        topic: homelab-status
+        token: ${NTFY_TOKEN}
+        priority: 4
+      - group: cd
+        url: https://ntfy-lan.ab18.in
+        topic: homelab-status
+        token: ${NTFY_TOKEN}
+        priority: 4
+
+# Web checks follow redirects and want a final 200: a service behind the passkey
+# `auth` middleware ends on the login page (its router exists, so its container
+# runs), while a stopped one falls to the catch-all and loops on error.ab18.in.
+# LAN checks reach ab directly through extra_hosts in compose.yaml; anything not
+# listed there resolves publicly and goes through the Cloudflare tunnel.
+endpoints:
+  # ── path: ntfy's own delivery path → alerts via ntfy.sh ──
+  - name: ab host
+    group: path
+    url: icmp://10.10.10.11
+    interval: 1m
+    conditions: ["[CONNECTED] == true"]
+    alerts: [{type: ntfy, description: "ab does not answer ping"}]
+  - name: ab traefik
+    group: path
+    url: https://whoami.ab18.in/
+    interval: 1m
+    conditions: ["[STATUS] == 200"]
+    alerts: [{type: ntfy, description: "Traefik on ab does not route"}]
+  - name: ntfy
+    group: path
+    # LAN-only alias of ntfy.ab18.in (Traefik rule in nodes/ab/ntfy): pinned in
+    # extra_hosts, unknown to public DNS, so this never touches the tunnel.
+    url: https://ntfy-lan.ab18.in/v1/health
+    interval: 1m
+    conditions: ["[STATUS] == 200", "[BODY].healthy == true"]
+    alerts: [{type: ntfy, description: "ntfy on ab is down"}]
+  - name: ab tunnel
+    group: path
+    url: https://ntfy.ab18.in/v1/health
+    interval: 1m
+    client:
+      # Public DNS, so the request leaves through the internet and comes back
+      # through the Cloudflare tunnel. /etc/hosts still wins over a custom
+      # resolver, so ntfy.ab18.in must never be added to extra_hosts.
+      dns-resolver: udp://1.1.1.1:53
+    conditions: ["[STATUS] == 200", "[BODY].healthy == true"]
+    alerts: [{type: ntfy, description: "ab18.in tunnel is down"}]
+
+  # ── services on ab (LAN) ──
+  - {name: auth (passkeys), group: ab, url: "https://auth.ab18.in/_webauthn/login", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: photos (immich), group: ab, url: "https://photos.ab18.in/api/server/ping", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: vault (vaultwarden), group: ab, url: "https://vault.ab18.in/alive", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: jelly (jellyfin), group: ab, url: "https://jelly.ab18.in/health", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: backup (kopia), group: ab, url: "https://backup.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: sync (syncthing), group: ab, url: "https://sync.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: files (filebrowser), group: ab, url: "https://files.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: esphome, group: ab, url: "https://esphome.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: treasuredash, group: ab, url: "https://treasuredash.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: code (code-server), group: ab, url: "https://code.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: term (claudecode), group: ab, url: "https://term.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: draw (excalidraw), group: ab, url: "https://draw.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: pad (rustpad), group: ab, url: "https://pad.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: pdf (stirling), group: ab, url: "https://pdf.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+
+  # ── services on cd (same node, internal_bridge) ──
+  - name: pihole dns
+    group: cd
+    url: pihole:53
+    interval: 1m
+    dns: {query-name: ab18.in, query-type: A}
+    conditions: ["[DNS_RCODE] == NOERROR"]
+    alerts: [{type: ntfy, description: "Pi-hole does not answer: DNS is down for the LAN"}]
+  # The backends answer 404 on /, so anything below 500 means they're serving.
+  - {name: citrusdental api, group: cd, url: "http://api:8000/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
+  - {name: citrusdental peripheral, group: cd, url: "http://peripheral:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
+  - {name: smiledesign api, group: cd, url: "http://smiledesign-be:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
+  - {name: costaebella api, group: cd, url: "http://costaebella-be:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
+  - {name: citrusdental public, group: cd, url: "https://api.citrusdental.in/", interval: 5m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy, description: "api.citrusdental.in is unreachable from the internet"}]}

@@ -19,7 +19,7 @@ Directory layout:
 
 **Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth).
 
-**Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (dockerproxy + watchtower + arcane), citrusdental, costaebella, smiledesign.
+**Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 
 All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI/Terraform setup is in `docs/github-actions.md`.
 

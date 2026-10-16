@@ -1,0 +1,47 @@
+# Gatus – health checks for both nodes, alerting through ntfy (config/config.yaml).
+# Runs on cd so it can report ab being down; alerts about ab and the path to
+# ntfy go to the fallback topic on ntfy.sh, the rest to ntfy on ab.
+# Secrets: /home/dietpi/localstack/secrets/cd-monitor.env
+#   NTFY_TOKEN=tk_…                 write-only token for homelab* on ntfy.ab18.in
+#   NTFY_FALLBACK_TOPIC=<topic>     the private topic on ntfy.sh
+# State: /home/dietpi/localstack/data/gatus (check history).
+services:
+  gatus:
+    image: twinproduction/gatus:latest
+    container_name: gatus
+    restart: always
+    env_file: /home/dietpi/localstack/secrets/cd-monitor.env
+    environment:
+      TZ: Asia/Kolkata
+      GATUS_CONFIG_PATH: /config/config.yaml
+    volumes:
+      - ./config/config.yaml:/config/config.yaml:ro
+      - /home/dietpi/localstack/data/gatus:/data
+    networks:
+      - internal_bridge
+    # LAN checks reach ab directly, independent of DNS (Pi-hole runs on this
+    # node and is checked on its own). Never add ntfy.ab18.in: the tunnel check
+    # must resolve it publicly; ntfy-lan.ab18.in is its LAN-only alias.
+    extra_hosts:
+      - ntfy-lan.ab18.in:10.10.10.11
+      - whoami.ab18.in:10.10.10.11
+      - auth.ab18.in:10.10.10.11
+      - photos.ab18.in:10.10.10.11
+      - vault.ab18.in:10.10.10.11
+      - jelly.ab18.in:10.10.10.11
+      - backup.ab18.in:10.10.10.11
+      - sync.ab18.in:10.10.10.11
+      - files.ab18.in:10.10.10.11
+      - esphome.ab18.in:10.10.10.11
+      - treasuredash.ab18.in:10.10.10.11
+      - code.ab18.in:10.10.10.11
+      - term.ab18.in:10.10.10.11
+      - draw.ab18.in:10.10.10.11
+      - pad.ab18.in:10.10.10.11
+      - pdf.ab18.in:10.10.10.11
+    labels:
+      - com.centurylinklabs.watchtower.enable=true
+
+networks:
+  internal_bridge:
+    external: true
