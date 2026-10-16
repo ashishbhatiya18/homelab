@@ -12,6 +12,20 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     labels:
       - com.centurylinklabs.watchtower.enable=false
+  # Heartbeat for Healthchecks.io: pings every 5 min; when pings stop (node,
+  # Docker or the internet down — incl. power cuts that take out both nodes),
+  # Healthchecks.io alerts the fallback ntfy topic on ntfy.sh.
+  # HC_PING_URL=https://hc-ping.com/<uuid> in secrets/ab-heartbeat.env
+  heartbeat:
+    image: curlimages/curl:latest
+    container_name: heartbeat
+    restart: always
+    env_file: /home/dietpi/localstack/secrets/ab-heartbeat.env
+    entrypoint: ["sh", "-c"]
+    command:
+      - while true; do curl -fsS -m 10 --retry 3 -o /dev/null "$$HC_PING_URL" || echo "ping failed"; sleep 300; done
+    networks:
+      - network-layer
   # otel:
   #   image: grafana/otel-lgtm:latest
   #   container_name: otel

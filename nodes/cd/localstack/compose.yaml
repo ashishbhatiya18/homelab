@@ -21,6 +21,20 @@ services:
       - traefik.enable=true
       - traefik.http.routers.watchtower.rule=Host(`watchtower.citrusdental.in`)
       - traefik.http.services.watchtower.loadbalancer.port=8080
+  # Heartbeat for Healthchecks.io: pings every 5 min; when pings stop (node,
+  # Docker or the internet down — incl. power cuts that take out both nodes),
+  # Healthchecks.io alerts the fallback ntfy topic on ntfy.sh.
+  # HC_PING_URL=https://hc-ping.com/<uuid> in secrets/cd-heartbeat.env
+  heartbeat:
+    image: curlimages/curl:latest
+    container_name: heartbeat
+    restart: always
+    env_file: /home/dietpi/localstack/secrets/cd-heartbeat.env
+    entrypoint: ["sh", "-c"]
+    command:
+      - while true; do curl -fsS -m 10 --retry 3 -o /dev/null "$$HC_PING_URL" || echo "ping failed"; sleep 300; done
+    networks:
+      - internal_bridge
 networks:
   internal_bridge:
     external: true
