@@ -1,0 +1,25 @@
+# ntfy server config — https://docs.ntfy.sh/config/
+base-url: https://ntfy.ab18.in
+listen-http: ":80"
+
+# Messages are kept 12h so phones catch up after being offline (or after the
+# tunnel was down while LAN publishers kept posting).
+cache-file: /var/lib/ntfy/cache.db
+cache-duration: 12h
+
+# Private instance: nothing is readable or writable without a login or token.
+# Users, ACLs and tokens live in auth-file (see compose.yaml for the commands).
+auth-file: /var/lib/ntfy/user.db
+auth-default-access: deny-all
+enable-login: true
+enable-signup: false
+
+# Public traffic arrives via cloudflared, so every request comes from the same
+# container IP; rate limits and login-failure bans must use the real client.
+# LAN requests have no CF-Connecting-IP and fall back to their own address.
+behind-proxy: true
+proxy-forwarded-header: CF-Connecting-IP
+
+# iOS: Apple only delivers pushes via ntfy.sh; it receives a content-free poll
+# request and the app fetches the message from this server.
+upstream-base-url: https://ntfy.sh

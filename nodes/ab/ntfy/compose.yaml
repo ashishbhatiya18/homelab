@@ -1,0 +1,41 @@
+# ntfy – push notifications to phone/desktop (https://ntfy.sh).
+# Public at ntfy.ab18.in via the Cloudflare tunnel; NOT behind the passkey
+# `auth` middleware (phone apps and publishers can't do passkeys) — ntfy's own
+# auth applies instead: deny-all by default, a login for reading, a write-only
+# token per publisher. Containers on internal_bridge can post to http://ntfy.
+# One-time setup (users, ACLs, tokens are stored in data/ntfy/user.db):
+#   home stack exec ab/ntfy -- ntfy user add <you>
+#   home stack exec ab/ntfy -- ntfy access <you> 'homelab*' read-write
+#   home stack exec ab/ntfy -- ntfy user add publisher
+#   home stack exec ab/ntfy -- ntfy access publisher 'homelab*' write-only
+#   home stack exec ab/ntfy -- ntfy token add --label=<sender> publisher
+# State: /home/dietpi/localstack/data/ntfy (message cache + user database).
+services:
+  ntfy:
+    image: binwiederhier/ntfy:latest
+    container_name: ntfy
+    restart: always
+    command: serve
+    environment:
+      TZ: Asia/Kolkata
+    volumes:
+      - ./config/server.yml:/etc/ntfy/server.yml:ro
+      - /home/dietpi/localstack/data/ntfy:/var/lib/ntfy
+    networks:
+      - network-layer
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 http://localhost:80/v1/health -O - | grep -Eo '\"healthy\"\\s*:\\s*true' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=internal_bridge
+      - traefik.http.routers.ntfy.rule=Host(`ntfy.ab18.in`)
+      - traefik.http.services.ntfy.loadbalancer.server.port=80
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
