@@ -90,6 +90,8 @@ Background jobs (each its own brew service: home-backup, home-check, home-cleanu
 
 Setup:
   home registry login <host>        read-only login to check private images (Keychain)
+  home notify setup|test|off        also push notifications to an ntfy topic, with a
+                                    fallback topic when it is down (Keychain)
   home setup                        nodes and stacks (runs automatically the first time)
   home version
 `
@@ -209,6 +211,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return scheduled(ctx)
 	case "registry":
 		return registryCmd(args)
+	case "notify":
+		return notifyCmd(ctx, args)
 	case "":
 		if _, err := os.Stat(homecfg.DefaultPath()); errors.Is(err, os.ErrNotExist) {
 			return homesetup.Run(ctx, homecfg.DefaultPath())

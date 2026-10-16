@@ -29,7 +29,7 @@ This project lives in `home-cli/` of the homelab repo. Releasing: push a `home-c
 
 **Entry point** `cmd/home/main.go` dispatches top-level commands; `home br …` is forwarded to `internal/br/cli.Run`. Background jobs are separate Homebrew services: Homebrew allows one service per formula, so the release workflow writes companion formulae `home-backup`, `home-check`, `home-cleanup`, `home-deploy` into the tap, each installing a launcher that runs `home jobs run <job> --if-due` on its own interval (15 min, 15 min, 1 h, 5 min) with its own log. `--if-due` maps to `brcli.Scheduled`, `check.Daily`, `cleanupJob(false)` (daily after `checks.daily_at`) and `deployJob` (only nodes that already have a release). Daily jobs use "due since the last scheduled time" logic, so missed runs (sleep, off-network) catch up; job state is in `~/.local/state/home/jobs.json`. `home install|uninstall [job…]` (`internal/service`) installs the companion formulae and drives `brew services`, and unloads the single `home` service of versions before 0.5; `home run` remains for such old installs.
 
-**Shared packages** (`internal/`): `remote` (wraps the system `ssh` with BatchMode, reusing the user's keys and `~/.ssh/config`), `notify` (osascript notifications), `prompt` (tty prompts), `service`.
+**Shared packages** (`internal/`): `remote` (wraps the system `ssh` with BatchMode, reusing the user's keys and `~/.ssh/config`), `notify` (osascript notifications, plus ntfy pushes with a fallback topic when `home notify setup` saved one in the Keychain), `prompt` (tty prompts), `service`.
 
 **Node/stack side**
 - `homecfg`: node config; `Ordered()` yields upgrade order (nodes hosting shared services go last).

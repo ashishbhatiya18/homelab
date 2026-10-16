@@ -81,6 +81,12 @@ removed from the bundle keeps running until `node.sh down <stack>`.
 **Private images**: `home registry login ghcr.io` saves a read-only token in
 the macOS Keychain so private images are checked too.
 
+**Phone notifications**: `home notify setup` saves an [ntfy](https://ntfy.sh)
+topic URL, its access token and an optional fallback topic (e.g. on ntfy.sh,
+used when your own ntfy server is unreachable) in the Keychain. Every
+notification is then pushed there as well as shown on the Mac; `home notify
+test` sends one, `home notify off` removes the settings.
+
 **Auto-updaters**: if you run Watchtower, set `WATCHTOWER_MONITOR_ONLY=true`
 so images only change when you run `home stack update` or `home upgrade`.
 
