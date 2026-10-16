@@ -1,0 +1,10 @@
+# DNS for nikview.com — managed by `home cloud`.
+# Names are relative to the zone ("@" is the apex); ttl omitted = automatic.
+# ignore: names (shell patterns) managed elsewhere; _acme-challenge* always is.
+# CNAMEs for tunnel routes are implied by tunnels/*.yaml and not listed here.
+
+zone: nikview.com
+id: ecf8cc152b7b38bbf879a7bbcd05cdf6
+records:
+  - {name: '@', type: A, content: 2.57.91.91, proxied: true}
+  - {name: www, type: CNAME, content: nikview.com, proxied: true}

@@ -1,0 +1,26 @@
+# DNS for citrusdental.in — managed by `home cloud`.
+# Names are relative to the zone ("@" is the apex); ttl omitted = automatic.
+# ignore: names (shell patterns) managed elsewhere; _acme-challenge* always is.
+# CNAMEs for tunnel routes are implied by tunnels/*.yaml and not listed here.
+
+zone: citrusdental.in
+id: fb8e8e753a379b3ae6449366fdf75f29
+records:
+  - {name: '@', type: CNAME, content: citrus-dental-website.pages.dev, proxied: true}
+  - {name: '@', type: MX, content: route1.mx.cloudflare.net, priority: 78, read_only: true}
+  - {name: '@', type: MX, content: route2.mx.cloudflare.net, priority: 14, read_only: true}
+  - {name: '@', type: MX, content: route3.mx.cloudflare.net, priority: 97, read_only: true}
+  - {name: '@', type: TXT, content: google-site-verification=1ZMX7S28-ltxtskExd9wxMtWSxnpvO2zGOrmsgqaDFc}
+  - {name: '@', type: TXT, content: google-site-verification=R_yZ9MXc0dPizBvOwQBKe0k3mk_i3BjHaahaFVWDifU}
+  - {name: '@', type: TXT, content: 'v=spf1 include:_spf.mx.cloudflare.net ~all'}
+  - {name: _dmarc.mail, type: CNAME, content: _dmarc.mail.citrusdental.in.hosted-dmarc.mailer91.com}
+  - {name: admin, type: CNAME, content: citrus-dental-admin.pages.dev, proxied: true}
+  - {name: book, type: URI, content: 100 "citrusdental.in/book", priority: 255}
+  - {name: cf2024-1._domainkey, type: TXT, content: '"v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiweykoi+o48IOGuP7GR3X0MOExCUDY/BCRHoWBnh3rChl7WhdyCxW3jgq1daEjPPqoi7sJvdg5hEQVsgVRQP4DcnQDVjGMbASQtrY4WmB1VebF+RPJB2ECPsEDTpeiI5ZyUAwJaVX7r6bznU67g7LvFq35yIo4sdlmtZGV+i0H4cpYH9+3JJ78k" "m4KXwaf9xUJCWF6nxeD+qG6Fyruw1Qlbds2r85U9dkNDVAS3gioCvELryh1TxKGiVTkg4wqHTyHfWsp7KD3WQHYJn0RyfJJu6YEmL77zonn7p2SRMvTMP3ZEXibnC9gz3nnhR6wcYL8Q7zXypKTMD58bTixDSJwIDAQAB"', read_only: true}
+  - {name: mail, type: MX, content: mx1.mailer91.com, priority: 5}
+  - {name: mail, type: MX, content: mx2.mailer91.com, priority: 10}
+  - {name: mail, type: TXT, content: 'v=spf1 include:mailer91.com ~all'}
+  - {name: mailer91.mail, type: CNAME, content: email.mailer91.com}
+  - {name: smiledesign, type: CNAME, content: smile-design-1sl.pages.dev, proxied: true}
+  - {name: spaceship._domainkey.mail, type: TXT, content: v=DKIM1;k=rsa;p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCW2UxfSdaD6l2YHlbGetsh0naUlhBYNrPFziLUKNsw1VTtk/UOM5j9zDQpEHbn9jTGiNooKjVU/i4uWBNEi3jn4409W/yeQeqF4/ye/ZYUCuZscGn+9OBHuDye9FwOz7SVnAnJpA0WxWOFZrrk2zepaweOytLSH1FKGkx2CsbvTwIDAQAB}
+  - {name: www, type: CNAME, content: citrus-dental-website.pages.dev, proxied: true}

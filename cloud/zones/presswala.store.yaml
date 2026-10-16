@@ -1,0 +1,15 @@
+# DNS for presswala.store — managed by `home cloud`.
+# Names are relative to the zone ("@" is the apex); ttl omitted = automatic.
+# ignore: names (shell patterns) managed elsewhere; _acme-challenge* always is.
+# CNAMEs for tunnel routes are implied by tunnels/*.yaml and not listed here.
+
+zone: presswala.store
+id: 6d77c1cf1f24f668045be8e4ce4d0cac
+records:
+  - {name: '@', type: MX, content: route1.mx.cloudflare.net, priority: 95, read_only: true}
+  - {name: '@', type: MX, content: route2.mx.cloudflare.net, priority: 93, read_only: true}
+  - {name: '@', type: MX, content: route3.mx.cloudflare.net, priority: 47, read_only: true}
+  - {name: '@', type: TXT, content: 'v=spf1 include:_spf.mx.cloudflare.net ~all'}
+  - {name: _dmarc, type: TXT, content: 'v=DMARC1; p=none; rua=mailto:f79684f9bff14c83a2843656e907596b@dmarc-reports.cloudflare.net'}
+  - {name: cf2024-1._domainkey, type: TXT, content: '"v=DKIM1; h=sha256; k=rsa; p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAiweykoi+o48IOGuP7GR3X0MOExCUDY/BCRHoWBnh3rChl7WhdyCxW3jgq1daEjPPqoi7sJvdg5hEQVsgVRQP4DcnQDVjGMbASQtrY4WmB1VebF+RPJB2ECPsEDTpeiI5ZyUAwJaVX7r6bznU67g7LvFq35yIo4sdlmtZGV+i0H4cpYH9+3JJ78k" "m4KXwaf9xUJCWF6nxeD+qG6Fyruw1Qlbds2r85U9dkNDVAS3gioCvELryh1TxKGiVTkg4wqHTyHfWsp7KD3WQHYJn0RyfJJu6YEmL77zonn7p2SRMvTMP3ZEXibnC9gz3nnhR6wcYL8Q7zXypKTMD58bTixDSJwIDAQAB"', read_only: true}
+  - {name: www, type: CNAME, content: presswala.store, proxied: true}

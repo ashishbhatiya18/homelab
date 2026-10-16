@@ -1,0 +1,17 @@
+# Cloudflare Tunnel nikview.com — managed by `home cloud`.
+# Ingress rules use cloudflared's field names; a bare hostname takes the
+# defaults ({host} = that hostname). The last rule must match everything.
+# Each hostname also gets a proxied CNAME to the tunnel; it is not repeated in
+# the zone file.
+
+tunnel: nikview.com
+id: 6a318c45-5c6c-4aaf-897e-4d3b269d69c5
+node: dietpi
+stack: costaebella
+container: costaebella-cloudflare
+ingress:
+  - hostname: costaebella-be.nikview.com
+    service: http://api:8080
+    originRequest:
+      httpHostHeader: ""
+  - service: http_status:404

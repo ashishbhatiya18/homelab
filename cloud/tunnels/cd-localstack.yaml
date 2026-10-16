@@ -1,0 +1,21 @@
+# Cloudflare Tunnel cd-localstack — managed by `home cloud`.
+# Ingress rules use cloudflared's field names; a bare hostname takes the
+# defaults ({host} = that hostname). The last rule must match everything.
+# Each hostname also gets a proxied CNAME to the tunnel; it is not repeated in
+# the zone file.
+
+tunnel: cd-localstack
+id: ba49b407-186d-48f3-8caa-3599fcc25a65
+node: dietpi
+stack: citrusdental
+container: cloudflare
+originRequest:
+  http2Origin: true
+  noTLSVerify: false
+ingress:
+  - hostname: api.citrusdental.in
+    service: https://traefik:443
+    originRequest:
+      httpHostHeader: api.citrusdental.in
+      originServerName: api.citrusdental.in
+  - service: http_status:404
