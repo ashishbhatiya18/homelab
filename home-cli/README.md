@@ -90,6 +90,52 @@ test` sends one, `home notify off` removes the settings.
 **Auto-updaters**: if you run Watchtower, set `WATCHTOWER_MONITOR_ONLY=true`
 so images only change when you run `home stack update` or `home upgrade`.
 
+## Cloudflare Tunnels, routes and DNS
+
+`home` reads your Cloudflare Tunnels, their ingress rules and your zones' DNS
+through the API, finds which `cloudflared` container on which node runs each
+tunnel (from its token's tunnel ID, decoded on the node — the token never
+leaves it), and matches every route with the Traefik router behind it.
+
+| Command | What it does |
+|---|---|
+| `home cloud setup` | saves an API token in the Keychain, picks the account and the directory for the files |
+| `home tunnel list` | every tunnel: health, connectors and edge locations, the node/stack running it, route count, whether it has a file |
+| `home tunnel show <tunnel>` | connectors (version, arch, uptime, edge, origin IP), the container running it, and each ingress rule with its origin settings and DNS state |
+| `home route list [tunnel\|node\|zone] [--all]` | every route: tunnel, service, DNS, Traefik router, forward-auth — and drift: routes without DNS or without a router, CNAMEs to a tunnel that doesn't route them or to a deleted tunnel; `--all` adds the LAN/Tailscale-only hosts |
+| `home route check [host…]` | each route end to end *through Cloudflare's edge* (resolved via 1.1.1.1, so local DNS can't short-cut it): DNS → tunnel → ingress → HTTP status, explaining failures (tunnel down, origin unreachable, nothing matched) |
+| `home cloud export [--dir <dir>]` | writes the live configuration to `tunnels/<name>.yaml` and `zones/<zone>.yaml`, for review and commit |
+
+The files are meant for git. A tunnel file uses cloudflared's own ingress
+fields; routes sharing a service and origin settings collapse into `defaults`
+(`{host}` stands for each route's hostname), so a typical tunnel reads:
+
+```yaml
+tunnel: ab18-localstack
+node: ab
+stack: network
+container: cloudflared
+defaults:
+  service: https://traefik:443
+  originRequest: {httpHostHeader: '{host}', originServerName: '{host}'}
+originRequest: {http2Origin: true, noTLSVerify: false}
+ingress:
+  - auth.ab18.in
+  - photos.ab18.in
+  - hostname: ntfy.ab18.in        # a full rule stands alone
+    service: http://ntfy:80
+  - service: http_status:404      # the last rule matches everything
+```
+
+A zone file lists the zone's other records; the proxied CNAMEs that tunnel
+routes need are implied by the tunnel files. Names matching the zone's
+`ignore:` patterns (and always `_acme-challenge*`) belong to something else and
+are left out; `ignore:` survives a re-export. `home route check` counts a 4xx at
+`/` as reachable (a warning, as APIs often have nothing there) and anything
+from 500 up, or a Cloudflare error, as a failure. The token needs **Account ·
+Cloudflare Tunnel** and **Zone · DNS** (Read is enough for everything above)
+plus **Zone · Zone · Read**.
+
 ## Backups — `home br`
 
 Encrypted ([age](https://age-encryption.org)), scheduled, portable Postgres

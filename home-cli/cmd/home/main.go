@@ -79,6 +79,14 @@ Upgrade:
                                     apt → DietPi → stack updates → reboot if needed,
                                     node by node in upgrade order; stops at the first failure
 
+Cloudflare (tunnels, routes, DNS — files in git; set up with home cloud setup):
+  home tunnel list                           tunnels: health, connectors, node, routes
+  home tunnel show <tunnel>                  connectors, where it runs, ingress rules with DNS state
+  home route list [tunnel|node|zone] [--all] every route: tunnel, service, DNS, Traefik router,
+                                             auth; flags drift (no DNS, no router, orphan CNAMEs)
+  home route check [host…]                   end to end through Cloudflare's edge (all by default)
+  home cloud export [--dir <dir>]            write the live config to tunnels/*.yaml, zones/*.yaml
+
 Backups:
   home br …                         encrypted Postgres backups (see ` + "`home br help`" + `)
 
@@ -92,6 +100,7 @@ Setup:
   home registry login <host>        read-only login to check private images (Keychain)
   home notify setup|test|off        also push notifications to an ntfy topic, with a
                                     fallback topic when it is down (Keychain)
+  home cloud setup                  Cloudflare API token (Keychain), account, files directory
   home setup                        nodes and stacks (runs automatically the first time)
   home version
 `
@@ -260,6 +269,12 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return a.deployCmd(ctx, args)
 	case "jobs":
 		return a.jobsCmd(ctx, args)
+	case "cloud":
+		return a.cloudCmd(ctx, args)
+	case "tunnel":
+		return a.tunnelCmd(ctx, args)
+	case "route":
+		return a.routeCmd(ctx, args)
 	}
 	return fmt.Errorf("unknown command %q — see `home help`", cmd)
 }

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -33,6 +34,24 @@ type Config struct {
 	// Hooks run before a stack update, keyed by "node/stack". Each entry is a
 	// `home` command line, e.g. "br backup myapp".
 	Hooks map[string][]string `yaml:"pre_update_hooks,omitempty"`
+	// Cloudflare is set by `home cloud setup`; the API token is in the Keychain.
+	Cloudflare *Cloudflare `yaml:"cloudflare,omitempty"`
+}
+
+type Cloudflare struct {
+	AccountID string `yaml:"account_id"`
+	// Dir holds tunnels/*.yaml and zones/*.yaml, typically in the repo with
+	// the stacks; a leading ~/ is the home directory.
+	Dir string `yaml:"dir"`
+}
+
+// CloudDir is Dir with ~/ expanded.
+func (c *Cloudflare) CloudDir() string {
+	if rest, ok := strings.CutPrefix(c.Dir, "~/"); ok {
+		h, _ := os.UserHomeDir()
+		return filepath.Join(h, rest)
+	}
+	return c.Dir
 }
 
 type Node struct {
