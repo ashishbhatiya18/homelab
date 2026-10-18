@@ -108,6 +108,16 @@ leaves it), and matches every route with the Traefik router behind it.
 | `home route list [tunnel\|node\|zone] [--all]` | every route: tunnel, service, DNS, Traefik router, forward-auth — and drift: routes without DNS or without a router, CNAMEs to a tunnel that doesn't route them or to a deleted tunnel; `--all` adds the LAN/Tailscale-only hosts |
 | `home route check [host…]` | each route end to end *through Cloudflare's edge* (resolved via 1.1.1.1, so local DNS can't short-cut it): DNS → tunnel → ingress → HTTP status, explaining failures (tunnel down, origin unreachable, nothing matched) |
 | `home cloud export [--dir <dir>]` | writes the live configuration to `tunnels/<name>.yaml` and `zones/<zone>.yaml`, for review and commit |
+| `home cloud plan` | what would change to make Cloudflare match the files |
+| `home cloud apply [--yes]` | makes it so, after a snapshot of everything it touches; stops at the first error |
+| `home cloud undo [--list] [snapshot]` | puts back the state from before the last (or a given) apply |
+| `home route add <host> [--tunnel t] [origin flags]` | routes a hostname (with its CNAME): a bare hostname when the tunnel's defaults fit, otherwise a full rule — `--service`, `--host-header`, `--server-name`, `--no-tls-verify`, `--http2`, `--path`; warns when no Traefik router answers the host yet |
+| `home route set <host> <origin flags>` / `remove <host>` / `move <host> --to <tunnel>` | change, drop (with its CNAME) or move a route |
+| `home dns add <name> <type> <content> [--proxied] [--ttl N] [--priority N] [--comment C]` / `dns remove <name> [type] [content]` | other records |
+| `home tunnel create <name> --node N --stack S [--container C] [--secret PATH]` | a new tunnel and its file; writes the token to the node and prints the compose service to add |
+| `home tunnel token <tunnel> --install [--secret PATH]` | token → node file (over SSH stdin, never printed), recreate the connector, wait until it connects |
+| `home tunnel rotate <tunnel>` | new tunnel secret, then the same install — the old token stops working |
+| `home tunnel delete <tunnel>` | refuses while a route, a DNS record or a running connector still uses it |
 
 The files are meant for git. A tunnel file uses cloudflared's own ingress
 fields; routes sharing a service and origin settings collapse into `defaults`
@@ -129,6 +139,20 @@ ingress:
     service: http://ntfy:80
   - service: http_status:404      # the last rule matches everything
 ```
+
+Route and DNS commands edit the files (comments survive) and then run plan →
+apply; `--no-apply` only edits, `--yes` skips the question. Commit the files
+afterwards: they are the record of what Cloudflare should look like, and
+`home doctor` and the daily check report any difference, connectors that are
+down, and routes without DNS or a router.
+
+Applies never leave a gap: a tunnel first gains new rules while keeping the
+ones on their way out, DNS changes next (a record of another type is removed
+right before its replacement), and only then are old rules dropped — so a
+route moving between tunnels never meets the catch-all. A tunnel file's
+`secret:` says where its connector's token lives on the node: a file holding
+just the token (`TUNNEL_TOKEN_FILE`, found automatically) or an env file with a
+`TUNNEL_TOKEN=` line; it is rewritten in place, so single-file mounts see it.
 
 A zone file lists the zone's other records; the proxied CNAMEs that tunnel
 routes need are implied by the tunnel files. Names matching the zone's

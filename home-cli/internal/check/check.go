@@ -119,6 +119,10 @@ func Run(ctx context.Context, cfg *homecfg.Config, r *remote.Runner, refresh, st
 // Creds looks up a saved registry login (see `home registry login`).
 var Creds func(host string) *registry.Cred
 
+// Extra adds findings outside the nodes to the daily summary (e.g. Cloudflare
+// drift), as "<label>: item · item". Nil, or no items: nothing to add.
+var Extra func(ctx context.Context) (label string, items []string)
+
 // Summary is one line per node, for notifications.
 func Summary(reports []NodeReport, diskWarn int) (string, bool) {
 	var lines []string
@@ -155,6 +159,12 @@ func Daily(ctx context.Context, cfg *homecfg.Config, r *remote.Runner, logf func
 	}
 	reports := Run(ctx, cfg, r, true, true)
 	summary, attention := Summary(reports, cfg.Checks.DiskWarnPercent)
+	if Extra != nil {
+		if label, items := Extra(ctx); len(items) > 0 {
+			summary += "\n" + label + ": " + strings.Join(items, " · ")
+			attention = true
+		}
+	}
 	logf("daily check:\n%s", summary)
 	allDown := true
 	for _, rep := range reports {

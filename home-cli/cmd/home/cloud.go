@@ -25,9 +25,9 @@ import (
 const cloudflareTokenAccount = "cloudflare:token"
 
 const (
-	cloudUsage  = "usage: home cloud setup | home cloud export [--dir <dir>]"
-	tunnelUsage = "usage: home tunnel list | home tunnel show <tunnel>"
-	routeUsage  = "usage: home route list [tunnel|node|zone] [--all] | home route check [host…]"
+	cloudUsage  = "usage: home cloud setup | plan | apply [--yes] | undo [--list] [--yes] | export [--dir <dir>]"
+	tunnelUsage = "usage: home tunnel list | show <tunnel> | create <name> --node N --stack S [--container C] [--secret PATH] [--service URL] | token <tunnel> --install [--secret PATH] | token <tunnel> --print | rotate <tunnel> | delete <tunnel>"
+	routeUsage  = "usage: home route list [tunnel|node|zone] [--all] | check [host…] | add <host> [--tunnel t] [origin flags] | set <host> <origin flags> | remove <host> | move <host> --to <tunnel>\n  origin flags: --service URL --host-header H --server-name N --no-tls-verify --http2 --path REGEX; --no-apply only edits the files, --yes applies without asking"
 )
 
 func (a *app) cloudAPI() (*cloudflare.Client, *homecfg.Cloudflare, error) {
@@ -66,6 +66,21 @@ func (a *app) cloudCmd(ctx context.Context, args []string) error {
 	switch args[0] {
 	case "setup":
 		return a.cloudSetup(ctx)
+	case "plan":
+		_, err := a.cloudPlan(ctx, false, false)
+		return err
+	case "apply":
+		fs := flag.NewFlagSet("cloud apply", flag.ExitOnError)
+		yes := fs.Bool("yes", false, "do not ask for confirmation")
+		fs.Parse(reorder(args[1:]))
+		_, err := a.cloudPlan(ctx, true, *yes)
+		return err
+	case "undo":
+		fs := flag.NewFlagSet("cloud undo", flag.ExitOnError)
+		yes := fs.Bool("yes", false, "do not ask for confirmation")
+		ls := fs.Bool("list", false, "list the saved snapshots")
+		fs.Parse(reorder(args[1:]))
+		return a.cloudUndo(ctx, *ls, *yes, fs.Arg(0))
 	case "export":
 		fs := flag.NewFlagSet("cloud export", flag.ExitOnError)
 		dir := fs.String("dir", "", "write here instead of the configured directory")
@@ -225,6 +240,8 @@ func (a *app) tunnelCmd(ctx context.Context, args []string) error {
 		return a.tunnelList(ctx)
 	case len(args) == 2 && args[0] == "show":
 		return a.tunnelShow(ctx, args[1])
+	case len(args) > 1 && (args[0] == "create" || args[0] == "token" || args[0] == "rotate" || args[0] == "delete"):
+		return a.tunnelLifecycle(ctx, args[0], args[1:])
 	}
 	return errors.New(tunnelUsage)
 }
@@ -438,6 +455,8 @@ func (a *app) routeCmd(ctx context.Context, args []string) error {
 		return a.routeList(ctx, fs.Arg(0), *all)
 	case "check":
 		return a.routeCheck(ctx, args[1:])
+	case "add", "set", "remove", "move":
+		return a.routeEdit(ctx, args[0], args[1:])
 	}
 	return errors.New(routeUsage)
 }
@@ -691,4 +710,170 @@ func (a *app) routeCheck(ctx context.Context, hosts []string) error {
 	}
 	fmt.Println()
 	return nil
+}
+
+// cloudPlan compares the files with Cloudflare and, with apply, makes
+// Cloudflare match after a confirmation and a snapshot. It returns the number
+// of changes.
+func (a *app) cloudPlan(ctx context.Context, apply, yes bool) (int, error) {
+	st, cf, err := a.gather(ctx, cloud.GatherOpts{DNS: true})
+	if err != nil {
+		return 0, err
+	}
+	files, err := cloud.Load(cf.CloudDir())
+	if err != nil {
+		return 0, err
+	}
+	if len(files.Tunnels) == 0 && len(files.Zones) == 0 {
+		return 0, fmt.Errorf("no tunnel or zone files in %s — run `home cloud export` first", cf.CloudDir())
+	}
+	d, notes, err := cloud.FromFiles(files, st)
+	if err != nil {
+		return 0, err
+	}
+	changes := cloud.Plan(d, st)
+	for _, n := range notes {
+		fmt.Println("·", n)
+	}
+	if len(changes) == 0 {
+		fmt.Println("✓ Cloudflare matches", cf.CloudDir())
+		return 0, nil
+	}
+	return len(changes), a.applyChanges(ctx, st, cf, changes, apply, yes)
+}
+
+func printCloudPlan(changes []cloud.Change) {
+	fmt.Println("Plan:")
+	for _, c := range changes {
+		if c.Config != nil && len(c.Lines) == 1 && c.Lines[0] == "(drop the removed rules)" {
+			continue // second step of a change already shown
+		}
+		fmt.Println(" ", c)
+	}
+}
+
+func (a *app) applyChanges(ctx context.Context, st *cloud.State, cf *homecfg.Cloudflare, changes []cloud.Change, apply, yes bool) error {
+	printCloudPlan(changes)
+	if !apply {
+		fmt.Println("\n`home cloud apply` makes these changes.")
+		return nil
+	}
+	if err := confirm(yes, fmt.Sprintf("Apply %d changes to Cloudflare?", len(changes))); err != nil {
+		return err
+	}
+	api, _, err := a.cloudAPI()
+	if err != nil {
+		return err
+	}
+	snap := cloud.TakeSnapshot(st, changes)
+	p, err := cloud.SaveSnapshot(homecfg.StateDir(), snap)
+	if err != nil {
+		return fmt.Errorf("snapshot: %w", err)
+	}
+	if err := cloud.Apply(ctx, api, cf.AccountID, changes, logf); err != nil {
+		return fmt.Errorf("%w\nthe changes before it were applied; `home cloud undo` restores the state from before this apply", err)
+	}
+	fmt.Println("✓ applied; snapshot of the previous state:", filepath.Base(p), "(`home cloud undo` restores it)")
+	return nil
+}
+
+func (a *app) cloudUndo(ctx context.Context, list, yes bool, which string) error {
+	snaps := cloud.Snapshots(homecfg.StateDir())
+	if list {
+		for i, p := range snaps {
+			s, err := cloud.LoadSnapshot(p)
+			if err != nil {
+				continue
+			}
+			var what []string
+			for _, t := range s.Tunnels {
+				what = append(what, "tunnel "+t.Name)
+			}
+			for _, z := range s.Zones {
+				what = append(what, "dns "+z.Name)
+			}
+			fmt.Printf("%2d  %s  %s  %s\n", i+1, filepath.Base(p), s.Time.Local().Format("2006-01-02 15:04"), strings.Join(what, ", "))
+		}
+		return nil
+	}
+	if len(snaps) == 0 {
+		return errors.New("no snapshots yet — `home cloud apply` saves one before every change")
+	}
+	path := snaps[0]
+	if which != "" {
+		path = filepath.Join(cloud.SnapshotDir(homecfg.StateDir()), strings.TrimSuffix(which, ".json")+".json")
+	}
+	s, err := cloud.LoadSnapshot(path)
+	if err != nil {
+		return err
+	}
+	st, cf, err := a.gather(ctx, cloud.GatherOpts{DNS: true})
+	if err != nil {
+		return err
+	}
+	files, _ := cloud.Load(cf.CloudDir())
+	d := s.Desired(func(zone string) []string {
+		if files != nil {
+			if z := files.Zone(zone); z != nil {
+				return z.Ignore
+			}
+		}
+		return nil
+	})
+	changes := cloud.Plan(d, st)
+	fmt.Println("Restoring the state from", s.Time.Local().Format("2006-01-02 15:04"), "("+filepath.Base(path)+")")
+	if len(changes) == 0 {
+		fmt.Println("✓ Cloudflare already matches it")
+		return nil
+	}
+	if err := a.applyChanges(ctx, st, cf, changes, true, yes); err != nil {
+		return err
+	}
+	fmt.Println("The files no longer match Cloudflare: `git checkout` them, or `home cloud export` to take this state.")
+	return nil
+}
+
+// cloudFindings is Cloudflare's part of `home doctor` and the daily check:
+// drift between the files and Cloudflare, connectors that are down, and
+// routes without DNS or a router.
+func (a *app) cloudFindings(ctx context.Context) ([]string, error) {
+	api, cf, err := a.cloudAPI()
+	if err != nil {
+		return nil, err
+	}
+	st, err := cloud.Gather(ctx, api, cf.AccountID, a.cfg, a.r, cloud.GatherOpts{DNS: true, Nodes: true})
+	if err != nil {
+		return nil, err
+	}
+	var items []string
+	files, err := cloud.Load(cf.CloudDir())
+	if err != nil {
+		items = append(items, err.Error())
+	} else if len(files.Tunnels)+len(files.Zones) > 0 {
+		d, _, err := cloud.FromFiles(files, st)
+		if err != nil {
+			items = append(items, err.Error())
+		} else if n := len(cloud.Plan(d, st)); n > 0 {
+			items = append(items, fmt.Sprintf("%d differences between %s and Cloudflare — `home cloud plan`", n, filepath.Base(cf.CloudDir())))
+		}
+	}
+	for _, t := range st.Tunnels {
+		// Only tunnels a node is meant to run: a laptop's tunnel sleeps.
+		meant := len(st.Runners[t.ID]) > 0
+		if files != nil {
+			if f := files.Tunnel(t.Name); f != nil && f.Node != "" {
+				meant = true
+			}
+		}
+		if meant && t.Status != "healthy" {
+			items = append(items, fmt.Sprintf("tunnel %s is %s", t.Name, t.Status))
+		}
+	}
+	rows, _ := routeRows(st, false)
+	for _, r := range rows {
+		if len(r.notes) > 0 && r.tunnel != "-" {
+			items = append(items, r.host+": "+strings.Join(r.notes, "; "))
+		}
+	}
+	return items, nil
 }

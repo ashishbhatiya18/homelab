@@ -285,3 +285,75 @@ func (c *Client) Connectors(ctx context.Context, accountID, tunnelID string) ([]
 	_, err := c.do(ctx, http.MethodGet, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel/"+url.PathEscape(tunnelID)+"/connections", nil, nil, &out)
 	return out, err
 }
+
+// ---- writes --------------------------------------------------------------------
+
+// PutTunnelConfig replaces a remotely managed tunnel's whole configuration.
+func (c *Client) PutTunnelConfig(ctx context.Context, accountID, tunnelID string, cfg TunnelConfig) error {
+	_, err := c.do(ctx, http.MethodPut, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel/"+url.PathEscape(tunnelID)+"/configurations",
+		nil, map[string]any{"config": cfg}, nil)
+	return err
+}
+
+// CreateTunnel creates a tunnel whose ingress is managed through the API.
+func (c *Client) CreateTunnel(ctx context.Context, accountID, name string) (*Tunnel, error) {
+	var t Tunnel
+	_, err := c.do(ctx, http.MethodPost, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel",
+		nil, map[string]any{"name": name, "config_src": "cloudflare"}, &t)
+	return &t, err
+}
+
+// TunnelToken returns the token a connector runs the tunnel with.
+func (c *Client) TunnelToken(ctx context.Context, accountID, tunnelID string) (string, error) {
+	var tok string
+	_, err := c.do(ctx, http.MethodGet, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel/"+url.PathEscape(tunnelID)+"/token", nil, nil, &tok)
+	return tok, err
+}
+
+// RotateTunnelSecret sets a new tunnel secret: connectors holding the old
+// token are refused from their next reconnect on.
+func (c *Client) RotateTunnelSecret(ctx context.Context, accountID, tunnelID, secretB64 string) error {
+	_, err := c.do(ctx, http.MethodPatch, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel/"+url.PathEscape(tunnelID),
+		nil, map[string]any{"tunnel_secret": secretB64}, nil)
+	return err
+}
+
+// CleanupConnections drops stale connections, e.g. of a stopped connector.
+func (c *Client) CleanupConnections(ctx context.Context, accountID, tunnelID string) error {
+	_, err := c.do(ctx, http.MethodDelete, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel/"+url.PathEscape(tunnelID)+"/connections", nil, nil, nil)
+	return err
+}
+
+func (c *Client) DeleteTunnel(ctx context.Context, accountID, tunnelID string) error {
+	_, err := c.do(ctx, http.MethodDelete, "/accounts/"+url.PathEscape(accountID)+"/cfd_tunnel/"+url.PathEscape(tunnelID), nil, nil, nil)
+	return err
+}
+
+func recordBody(r DNSRecord) map[string]any {
+	ttl := r.TTL
+	if ttl == 0 || r.Proxied {
+		ttl = 1 // automatic; proxied records require it
+	}
+	b := map[string]any{"name": r.Name, "type": r.Type, "content": r.Content, "proxied": r.Proxied, "ttl": ttl, "comment": r.Comment}
+	if r.Priority != nil {
+		b["priority"] = *r.Priority
+	}
+	return b
+}
+
+func (c *Client) CreateDNSRecord(ctx context.Context, zoneID string, r DNSRecord) (*DNSRecord, error) {
+	var out DNSRecord
+	_, err := c.do(ctx, http.MethodPost, "/zones/"+url.PathEscape(zoneID)+"/dns_records", nil, recordBody(r), &out)
+	return &out, err
+}
+
+// UpdateDNSRecord overwrites record id with r.
+func (c *Client) UpdateDNSRecord(ctx context.Context, zoneID, id string, r DNSRecord) error {
+	_, err := c.do(ctx, http.MethodPut, "/zones/"+url.PathEscape(zoneID)+"/dns_records/"+url.PathEscape(id), nil, recordBody(r), nil)
+	return err
+}
+
+func (c *Client) DeleteDNSRecord(ctx context.Context, zoneID, id string) error {
+	_, err := c.do(ctx, http.MethodDelete, "/zones/"+url.PathEscape(zoneID)+"/dns_records/"+url.PathEscape(id), nil, nil, nil)
+	return err
+}

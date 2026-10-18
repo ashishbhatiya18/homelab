@@ -6,7 +6,8 @@ import (
 )
 
 // Export turns the live state into files. prev (the files on disk, may be
-// nil) supplies what only the files know: zones' ignore lists. Notes describe
+// nil) supplies what only the files know: zones' ignore lists, and where a
+// tunnel's token lives (or runs) when the nodes don't show it. Notes describe
 // what didn't map cleanly (records pointing at tunnels without a matching
 // route, routes without DNS, connectors that could not be located).
 func Export(st *State, prev *Files) (fs Files, notes []string) {
@@ -18,14 +19,26 @@ func Export(st *State, prev *Files) (fs Files, notes []string) {
 		f := Compact(t.Name, t.Config)
 		f.ID = t.ID
 		f.Local = !t.Remote()
+		var pf *TunnelFile
+		if prev != nil {
+			pf = prev.Tunnel(t.Name)
+		}
 		switch rs := st.Runners[t.ID]; len(rs) {
 		case 0:
-			notes = append(notes, fmt.Sprintf("tunnel %s: no cloudflared container on any node runs it", t.Name))
-		case 1:
-			f.Node, f.Stack, f.Container = rs[0].Node, rs[0].Stack, rs[0].Container
+			if pf != nil {
+				f.Node, f.Stack, f.Container = pf.Node, pf.Stack, pf.Container
+			}
+			if f.Node == "" {
+				notes = append(notes, fmt.Sprintf("tunnel %s: no cloudflared container on any node runs it", t.Name))
+			}
 		default:
-			f.Node, f.Stack, f.Container = rs[0].Node, rs[0].Stack, rs[0].Container
-			notes = append(notes, fmt.Sprintf("tunnel %s: run by %d containers; recorded %s", t.Name, len(rs), rs[0]))
+			f.Node, f.Stack, f.Container, f.Secret = rs[0].Node, rs[0].Stack, rs[0].Container, rs[0].Secret
+			if len(rs) > 1 {
+				notes = append(notes, fmt.Sprintf("tunnel %s: run by %d containers; recorded %s", t.Name, len(rs), rs[0]))
+			}
+		}
+		if f.Secret == "" && pf != nil {
+			f.Secret = pf.Secret
 		}
 		if f.Local {
 			notes = append(notes, fmt.Sprintf("tunnel %s: ingress is in cloudflared's local config file, not managed", t.Name))

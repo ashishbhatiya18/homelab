@@ -41,9 +41,10 @@ type ZoneState struct {
 	Records []cloudflare.DNSRecord
 }
 
-// Runner is a cloudflared container on a node.
+// Runner is a cloudflared container on a node. Secret is the node path of
+// its token file, when it reads one (TUNNEL_TOKEN_FILE).
 type Runner struct {
-	Node, Stack, Container, State, Health string
+	Node, Stack, Container, State, Health, Secret string
 }
 
 func (r Runner) String() string { return r.Node + "/" + r.Stack + " (" + r.Container + ")" }
@@ -243,12 +244,13 @@ docker ps -aq | xargs -r docker inspect --format '{{.Name}}|{{.Config.Image}}' |
   tok=$(printf '%s\n' "$env" | sed -n 's/^TUNNEL_TOKEN=//p')
   [ -z "$tok" ] && tok=$(printf '%s\n' "$args" | sed -n '/^--token$/{n;p;}; s/^--token=//p' | head -n1)
   f=$(printf '%s\n' "$env" | sed -n 's/^TUNNEL_TOKEN_FILE=//p')
+  src=
   if [ -z "$tok" ] && [ -n "$f" ]; then
     src=$(docker inspect --format '{{range .Mounts}}{{if eq .Destination "'"$f"'"}}{{.Source}}{{end}}{{end}}' "$c")
     if [ -n "$src" ] && [ -r "$src" ]; then tok=$(cat "$src"); else tok=$(docker cp "$c:$f" - 2>/dev/null | tar -xO 2>/dev/null); fi
   fi
   id=$(printf '%s' "$tok" | tunnel_id)
-  echo "cfd=$c|$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$c")|$id"
+  echo "cfd=$c|$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project"}}|{{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$c")|$id|$src"
 done
 docker ps -q | xargs -r docker inspect --format 'labels={{.Name}}|{{index .Config.Labels "com.docker.compose.project"}}|{{json .Config.Labels}}' | grep 'traefik\.http\.routers\.'
 true
@@ -261,6 +263,12 @@ func discover(ctx context.Context, r *remote.Runner, node string) (map[string][]
 	}
 	runners, routers := parseDiscover(node, out)
 	return runners, routers, nil
+}
+
+// Routers lists the Traefik routers on one node.
+func Routers(ctx context.Context, r *remote.Runner, node string) ([]Router, error) {
+	_, routers, err := discover(ctx, r, node)
+	return routers, err
 }
 
 var hostRE = regexp.MustCompile("Host\\(`([^`]+)`\\)")
@@ -276,11 +284,15 @@ func parseDiscover(node, out string) (map[string][]Runner, []Router) {
 		switch k {
 		case "cfd":
 			f := strings.Split(v, "|")
-			if len(f) != 5 {
+			if len(f) < 5 {
 				continue
 			}
 			id := strings.ToLower(f[4])
-			runners[id] = append(runners[id], Runner{Node: node, Container: f[0], Stack: f[1], State: f[2], Health: f[3]})
+			r := Runner{Node: node, Container: f[0], Stack: f[1], State: f[2], Health: f[3]}
+			if len(f) > 5 {
+				r.Secret = f[5]
+			}
+			runners[id] = append(runners[id], r)
 		case "labels":
 			f := strings.SplitN(v, "|", 3)
 			if len(f) != 3 {

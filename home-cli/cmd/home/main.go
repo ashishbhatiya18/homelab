@@ -86,9 +86,25 @@ Upgrade:
 Cloudflare (tunnels, routes, DNS — files in git; set up with home cloud setup):
   home tunnel list                           tunnels: health, connectors, node, routes
   home tunnel show <tunnel>                  connectors, where it runs, ingress rules with DNS state
+  home tunnel create <name> --node N --stack S [--container C] [--secret PATH] [--service URL]
+                                             new tunnel + file; writes its token to the node
+  home tunnel token <tunnel> --install [--secret PATH]   token → node (stdin, never printed), recreate, wait
+  home tunnel rotate <tunnel>                new secret, install the new token, wait for the reconnect
+  home tunnel delete <tunnel>                only once no route, DNS record or running connector uses it
   home route list [tunnel|node|zone] [--all] every route: tunnel, service, DNS, Traefik router,
                                              auth; flags drift (no DNS, no router, orphan CNAMEs)
   home route check [host…]                   end to end through Cloudflare's edge (all by default)
+  home route add <host> [--tunnel t] [--service URL --host-header H --server-name N --no-tls-verify --http2 --path RE]
+                                             route a hostname (bare hostname when the tunnel's defaults fit) + its CNAME
+  home route set <host> <origin flags>       change a route's origin settings
+  home route remove <host>                   drop a route and its CNAME
+  home route move <host> --to <tunnel>       to another tunnel without a gap
+  home dns add <name> <type> <content> [--proxied] [--ttl N] [--priority N] [--comment C]
+  home dns remove <name> [type] [content]    route/dns edits change the files, then plan + apply
+                                             (--no-apply: files only; --yes: no question)
+  home cloud plan                            what apply would change to make Cloudflare match the files
+  home cloud apply [--yes]                   make it so (snapshot first; no gap for moved routes)
+  home cloud undo [--list] [snapshot]        restore the state from before the last (or a given) apply
   home cloud export [--dir <dir>]            write the live config to tunnels/*.yaml, zones/*.yaml
 
 Backups:
@@ -237,6 +253,15 @@ func run(ctx context.Context, cmd string, args []string) error {
 	if err != nil {
 		return err
 	}
+	if a.cfg.Cloudflare != nil {
+		check.Extra = func(ctx context.Context) (string, []string) {
+			items, err := a.cloudFindings(ctx)
+			if err != nil {
+				return "cloudflare", []string{err.Error()}
+			}
+			return "cloudflare", items
+		}
+	}
 	switch cmd {
 	case "status":
 		return a.status(ctx)
@@ -279,6 +304,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return a.tunnelCmd(ctx, args)
 	case "route":
 		return a.routeCmd(ctx, args)
+	case "dns":
+		return a.dnsCmd(ctx, args)
 	}
 	return fmt.Errorf("unknown command %q — see `home help`", cmd)
 }
@@ -591,6 +618,21 @@ func (a *app) doctor(ctx context.Context, only string) error {
 			if f.Level != doctor.OK {
 				problems++
 			}
+		}
+	}
+	if a.cfg.Cloudflare != nil && (only == "" || only == "all") {
+		fmt.Println("\ncloudflare")
+		items, err := a.cloudFindings(ctx)
+		switch {
+		case err != nil:
+			fmt.Printf("  ✗ %v\n", err)
+			problems++
+		case len(items) == 0:
+			fmt.Println("  ✓ files match Cloudflare; tunnels healthy; every route has DNS and a router")
+		}
+		for _, it := range items {
+			fmt.Printf("  ⚠ %s\n", it)
+			problems++
 		}
 	}
 	if problems == 0 {

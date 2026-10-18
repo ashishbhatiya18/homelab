@@ -36,6 +36,9 @@ type TunnelFile struct {
 	Node      string `yaml:"node,omitempty"`
 	Stack     string `yaml:"stack,omitempty"`
 	Container string `yaml:"container,omitempty"`
+	// Secret is the node path holding the token: a file with just the token
+	// (TUNNEL_TOKEN_FILE) or an env file with a TUNNEL_TOKEN= line.
+	Secret string `yaml:"secret,omitempty"`
 	// Local: the ingress rules live in cloudflared's own config file and are
 	// not managed here.
 	Local         bool           `yaml:"local,omitempty"`

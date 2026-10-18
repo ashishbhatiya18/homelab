@@ -13,14 +13,14 @@ import (
 
 func TestParseDiscover(t *testing.T) {
 	out := strings.Join([]string{
-		"cfd=cloudflared|network|running||4F1E2D3C-0000-4000-8000-000000000001",
+		"cfd=cloudflared|network|running||4F1E2D3C-0000-4000-8000-000000000001|/home/dietpi/localstack/secrets/tok",
 		"cfd=old-cloudflare|citrusdental|exited||", // token unreadable
 		`labels=/vaultwarden|vaultwarden|{"traefik.http.routers.vault.rule":"Host(` + "`vault.ab18.in`" + `)","traefik.http.routers.vault.middlewares":"vault-headers, auth","traefik.http.routers.vault-ws.rule":"Host(` + "`vault.ab18.in`" + `) && Path(` + "`/notifications/hub`" + `)"}`,
 		"noise",
 	}, "\n")
 	runners, routers := parseDiscover("ab", out)
 	rs := runners["4f1e2d3c-0000-4000-8000-000000000001"]
-	if len(rs) != 1 || rs[0].Stack != "network" || rs[0].Container != "cloudflared" || rs[0].State != "running" {
+	if len(rs) != 1 || rs[0].Stack != "network" || rs[0].Container != "cloudflared" || rs[0].State != "running" || rs[0].Secret != "/home/dietpi/localstack/secrets/tok" {
 		t.Fatalf("runners = %+v", runners)
 	}
 	if len(runners[""]) != 1 {

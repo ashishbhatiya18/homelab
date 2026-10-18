@@ -9,6 +9,7 @@ id: 6229510c-45d9-47e1-b874-5e3ca554fa2d
 node: dietpi
 stack: smiledesign
 container: smiledesign-cloudflare
+secret: /home/dietpi/localstack/secrets/smiledesign_cloudflare_tunnel_token
 ingress:
   - hostname: smiledesign-be.citrusdental.in
     service: https://traefik:443

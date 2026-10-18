@@ -9,6 +9,7 @@ id: 6a318c45-5c6c-4aaf-897e-4d3b269d69c5
 node: dietpi
 stack: costaebella
 container: costaebella-cloudflare
+secret: /home/dietpi/localstack/secrets/costaebella_cloudflare_tunnel_token
 ingress:
   - hostname: costaebella-be.nikview.com
     service: http://api:8080

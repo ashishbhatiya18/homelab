@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -84,10 +86,21 @@ func ProbeHost(ctx context.Context, host string) Probe {
 		p.Err = fmt.Errorf("public DNS: %w", err)
 		return p
 	}
-	dialer := &net.Dialer{Timeout: 8 * time.Second}
+	// IPv4 first: an AAAA answer is useless on a network without IPv6 routing.
+	sort.SliceStable(addrs, func(i, j int) bool {
+		return strings.Contains(addrs[j], ":") && !strings.Contains(addrs[i], ":")
+	})
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
 	tr := &http.Transport{
 		DialContext: func(ctx context.Context, network, _ string) (net.Conn, error) {
-			return dialer.DialContext(ctx, network, net.JoinHostPort(addrs[0], "443"))
+			var err error
+			for _, a := range addrs {
+				var c net.Conn
+				if c, err = dialer.DialContext(ctx, network, net.JoinHostPort(a, "443")); err == nil {
+					return c, nil
+				}
+			}
+			return nil, err
 		},
 		TLSClientConfig:   &tls.Config{ServerName: host},
 		ForceAttemptHTTP2: true,
