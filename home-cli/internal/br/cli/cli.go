@@ -395,12 +395,12 @@ func status(ctx context.Context, e *engine.Engine) error {
 	}
 	w.Flush()
 	fmt.Printf("\nschedule: daily at %s · backups in %s\n", e.Cfg.Schedule.DailyAt, e.Cfg.Destination)
-	for name, h := range e.Cfg.Hosts {
+	for name := range e.Cfg.Hosts {
 		state := "reachable"
 		if !e.Env.Remote.Reachable(ctx, name) {
 			state = "NOT reachable"
 		}
-		fmt.Printf("server %s (%s): %s\n", name, h.SSH, state)
+		fmt.Printf("server %s (%s): %s\n", name, e.Env.Remote.Target(name), state)
 	}
 	if !keys.Exists(e.Cfg.KeysDir) {
 		fmt.Println("keys: missing — run `home br keys`")

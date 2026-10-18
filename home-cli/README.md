@@ -18,7 +18,9 @@ Plan:
 ```
 
 No agent runs on your servers: `home` uses your existing SSH key, and needs
-passwordless `sudo` for upgrades and reboots (setup checks both).
+passwordless `sudo` for upgrades and reboots (setup checks both). Give a node
+a second address with `tailscale:` (e.g. `dietpi@100.x.y.z`) and every command
+uses it whenever the `ssh:` address doesn't answer — off the LAN.
 
 ## Install
 
@@ -177,7 +179,10 @@ formula in the tap that runs `home jobs run <job> --if-due`.)
 ## Configuration
 
 `~/.config/home/config.yaml` (nodes) and `~/.config/home/br.yaml` (backups),
-both created by setup and free of secrets. Passwords and tokens live in the
+both created by setup and free of secrets. A node (config.yaml `nodes:`) or
+backup host (br.yaml `hosts:`) may have `tailscale: user@100.x.y.z` next to
+`ssh:`; it is used when `ssh:` doesn't accept a connection within 1.5 s, and
+that choice holds for the rest of the command. Passwords and tokens live in the
 macOS Keychain; backup keys live next to your backups.
 
 Coming from `hbr`? `home br` picks up `~/.config/hbr` automatically (the

@@ -133,7 +133,7 @@ func load() (*app, error) {
 	if err != nil {
 		return nil, err
 	}
-	r := &remote.Runner{Hosts: cfg.Hosts(), ConnectTimeout: 6 * time.Second}
+	r := &remote.Runner{Hosts: cfg.Hosts(), Fallback: cfg.Fallbacks(), ConnectTimeout: 6 * time.Second}
 	return &app{cfg: cfg, r: r, sm: &stack.Manager{R: r, StateDir: homecfg.StateDir(), Logf: logf, Creds: registryCreds}}, nil
 }
 
@@ -717,7 +717,7 @@ func (a *app) listNodes(ctx context.Context) error {
 	fmt.Fprintln(w, "NODE\tSSH\tSTATE\tSTACKS\tCONTAINERS\tSTACKS DIR")
 	for i, n := range nodes {
 		r := rows[i]
-		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d/%d\t%s\n", n.Name, n.SSH, r.reach, r.stacks, r.running, r.total, n.StacksDir)
+		fmt.Fprintf(w, "%s\t%s\t%s\t%d\t%d/%d\t%s\n", n.Name, a.r.Target(n.Name), r.reach, r.stacks, r.running, r.total, n.StacksDir)
 	}
 	return w.Flush()
 }

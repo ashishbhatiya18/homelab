@@ -136,9 +136,21 @@ func addNode(ctx context.Context, r *remote.Runner) (*homecfg.Node, error) {
 	list, _ := r.Output(ctx, tmp, fmt.Sprintf(`for d in %s/*/; do [ -f "$d/compose.yaml" ] && basename "$d"; done`, remote.Quote(dir)))
 	stacks := strings.Fields(list)
 	say("  ✓ %d stacks: %s", len(stacks), strings.Join(stacks, ", "))
+	ts, err := prompt.Ask("  Tailscale SSH target, used off the LAN (user@100.x.y.z; empty for none)", "")
+	if err != nil {
+		return nil, err
+	}
+	if ts != "" {
+		r.Hosts[tmp] = ts
+		if r.Reachable(ctx, tmp) {
+			say("  ✓ SSH over Tailscale")
+		} else {
+			say("  ! %s does not answer right now; kept anyway", ts)
+		}
+	}
 	delete(r.Hosts, tmp)
 	r.Hosts[name] = target
-	return &homecfg.Node{Name: name, SSH: target, StacksDir: dir}, nil
+	return &homecfg.Node{Name: name, SSH: target, Tailscale: ts, StacksDir: dir}, nil
 }
 
 // suggestHooks offers a `br backup` before updating stacks whose name

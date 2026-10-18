@@ -64,6 +64,9 @@ type SSH struct {
 type Host struct {
 	// SSH target, e.g. "user@10.0.0.5" or an alias from ~/.ssh/config.
 	SSH string `yaml:"ssh"`
+	// Tailscale is a second ssh target, used when SSH doesn't answer — off
+	// the LAN.
+	Tailscale string `yaml:"tailscale,omitempty"`
 }
 
 type Retention struct {

@@ -57,6 +57,9 @@ func (c *Cloudflare) CloudDir() string {
 type Node struct {
 	Name string `yaml:"name"`
 	SSH  string `yaml:"ssh"`
+	// Tailscale is a second ssh target (e.g. user@100.x.y.z), used when SSH
+	// doesn't answer — off the LAN.
+	Tailscale string `yaml:"tailscale,omitempty"`
 	// StacksDir holds one directory per stack, each with a compose file.
 	StacksDir string `yaml:"stacks_dir"`
 	// Bundle is the image `home deploy` rolls out to this node (e.g.
@@ -176,6 +179,17 @@ func (c *Config) Hosts() map[string]string {
 	m := map[string]string{}
 	for _, n := range c.Nodes {
 		m[n.Name] = n.SSH
+	}
+	return m
+}
+
+// Fallbacks maps node names to their Tailscale targets, for remote.Runner.
+func (c *Config) Fallbacks() map[string]string {
+	m := map[string]string{}
+	for _, n := range c.Nodes {
+		if n.Tailscale != "" {
+			m[n.Name] = n.Tailscale
+		}
 	}
 	return m
 }

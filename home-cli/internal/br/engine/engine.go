@@ -32,9 +32,12 @@ type Engine struct {
 }
 
 func New(cfg *config.Config, version string) (*Engine, error) {
-	hosts := map[string]string{}
+	hosts, fallback := map[string]string{}, map[string]string{}
 	for k, h := range cfg.Hosts {
 		hosts[k] = h.SSH
+		if h.Tailscale != "" {
+			fallback[k] = h.Tailscale
+		}
 	}
 	st, err := state.Load(cfg.StateDir)
 	if err != nil {
@@ -43,7 +46,7 @@ func New(cfg *config.Config, version string) (*Engine, error) {
 	lg := log.New(os.Stdout, "", log.LstdFlags)
 	e := &Engine{Cfg: cfg, State: st, Version: version, Log: lg}
 	e.Env = &source.Env{
-		Remote:       &remote.Runner{Hosts: hosts, ConnectTimeout: cfg.SSH.ConnectTimeout.Duration, ExtraOptions: cfg.SSH.Options},
+		Remote:       &remote.Runner{Hosts: hosts, Fallback: fallback, ConnectTimeout: cfg.SSH.ConnectTimeout.Duration, ExtraOptions: cfg.SSH.Options},
 		ContainerCLI: cfg.Verify.ContainerCLI,
 		VerifyMajors: cfg.Verify.PostgresMajors,
 		PgBin:        cfg.Tools.PgBin,

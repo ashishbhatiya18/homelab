@@ -180,7 +180,11 @@ func (w *wizard) sshHost(label string) (string, error) {
 		say("  checking passwordless SSH to %s …", target)
 		if w.runner.Reachable(w.ctx, alias) {
 			say("  ✓ SSH works")
-			w.doc.Hosts[alias] = config.Host{SSH: target}
+			ts, err := prompt.Ask("  Tailscale SSH target, used off the LAN (user@100.x.y.z; empty for none)", "")
+			if err != nil {
+				return "", err
+			}
+			w.doc.Hosts[alias] = config.Host{SSH: target, Tailscale: ts}
 			return alias, nil
 		}
 		say("  ✗ could not log in without a password. hbr runs unattended, so it needs key-based SSH:")
