@@ -12,12 +12,13 @@ Directory layout:
 - `nodes/node.sh` — shared lifecycle script, shipped in every bundle next to the stacks: `start|stop|restart|recreate [stack…]`, `down <stack>`, `status`, `order`, `list`, `compose <stack> <args…>`. Every stack operation (by `home` or by hand) goes through it.
 - `scripts/bundle.Dockerfile` — the node bundle (FROM scratch: `/stacks` = `nodes/<node>/` + `node.sh`)
 - `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups); released as `home-cli-v*` tags to the Homebrew tap
+- `down-cli/` — the `down` downloader CLI (magnets, torrents, YouTube, URLs; cleans up after); released as `down-cli-v*` tags to the Homebrew tap (Mac) and as GitHub release binaries that `down-cli/install.sh` installs natively on node ab
 - `webauthn-proxy/` — the passkey forward-auth proxy (image `ghcr.io/ashishbhatiya18/webauthn-proxy`)
 - `terraform/` — Cloudflare DNS, tunnel ingress, and Tailscale ACLs (HCP Terraform remote state)
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth).
+**Node ab** (amd64, primary): network (traefik + cloudflared + oauth2-proxy + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 

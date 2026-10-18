@@ -1,0 +1,167 @@
+# down-cli: test on every change. On a down-cli-vX.Y.Z tag:
+#   - build the macOS binaries, publish them as the package
+#     ghcr.io/ashishbhatiya18/down-cli (one archive per architecture, each a
+#     blob whose digest is its sha256) and rewrite Formula/down.rb in
+#     ashishbhatiya18/homebrew-tap to fetch them by digest, as home-cli.yml
+#     does for `home` (`brew install ashishbhatiya18/tap/down`);
+#   - build linux amd64/arm64 archives and attach them (with checksums.txt)
+#     to a GitHub release named after the tag, which down-cli/install.sh
+#     installs from on Linux machines such as node ab.
+#
+# Every step is idempotent; re-run by hand for an existing tag with
+# Actions → down-cli → Run workflow.
+name: down-cli
+
+on:
+  push:
+    branches: [main]
+    tags: ["down-cli-v*"]
+    paths:
+      - down-cli/**
+      - .github/workflows/down-cli.yml
+  pull_request:
+    paths:
+      - down-cli/**
+      - .github/workflows/down-cli.yml
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to publish (e.g. down-cli-v0.1.0)"
+        required: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: down-cli
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: down-cli/go.mod
+          cache-dependency-path: down-cli/go.sum
+      - run: brew install aria2
+      - run: go vet ./...
+      - run: go test ./...
+      - run: go build -o down ./cmd/down && ./down version
+
+  release:
+    needs: test
+    if: startsWith(inputs.tag || github.ref_name, 'down-cli-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # the GitHub release with the Linux archives
+      packages: write
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      PACKAGE: ghcr.io/ashishbhatiya18/down-cli
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: down-cli/go.mod
+          cache-dependency-path: down-cli/go.sum
+
+      - name: Build binaries
+        working-directory: down-cli
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#down-cli-v}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          mkdir -p ../dist
+          for os in darwin linux; do
+            for arch in arm64 amd64; do
+              CGO_ENABLED=0 GOOS=$os GOARCH=$arch \
+                go build -trimpath -ldflags "-s -w -X main.version=$VERSION" -o "build/$os-$arch/down" ./cmd/down
+              tar -C "build/$os-$arch" -czf "../dist/down_${os}_$arch.tar.gz" down
+            done
+          done
+          cd ../dist && shasum -a 256 *.tar.gz > checksums.txt && cat checksums.txt
+
+      - name: GitHub release (Linux installs)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          files=(dist/down_linux_amd64.tar.gz dist/down_linux_arm64.tar.gz dist/checksums.txt)
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${files[@]}" --clobber
+          else
+            gh release create "$TAG" "${files[@]}" --title "down $VERSION" --latest=false \
+              --notes "Linux: \`curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/main/down-cli/install.sh | sh\` · macOS: \`brew install ashishbhatiya18/tap/down\`"
+          fi
+
+      - uses: oras-project/setup-oras@v1
+
+      - name: Publish the package
+        run: |
+          set -euo pipefail
+          echo "${{ secrets.GITHUB_TOKEN }}" | oras login ghcr.io -u "${{ github.actor }}" --password-stdin
+          cd dist
+          oras push "$PACKAGE:$VERSION,latest" \
+            --artifact-type application/vnd.ashishbhatiya18.down-cli \
+            --annotation "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --annotation "org.opencontainers.image.version=$VERSION" \
+            --annotation "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+            down_darwin_arm64.tar.gz:application/gzip \
+            down_darwin_amd64.tar.gz:application/gzip
+
+      - name: Update formula in the tap
+        env:
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$TAP_DEPLOY_KEY" > ~/.ssh/tap_key && chmod 600 ~/.ssh/tap_key
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap_key -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+          git clone git@github.com:ashishbhatiya18/homebrew-tap.git tap
+
+          base="https://ghcr.io/v2/ashishbhatiya18/down-cli/blobs/sha256:"
+          sha() { awk -v f="down_darwin_$1.tar.gz" '$2 == f { print $1 }' dist/checksums.txt; }
+          cat > tap/Formula/down.rb <<RUBY
+          class Down < Formula
+            desc "Download magnet links, torrents, YouTube and URLs, then clean up the leftovers"
+            homepage "https://github.com/${GITHUB_REPOSITORY}/tree/main/down-cli"
+            version "${VERSION}"
+            license "MIT"
+
+            on_arm do
+              url "${base}$(sha arm64)"
+              sha256 "$(sha arm64)"
+            end
+            on_intel do
+              url "${base}$(sha amd64)"
+              sha256 "$(sha amd64)"
+            end
+
+            depends_on "aria2"   # torrents and direct downloads
+            depends_on "deno"    # JS runtime yt-dlp needs for YouTube
+            depends_on "ffmpeg"  # audio extraction, merging, embedding
+            depends_on "sevenzip" # unpacking rar/7z, multi-part included
+            depends_on "yt-dlp"
+
+            def install
+              bin.install "down"
+            end
+
+            test do
+              assert_match "down", shell_output("#{bin}/down version")
+            end
+          end
+          RUBY
+
+          cd tap
+          if [ -z "$(git status --porcelain)" ]; then
+            echo "Formula already points at ${TAG}; nothing to do."
+            exit 0
+          fi
+          git config user.name "down release bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add Formula/down.rb
+          git commit -m "down ${VERSION}"
+          git push
