@@ -64,6 +64,10 @@ Stacks:
   home stack shell <node>/<stack> [service]  interactive shell in a container
   home stack exec <node>/<stack> [service] -- <command…>
   home stack update <node>/<stack> [--yes]   pull, apply, verify health; auto-rollback
+  home stack update <node|all> [--dry-run] [--yes]
+                                             every stack with a newer image, one at a time in
+                                             start order; a failed app stack is rolled back and
+                                             the rest go ahead, a failed ORDER stack stops it
   home stack rollback <node>/<stack>         back to the images before the last update
 
 Nodes:
@@ -460,7 +464,11 @@ func (a *app) stackCmd(ctx context.Context, args []string) error {
 	follow := fs.Bool("f", false, "follow logs")
 	tail := fs.Int("tail", 100, "log lines")
 	yes := fs.Bool("yes", false, "do not ask for confirmation")
+	dry := fs.Bool("dry-run", false, "update: only show which stacks have newer images")
 	fs.Parse(reorder(args[1:]))
+	if action == "update" && fs.NArg() == 1 && !strings.Contains(fs.Arg(0), "/") {
+		return a.updateAllStacks(ctx, fs.Arg(0), *yes, *dry)
+	}
 	s, err := a.findStack(ctx, fs.Arg(0))
 	if err != nil {
 		return err
@@ -918,18 +926,19 @@ func (a *app) upgrade(ctx context.Context, args []string) error {
 		for s := range r.Updates {
 			names = append(names, s)
 		}
-		sort.Strings(names)
-		for _, name := range names {
-			s, err := a.findStack(ctx, n.Name+"/"+name)
-			if err != nil {
-				return fail("stack "+name, err)
+		if len(names) > 0 {
+			updated, failed, skipped, err := a.updateNodeStacks(ctx, n, names, io.Discard)
+			for _, id := range updated {
+				done = append(done, id+" updated")
 			}
-			changed, err := a.sm.Update(ctx, s, a.hook(ctx, s.ID()), io.Discard)
-			if err != nil {
-				return fail("update of "+s.ID(), err)
+			for _, id := range skipped {
+				done = append(done, id+" skipped (runs Tailscale; update from the LAN)")
 			}
-			if len(changed) > 0 {
-				done = append(done, s.ID()+" updated")
+			if err != nil {
+				return fail("stack updates", err)
+			}
+			if len(failed) > 0 {
+				return fail("stack updates", errors.New(strings.Join(failed, "; ")))
 			}
 		}
 		if a.cfg.Upgrade.Reboot() && !*noReboot {

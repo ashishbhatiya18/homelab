@@ -45,6 +45,7 @@ home install      # background jobs as brew services: backup, check, cleanup, de
 | `home stack shell <node>/<stack> [svc]` | interactive shell in a container |
 | `home stack exec <node>/<stack> [svc] -- <cmd…>` | run a command in a container (works in scripts and pipes too) |
 | `home stack update <node>/<stack>` | pull → pre-update hook (e.g. a database backup) → apply → wait until healthy; **rolls back automatically** if not |
+| `home stack update <node\|all> [--dry-run]` | every stack with a newer image, one at a time in start order (node.conf's `ORDER` first); a failed app stack is rolled back and the rest go ahead, a failed `ORDER` stack stops the run. Over Tailscale, a stack running Tailscale itself is skipped |
 | `home stack rollback <node>/<stack>` | back to the images before the last update (old images are kept tagged) |
 | `home node apt check\|upgrade <node\|all>` | apt, non-interactive, keeping your config files |
 | `home node dietpi check\|upgrade <node\|all>` | DietPi's own updater, non-interactive |

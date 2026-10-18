@@ -139,6 +139,41 @@ func (m *Manager) StartMany(ctx context.Context, n, dir string, names []string, 
 	return m.R.Run(ctx, n, strings.Join(q, " "), nil, out)
 }
 
+// Ordered returns names sorted the way the node starts them: the stacks in
+// node.conf's ORDER first, in that order, then the rest by name. first holds
+// the ORDER stacks (shared services others depend on). Without node.conf the
+// order is by name and first is empty.
+func (m *Manager) Ordered(ctx context.Context, n, dir string, names []string) (ordered []string, first map[string]bool, err error) {
+	out, err := m.R.Output(ctx, n, fmt.Sprintf(`cd %s 2>/dev/null && [ -f node.conf ] || exit 0; bash -c 'network() { :; }; . ./node.conf >/dev/null; printf "%%s
+" "${ORDER[@]}"'`, remote.Quote(dir)))
+	if err != nil {
+		return nil, nil, err
+	}
+	return orderNames(strings.Fields(out), names)
+}
+
+func orderNames(order, names []string) ([]string, map[string]bool, error) {
+	want := map[string]bool{}
+	for _, n := range names {
+		want[n] = true
+	}
+	first := map[string]bool{}
+	var ordered, rest []string
+	for _, o := range order {
+		if want[o] && !first[o] {
+			first[o] = true
+			ordered = append(ordered, o)
+		}
+	}
+	for _, n := range names {
+		if !first[n] {
+			rest = append(rest, n)
+		}
+	}
+	sort.Strings(rest)
+	return append(ordered, rest...), first, nil
+}
+
 // Recreate starts the stack with fresh containers, even when nothing changed.
 func (m *Manager) Recreate(ctx context.Context, s Stack, out io.Writer) error {
 	return m.lifecycle(ctx, s, "recreate", out, "up", "-d", "--force-recreate", "--remove-orphans")
