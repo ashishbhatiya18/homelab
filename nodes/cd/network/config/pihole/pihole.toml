@@ -131,8 +131,8 @@
   # Allowed values are:
   #     Array of custom DNS records each one in HOSTS form: "IP HOSTNAME [HOSTNAME ...]"
   hosts = [
-    "10.10.10.12 citrusdental.in",
-    "10.10.10.11 ab18.in"
+    "10.10.10.12 citrusdental.in proxy.citrusdental.in smiledesign-be.citrusdental.in docker.citrusdental.in",
+    "10.10.10.11 ab18.in draw.ab18.in auth.ab18.in pdf.ab18.in dock.ab18.in proxy.ab18.in esphome.ab18.in photos.ab18.in pad.ab18.in remote.ab18.in ha.ab18.in term.ab18.in backup.ab18.in tools.ab18.in vault.ab18.in chat.ab18.in llm.ab18.in music.ab18.in sync.ab18.in db.ab18.in pg.ab18.in redis.ab18.in mysql.ab18.in otel.ab18.in bookmark.ab18.in jelly.ab18.in whoami.ab18.in home.ab18.in files.ab18.in treasuredash.ab18.in ntfy.ab18.in"
   ] ### CHANGED, default = []
 
   # If set, queries for plain names, without dots or domain parts, are never forwarded to
@@ -226,41 +226,7 @@
   #
   # Allowed values are:
   #     Array of CNAMEs, each one in the following form: "<cname>,<target>[,<TTL>]"
-  cnameRecords = [
-    "draw.ab18.in,ab18.in",
-    "auth.ab18.in,ab18.in",
-    "pdf.ab18.in,ab18.in",
-    "dock.ab18.in,ab18.in",
-    "proxy.ab18.in,ab18.in",
-    "esphome.ab18.in,ab18.in",
-    "photos.ab18.in,ab18.in",
-    "pad.ab18.in,ab18.in",
-    "remote.ab18.in,ab18.in",
-    "ha.ab18.in,ab18.in",
-    "term.ab18.in,ab18.in",
-    "proxy.citrusdental.in,citrusdental.in",
-    "smiledesign-be.citrusdental.in,citrusdental.in",
-    "backup.ab18.in,ab18.in",
-    "tools.ab18.in,ab18.in",
-    "vault.ab18.in,ab18.in",
-    "chat.ab18.in,ab18.in",
-    "llm.ab18.in,ab18.in",
-    "music.ab18.in,ab18.in",
-    "sync.ab18.in,ab18.in",
-    "db.ab18.in,ab18.in",
-    "pg.ab18.in,ab18.in",
-    "redis.ab18.in,ab18.in",
-    "mysql.ab18.in,ab18.in",
-    "otel.ab18.in,ab18.in",
-    "bookmark.ab18.in,ab18.in",
-    "jelly.ab18.in,ab18.in",
-    "whoami.ab18.in,ab18.in",
-    "home.ab18.in,ab18.in",
-    "docker.citrusdental.in,citrusdental.in",
-    "files.ab18.in,ab18.in",
-    "treasuredash.ab18.in,ab18.in",
-    "ntfy.ab18.in,ab18.in"
-  ] ### CHANGED, default = []
+  cnameRecords = []
 
   # Port used by the DNS server
   #
