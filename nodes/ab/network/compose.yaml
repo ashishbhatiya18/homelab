@@ -53,6 +53,11 @@ services:
       - TS_USERSPACE=false
       - TS_ACCEPT_DNS=false
       - TS_AUTH_ONCE=true
+      # No SNAT for traffic forwarded from tailscale0: it is DNAT'd into Docker
+      # (Traefik) and would otherwise reach it from the bridge gateway instead
+      # of the client's Tailscale IP. ab advertises no subnet routes. Also set
+      # in the state volume (`tailscale set --snat-subnet-routes=false`).
+      - TS_EXTRA_ARGS=--snat-subnet-routes=false
     secrets:
       - ts_auth_key
     labels:
