@@ -133,6 +133,12 @@ the first-login password and the OIDC client secrets once):
 ssh dietpi@100.108.211.112 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
 ```
 
+After that, users and OIDC clients are managed from the Mac with `home auth`
+(`auth: {node: dietpi-l, url: https://id.ab18.in}` in `~/.config/home/config.yaml`):
+`home auth user add|set|disable|rm …`, `home auth client add|set|rotate|rm …`,
+`home auth code --wait` for one-time codes. Clients live in
+`secrets/authelia/clients.yml`, not in git.
+
 ### 3b — Data stack (postgres + redis)
 
 ```sh

@@ -468,7 +468,7 @@ func (e *authEnv) applyClients(ctx context.Context, next *auth.Clients, undo fun
 		if undo != nil {
 			undo()
 		}
-		return fmt.Errorf("Authelia rejects the change, nothing applied:\n%s", strings.TrimSpace(out))
+		return fmt.Errorf("Authelia rejects the change, nothing applied:\n%s", validationErrors(out))
 	}
 	f := remote.Quote(e.path("clients.yml"))
 	if next != nil {
@@ -500,6 +500,19 @@ func (e *authEnv) applyClients(ctx context.Context, next *auth.Clients, undo fun
 		}
 	}
 	return fmt.Errorf("%v — rolled back to the previous clients", err)
+}
+
+// validationErrors keeps what `authelia validate-config` says up to its
+// "Error:" line; the command's usage text follows it.
+func validationErrors(out string) string {
+	var keep []string
+	for _, l := range strings.Split(strings.TrimSpace(out), "\n") {
+		keep = append(keep, l)
+		if strings.HasPrefix(l, "Error:") {
+			break
+		}
+	}
+	return strings.Join(keep, "\n")
 }
 
 // multi is a repeatable string flag.

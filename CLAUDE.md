@@ -11,7 +11,7 @@ Directory layout:
 - `nodes/<node>/node.conf` — the node's start order (`ORDER=(…)`) and Docker networks (`network <name> <driver> [args…]`)
 - `nodes/node.sh` — shared lifecycle script, shipped in every bundle next to the stacks: `start|stop|restart|recreate [stack…]`, `down <stack>`, `status`, `order`, `list`, `compose <stack> <args…>`. Every stack operation (by `home` or by hand) goes through it.
 - `scripts/bundle.Dockerfile` — the node bundle (FROM scratch: `/stacks` = `nodes/<node>/` + `node.sh`)
-- `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups); released as `home-cli-v*` tags to the Homebrew tap
+- `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups, Authelia users and OIDC clients via `home auth`); released as `home-cli-v*` tags to the Homebrew tap
 - `down-cli/` — the `down` downloader CLI (magnets, torrents, YouTube, URLs; cleans up after); released as `down-cli-v*` tags to the Homebrew tap (Mac) and as GitHub release binaries that `down-cli/install.sh` installs natively on node ab
 - `webauthn-proxy/` — the passkey forward-auth proxy (image `ghcr.io/ashishbhatiya18/webauthn-proxy`)
 - `terraform/` — Cloudflare DNS, tunnel ingress, and Tailscale ACLs (HCP Terraform remote state)
