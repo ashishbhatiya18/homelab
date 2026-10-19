@@ -32,7 +32,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.http.routers.whoami.rule=Host(`whoami.ab18.in`)
-      - traefik.http.routers.whoami.middlewares=auth
+      - traefik.http.routers.whoami.middlewares=auth-oidc
     depends_on:
       - traefik
   tailscale:
@@ -93,6 +93,34 @@ services:
       - traefik.http.middlewares.auth.forwardAuth.authResponseHeaders=X-Webauthn-User
       - traefik.http.middlewares.auth.forwardAuth.maxResponseBodySize=10485760
       - traefik.http.middlewares.auth.forwardAuth.trustForwardHeader=true
+
+  # Authelia: passkey login, forward auth (middleware auth-oidc) and the OIDC
+  # provider for Immich, on trial alongside webauthn-proxy. Secrets are seeded
+  # by scripts/authelia-secrets.sh.
+  authelia:
+    image: authelia/authelia:4.39
+    container_name: authelia
+    restart: always
+    networks:
+      - network-layer
+    volumes:
+      - ./config/authelia/configuration.yml:/config/configuration.yml:ro
+      - /home/dietpi/localstack/secrets/authelia:/secrets:ro
+      - /home/dietpi/localstack/data/authelia:/data
+    environment:
+      - X_AUTHELIA_CONFIG_FILTERS=template
+      - AUTHELIA_SESSION_SECRET_FILE=/secrets/session_secret
+      - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/secrets/storage_encryption_key
+      - AUTHELIA_IDENTITY_VALIDATION_RESET_PASSWORD_JWT_SECRET_FILE=/secrets/jwt_secret
+      - AUTHELIA_IDENTITY_PROVIDERS_OIDC_HMAC_SECRET_FILE=/secrets/oidc_hmac_secret
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.authelia.rule=Host(`id.ab18.in`)
+      - traefik.http.routers.authelia.middlewares=auth-headers
+      - traefik.http.services.authelia.loadbalancer.server.port=9091
+      - traefik.http.middlewares.auth-oidc.forwardAuth.address=http://authelia:9091/api/authz/forward-auth
+      - traefik.http.middlewares.auth-oidc.forwardAuth.trustForwardHeader=true
+      - traefik.http.middlewares.auth-oidc.forwardAuth.authResponseHeaders=Remote-User,Remote-Groups,Remote-Email,Remote-Name
 
   # oauth2-proxy (kept for reference, disabled until webauthn-proxy is stable)
   # oauth2-proxy:

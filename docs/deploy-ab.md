@@ -125,6 +125,14 @@ EOF
 > `cloudflare_zero_trust_tunnel_cloudflared_config`. Do **not** edit routing rules
 > locally — they are pushed from Terraform.
 
+Authelia (`id.ab18.in`, on trial next to webauthn-proxy) needs its secrets
+before the network stack starts. Seed them from the Mac (idempotent; it prints
+the first-login password and the OIDC client secrets once):
+
+```bash
+ssh dietpi-l 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
+```
+
 ### 3b — Data stack (postgres + redis)
 
 ```sh
