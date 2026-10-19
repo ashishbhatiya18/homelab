@@ -60,5 +60,3 @@ nodes/**/config/pihole/versions
 nodes/**/config/citrusdental-bfe/
 
 
-# Old local Terraform working dir (holds secrets.auto.tfvars): never commit it.
-terraform/
