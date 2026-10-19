@@ -41,7 +41,6 @@ services:
       - traefik.enable=true
       - traefik.docker.network=internal_bridge
       - traefik.http.routers.notes.rule=Host(`notes.ab18.in`)
-      - traefik.http.routers.notes.middlewares=auth
       - traefik.http.services.notes.loadbalancer.server.port=5230
 
 networks:

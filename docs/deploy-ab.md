@@ -288,13 +288,16 @@ https://usememos.com/docs/configuration/deployment-configuration; identifier
 reads it as its container user.
 
 The first account created on an empty Memos becomes its admin, whatever the
-settings say. Create it before Memos is reachable without Authelia, from the node:
+settings say. Create it before Memos is reachable: add `traefik.http.routers.notes.middlewares=auth`
+to its labels for the first start, then, from the node:
 
 ```sh
 ip=$(docker inspect -f '{{(index .NetworkSettings.Networks "internal_bridge").IPAddress}}' memos)
 curl -s -X POST "http://$ip:5230/api/v1/users" -H 'Content-Type: application/json' \
   -d "{\"username\": \"admin\", \"password\": \"$(cat memos-admin-password)\"}"
 ```
+
+and drop the middleware again.
 
 ### 3m — Set permissions
 
