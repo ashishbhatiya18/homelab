@@ -131,7 +131,6 @@
   # Allowed values are:
   #     Array of custom DNS records each one in HOSTS form: "IP HOSTNAME [HOSTNAME ...]"
   hosts = [
-    "10.10.10.12 citrusdental.in proxy.citrusdental.in smiledesign-be.citrusdental.in docker.citrusdental.in",
     "10.10.10.11 draw.ab18.in id.ab18.in pdf.ab18.in dock.ab18.in proxy.ab18.in esphome.ab18.in photos.ab18.in pad.ab18.in remote.ab18.in ha.ab18.in term.ab18.in backup.ab18.in tools.ab18.in vault.ab18.in chat.ab18.in llm.ab18.in music.ab18.in sync.ab18.in db.ab18.in pg.ab18.in redis.ab18.in mysql.ab18.in otel.ab18.in bookmark.ab18.in jelly.ab18.in whoami.ab18.in home.ab18.in files.ab18.in treasuredash.ab18.in ntfy.ab18.in"
   ] ### CHANGED, default = []
 
@@ -1421,9 +1420,19 @@
   # LAN: every *.ab18.in name answers A with node ab's LAN address and nothing
   # else (AAAA/HTTPS/TXT empty, never forwarded to Cloudflare's addresses), like
   # dnsdist does for Tailscale; the apex ab18.in resolves publicly (Pages, MX).
+  # citrusdental.in is mixed (Pages, mail, api via the tunnel), so only node
+  # cd's own services are pinned (an allowlist); everything else is public.
   dnsmasq_lines = [
     "address=/*.ab18.in/10.10.10.11",
-    "local=/*.ab18.in/"
+    "local=/*.ab18.in/",
+    "address=/smiledesign-be.citrusdental.in/10.10.10.12",
+    "local=/smiledesign-be.citrusdental.in/",
+    "address=/proxy.citrusdental.in/10.10.10.12",
+    "local=/proxy.citrusdental.in/",
+    "address=/watchtower.citrusdental.in/10.10.10.12",
+    "local=/watchtower.citrusdental.in/",
+    "address=/docker.citrusdental.in/10.10.10.12",
+    "local=/docker.citrusdental.in/"
   ] ### CHANGED, default = []
 
   # Log additional information about queries and replies to pihole.log
