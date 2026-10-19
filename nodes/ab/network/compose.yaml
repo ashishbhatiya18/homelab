@@ -65,7 +65,10 @@ services:
     command: tunnel --no-autoupdate run
     env_file: /home/dietpi/localstack/secrets/ab-cloudflared.env
     networks:
-      - network-layer
+      network-layer:
+        # Fixed so Traefik can trust exactly this hop's X-Forwarded-For
+        # (the real client IP from Cloudflare); see traefik.yml.
+        ipv4_address: 11.11.11.250
     labels:
       - com.centurylinklabs.watchtower.enable=false
   webauthn-proxy:
