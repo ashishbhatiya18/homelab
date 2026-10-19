@@ -10,6 +10,9 @@ node: dietpi-l
 stack: network
 container: cloudflared
 secret: /home/dietpi/localstack/secrets/ab-cloudflared.env
+# Every route reaches Traefik over HTTP/2 (tunnel-wide origin setting).
+originRequest:
+  http2Origin: true
 defaults:
   service: https://traefik:443
   originRequest:
@@ -24,16 +27,6 @@ ingress:
   - photos.ab18.in
   - vault.ab18.in
   - whoami.ab18.in
-  - hostname: term.ab18.in
-    service: https://traefik:443
-    originRequest:
-      http2Origin: true
-      httpHostHeader: term.ab18.in
-      originServerName: term.ab18.in
-  - hostname: ntfy.ab18.in
-    service: https://traefik:443
-    originRequest:
-      http2Origin: true
-      httpHostHeader: ntfy.ab18.in
-      originServerName: ntfy.ab18.in
+  - term.ab18.in
+  - ntfy.ab18.in
   - service: http_status:404

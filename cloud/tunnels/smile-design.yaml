@@ -10,11 +10,12 @@ node: dietpi
 stack: smiledesign
 container: smiledesign-cloudflare
 secret: /home/dietpi/localstack/secrets/smiledesign_cloudflare_tunnel_token
+originRequest:
+  http2Origin: true
 ingress:
   - hostname: smiledesign-be.citrusdental.in
     service: https://traefik:443
     originRequest:
-      http2Origin: true
       httpHostHeader: smiledesign-be.citrusdental.in
       originServerName: smiledesign-be.citrusdental.in
   - service: http_status:404
