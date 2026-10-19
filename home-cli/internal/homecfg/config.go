@@ -36,6 +36,44 @@ type Config struct {
 	Hooks map[string][]string `yaml:"pre_update_hooks,omitempty"`
 	// Cloudflare is set by `home cloud setup`; the API token is in the Keychain.
 	Cloudflare *Cloudflare `yaml:"cloudflare,omitempty"`
+	// Auth locates the Authelia instance `home auth` manages.
+	Auth *Auth `yaml:"auth,omitempty"`
+}
+
+// Auth is where Authelia runs. Only Node is required; the rest default to the
+// layout of a node's stacks_dir (…/secrets/authelia, …/data/authelia).
+type Auth struct {
+	Node string `yaml:"node"`
+	// Stack and Service hold the Authelia container (restarted to apply
+	// client changes); Container is its name for docker exec.
+	Stack     string `yaml:"stack,omitempty"`
+	Service   string `yaml:"service,omitempty"`
+	Container string `yaml:"container,omitempty"`
+	// Dir is the node directory with users.yml, clients.yml and the client
+	// secret digests; Mount is where the container sees it.
+	Dir   string `yaml:"dir,omitempty"`
+	Mount string `yaml:"mount,omitempty"`
+	// Data holds notification.txt (the filesystem notifier).
+	Data string `yaml:"data,omitempty"`
+	// URL is the issuer, shown when a client is added.
+	URL string `yaml:"url,omitempty"`
+}
+
+// Resolved fills the defaults for n, the node Authelia runs on.
+func (a Auth) Resolved(n *Node) Auth {
+	base := strings.TrimSuffix(filepath.Dir(n.StacksDir), "/")
+	def := func(v *string, d string) {
+		if *v == "" {
+			*v = d
+		}
+	}
+	def(&a.Stack, "network")
+	def(&a.Container, "authelia")
+	def(&a.Service, a.Container)
+	def(&a.Dir, base+"/secrets/authelia")
+	def(&a.Data, base+"/data/authelia")
+	def(&a.Mount, "/secrets")
+	return a
 }
 
 type Cloudflare struct {
@@ -134,6 +172,9 @@ func Load(path string) (*Config, error) {
 		if !seen[o] {
 			return nil, fmt.Errorf("upgrade.order names unknown node %q", o)
 		}
+	}
+	if c.Auth != nil && !seen[c.Auth.Node] {
+		return nil, fmt.Errorf("auth.node names unknown node %q", c.Auth.Node)
 	}
 	return &c, nil
 }

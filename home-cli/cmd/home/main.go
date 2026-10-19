@@ -107,6 +107,21 @@ Cloudflare (tunnels, routes, DNS — files in git; set up with home cloud setup)
   home cloud undo [--list] [snapshot]        restore the state from before the last (or a given) apply
   home cloud export [--dir <dir>]            write the live config to tunnels/*.yaml, zones/*.yaml
 
+Authelia (users and OIDC clients on the node; auth: in config.yaml):
+  home auth user list                        users, groups, passkeys, disabled
+  home auth user add <name> --email E [--name N] [--groups a,b]
+                                             one-time password shown once; Authelia reloads users.yml
+  home auth user set <name> [--email E] [--name N] [--groups a,b]
+  home auth user password|disable|enable <name>
+  home auth user passkeys <name> [--rm <description>]   list, or revoke a lost device
+  home auth user rm <name> [--yes]           also deletes their passkeys; never reuse the name
+  home auth client list|show [id]            OIDC clients (clients.yml next to users.yml)
+  home auth client add <id> --redirect URL… [--name N] [--policy P] [--scopes a,b] [--pkce]
+                     [--public] [--consent M] [--auth-method M]   secret shown once
+  home auth client set <id> <same flags>     client changes are validated by Authelia, then
+  home auth client rotate|rm <id>            applied with a restart; auto-rollback
+  home auth code [--wait]                    the latest (or next) one-time code
+
 Backups:
   home br …                         encrypted Postgres backups (see ` + "`home br help`" + `)
 
@@ -306,6 +321,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return a.routeCmd(ctx, args)
 	case "dns":
 		return a.dnsCmd(ctx, args)
+	case "auth":
+		return a.authCmd(ctx, args)
 	}
 	return fmt.Errorf("unknown command %q — see `home help`", cmd)
 }

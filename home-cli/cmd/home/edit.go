@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
@@ -123,24 +124,35 @@ func (a *app) editCmd(ctx context.Context, args []string) error {
 		return nil
 	}
 
-	// Refuse to overwrite what someone else changed in the meantime.
-	sum := sha256.Sum256([]byte(before))
-	guard := fmt.Sprintf(`[ "$(%scat "$f" | sha256sum | cut -d' ' -f1)" = %s ] || { echo "the file changed on the node while you were editing" >&2; exit 1; }`, as, hex.EncodeToString(sum[:]))
-	if kind == "new" {
-		guard = fmt.Sprintf(`%[1]stest ! -e "$f" || { echo "the file was created on the node while you were editing" >&2; exit 1; }
-%[1]sinstall -m 600 /dev/null "$f"`, as)
-	}
-	// Staged in a temp file first so a dropped connection cannot truncate it.
-	script := fmt.Sprintf(`set -e
-f=%s
-t=$(mktemp); trap 'rm -f "$t"' EXIT
-cat > "$t"
-%s
-%stee "$f" < "$t" > /dev/null`, f, guard, as)
-	if err := a.r.Run(ctx, n.Name, script, strings.NewReader(string(after)), nil); err != nil {
+	if err := putNodeFile(ctx, a.r, n.Name, file, *sudo, kind == "file", before, after); err != nil {
 		return fmt.Errorf("%w\nyour edit is kept in %s", hint(err), local)
 	}
 	os.RemoveAll(dir)
 	logf("%s: saved %s — restart or recreate what reads it for the change to apply", n.Name, file)
 	return nil
+}
+
+// putNodeFile writes content to file on host in place (same inode, owner and
+// mode, so single-file bind mounts see it), refusing when the file no longer
+// matches before — or, when it did not exist, when it appeared meanwhile; a
+// new file is created with mode 600. The content is staged in a temp file
+// first so a dropped connection cannot truncate the target.
+func putNodeFile(ctx context.Context, r *remote.Runner, host, file string, sudo, existed bool, before string, content []byte) error {
+	as := ""
+	if sudo {
+		as = "sudo -n "
+	}
+	sum := sha256.Sum256([]byte(before))
+	guard := fmt.Sprintf(`[ "$(%scat "$f" | sha256sum | cut -d' ' -f1)" = %s ] || { echo "the file changed on the node in the meantime" >&2; exit 1; }`, as, hex.EncodeToString(sum[:]))
+	if !existed {
+		guard = fmt.Sprintf(`%[1]stest ! -e "$f" || { echo "the file was created on the node in the meantime" >&2; exit 1; }
+%[1]sinstall -m 600 /dev/null "$f"`, as)
+	}
+	script := fmt.Sprintf(`set -e
+f=%s
+t=$(mktemp); trap 'rm -f "$t"' EXIT
+cat > "$t"
+%s
+%stee "$f" < "$t" > /dev/null`, remote.Quote(file), guard, as)
+	return r.Run(ctx, host, script, bytes.NewReader(content), nil)
 }
