@@ -2,7 +2,7 @@
 # Seed Authelia's secrets on a node (idempotent: existing files are kept).
 # Run on the node before the first deploy of the stack, e.g. from the Mac:
 #
-#   ssh dietpi-l 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
+#   ssh dietpi@100.108.211.112 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
 #
 # Writes /home/dietpi/localstack/secrets/authelia/ and creates
 # /home/dietpi/localstack/data/authelia/. Prints, once, every plaintext the

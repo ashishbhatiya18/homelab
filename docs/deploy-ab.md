@@ -130,7 +130,7 @@ before the network stack starts. Seed them from the Mac (idempotent; it prints
 the first-login password and the OIDC client secrets once):
 
 ```bash
-ssh dietpi-l 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
+ssh dietpi@100.108.211.112 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
 ```
 
 ### 3b — Data stack (postgres + redis)

@@ -101,6 +101,8 @@ services:
     image: authelia/authelia:4.39
     container_name: authelia
     restart: always
+    # dietpi, which owns secrets/authelia and data/authelia; never root.
+    user: "1000:1000"
     networks:
       - network-layer
     volumes:
