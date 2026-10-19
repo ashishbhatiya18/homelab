@@ -44,6 +44,10 @@ services:
       - TS_USERSPACE=false
       - TS_ACCEPT_DNS=false
       - TS_AUTH_ONCE=true
+      # No SNAT for traffic forwarded from tailscale0 (as on ab): Traefik must
+      # see the client's Tailscale IP. cd advertises no routes. Tailscale sets
+      # no netfilter rules on this kernel today; this keeps it so if it does.
+      - TS_EXTRA_ARGS=--snat-subnet-routes=false
     secrets:
       - ts_auth_key
     labels:
