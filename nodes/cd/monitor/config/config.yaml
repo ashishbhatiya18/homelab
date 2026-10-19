@@ -48,9 +48,11 @@ endpoints:
     alerts: [{type: ntfy, description: "ab does not answer ping"}]
   - name: ab traefik
     group: path
+    # whoami sits behind Authelia (auth-oidc), which answers non-browser
+    # requests with 401: either status means Traefik routed the request.
     url: https://whoami.ab18.in/
     interval: 1m
-    conditions: ["[STATUS] == 200"]
+    conditions: ["[STATUS] == any(200, 401)"]
     alerts: [{type: ntfy, description: "Traefik on ab does not route"}]
   - name: ntfy
     group: path
@@ -74,6 +76,7 @@ endpoints:
 
   # ── services on ab (LAN) ──
   - {name: auth (passkeys), group: ab, url: "https://auth.ab18.in/_webauthn/login", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: authelia, group: ab, url: "https://id.ab18.in/api/health", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: photos (immich), group: ab, url: "https://photos.ab18.in/api/server/ping", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: vault (vaultwarden), group: ab, url: "https://vault.ab18.in/alive", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: jelly (jellyfin), group: ab, url: "https://jelly.ab18.in/health", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
