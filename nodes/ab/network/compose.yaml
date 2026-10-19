@@ -90,6 +90,7 @@ services:
       - network-layer
     volumes:
       - ./config/authelia/configuration.yml:/config/configuration.yml:ro
+      - ./config/authelia/assets:/config/assets:ro
       - /home/dietpi/localstack/secrets/authelia:/secrets:ro
       - /home/dietpi/localstack/data/authelia:/data
     environment:

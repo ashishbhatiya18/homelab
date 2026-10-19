@@ -8,10 +8,13 @@
 # `secret` template function (X_AUTHELIA_CONFIG_FILTERS=template).
 # State (SQLite, notifications) is in /home/dietpi/localstack/data/authelia/.
 
-theme: auto
+# Branding: the ab18.in logo (assets/logo.png, favicon.ico, rendered from the
+# site's icon.svg); dark like the site.
+theme: dark
 
 server:
   address: tcp://:9091
+  asset_path: /config/assets/
   endpoints:
     authz:
       forward-auth:
