@@ -26,6 +26,10 @@ totp:
 webauthn:
   display_name: ab18
   enable_passkey_login: true
+  # A passkey whose device verified the user (biometric/PIN; required below)
+  # counts as two factors, so two_factor rules and sensitive account actions
+  # don't fall back to the password. The password only bootstraps a new user.
+  experimental_enable_passkey_uv_two_factors: true
   selection_criteria:
     discoverability: required
     user_verification: required
