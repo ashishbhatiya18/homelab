@@ -29,4 +29,5 @@ ingress:
   - whoami.ab18.in
   - term.ab18.in
   - ntfy.ab18.in
+  - notes.ab18.in
   - service: http_status:404
