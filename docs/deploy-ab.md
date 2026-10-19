@@ -17,7 +17,7 @@
 | `bentopdf` | stirlingpdf | — |
 | `excalidraw` | excalidraw | `ab-excalidraw.env` |
 | `rustpad` | rustpad | `ab-rustpad.env` |
-| `joplin` | joplin (Joplin Server) | `ab-joplin.env` |
+| `memos` | memos | `ab-memos.env`, `memos-idp-authelia.json`, `memos-admin-password` |
 
 ## Exposed services (ab18.in)
 
@@ -29,7 +29,7 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 |---|---|
 | `id.ab18.in` | authelia (passkey login, OIDC) |
 | `draw.ab18.in` | excalidraw |
-| `notes.ab18.in` | joplin (web UI behind Authelia; `/api/` uses Joplin's own login for the apps) |
+| `notes.ab18.in` | memos (sign-in via Authelia OIDC) |
 | `pad.ab18.in` | rustpad |
 | `pdf.ab18.in` | stirlingpdf |
 | `photos.ab18.in` | immich-server |
@@ -265,22 +265,36 @@ ESPHOME_DASHBOARD_USE_PING=true
 EOF
 ```
 
-### 3l.1 — Joplin stack
+### 3l.1 — Memos stack
 
-Joplin connects as `joplin@postgres:5432/joplin`. After the data stack is running:
+Memos connects as `memos@postgres:5432/memos` and signs users in through Authelia
+(OIDC client `memos`). After the data stack is running:
 
 ```sh
 docker exec -it postgres psql -U immich -d postgres -c "
-  CREATE ROLE joplin WITH LOGIN PASSWORD 'your-joplin-db-password';
-  CREATE DATABASE joplin OWNER joplin;
+  CREATE ROLE memos WITH LOGIN PASSWORD 'your-memos-db-password';
+  CREATE DATABASE memos OWNER memos;
 "
-cat > ab-joplin.env <<'EOF'
-POSTGRES_PASSWORD=your-joplin-db-password
-EOF
+echo 'MEMOS_DSN=postgres://memos:your-memos-db-password@postgres:5432/memos?sslmode=disable' > ab-memos.env
+openssl rand -hex 24 > memos-admin-password
 ```
 
-On first start, log in at https://notes.ab18.in as `admin@localhost` / `admin` and
-change that account's email and password at once: `/api/` is public.
+From the Mac, `home auth client add memos --name Memos --redirect
+https://notes.ab18.in/auth/callback --policy one_factor --consent pre-configured
+--scopes openid,profile,email` prints the client secret. Put it in
+`memos-idp-authelia.json` (format: header of `nodes/ab/memos/compose.yaml` and
+https://usememos.com/docs/configuration/deployment-configuration; identifier
+`preferred_username`), then `sudo chown 10001:10001 memos-idp-authelia.json`: Memos
+reads it as its container user.
+
+The first account created on an empty Memos becomes its admin, whatever the
+settings say. Create it before Memos is reachable without Authelia, from the node:
+
+```sh
+ip=$(docker inspect -f '{{(index .NetworkSettings.Networks "internal_bridge").IPAddress}}' memos)
+curl -s -X POST "http://$ip:5230/api/v1/users" -H 'Content-Type: application/json' \
+  -d "{\"username\": \"admin\", \"password\": \"$(cat memos-admin-password)\"}"
+```
 
 ### 3m — Set permissions
 
@@ -289,7 +303,7 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
           ab-data.env ab-immich.env ab-kopia.env ab-localstack.env \
           ab-vaultwarden.env ab-media.env ab-filebrowser.env \
           ab-syncthing.env ab-rustpad.env ab-excalidraw.env \
-          ab-homeautomation.env ab-joplin.env
+          ab-homeautomation.env ab-memos.env memos-admin-password
 ```
 
 ### Complete secrets layout
@@ -310,7 +324,9 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
   ab-rustpad.env
   ab-excalidraw.env
   ab-homeautomation.env
-  ab-joplin.env
+  ab-memos.env
+  memos-admin-password
+  memos-idp-authelia.json   (owned by 10001)
 ```
 
 ---

@@ -1,0 +1,52 @@
+# Memos – quick notes (https://usememos.com), at notes.ab18.in via the
+# Cloudflare tunnel. Sign-in is Authelia over OIDC (client `memos`, `home auth
+# client show memos`); password sign-in is off for everyone but admins, and a
+# first SSO login creates a regular user (promote in Settings → Members).
+# Settings are deployment-managed: Memos loads the JSON files under /etc/secrets
+# at startup and the UI can't change them (edit, deploy, restart):
+#   config/memos-instance-setting-general.json   SSO only, SSO sign-up allowed
+#   config/memos-instance-setting-access.json    private instance
+#   secrets/memos-idp-authelia.json              the OIDC client (owned by 10001)
+# PostgreSQL: database/role `memos` on the data stack's postgres; attachments are
+# stored in the database too (default storage), so pg dumps cover them.
+# Secrets: /home/dietpi/localstack/secrets/ab-memos.env
+#   MEMOS_DSN=postgres://memos:<password>@postgres:5432/memos?sslmode=disable
+# Recovery: admin account `admin`, password in secrets/memos-admin-password.
+services:
+  memos:
+    image: neosmemo/memos:stable
+    container_name: memos
+    restart: always
+    env_file: /home/dietpi/localstack/secrets/ab-memos.env
+    environment:
+      TZ: Asia/Kolkata
+      MEMOS_PORT: 5230
+      MEMOS_DRIVER: postgres
+      MEMOS_INSTANCE_URL: https://notes.ab18.in
+    volumes:
+      - /home/dietpi/localstack/data/memos:/var/opt/memos
+      - ./config/memos-instance-setting-general.json:/etc/secrets/memos-instance-setting-general.json:ro
+      - ./config/memos-instance-setting-access.json:/etc/secrets/memos-instance-setting-access.json:ro
+      - /home/dietpi/localstack/secrets/memos-idp-authelia.json:/etc/secrets/memos-idp-authelia.json:ro
+    networks:
+      - network-layer
+      - data-layer
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5230/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=internal_bridge
+      - traefik.http.routers.notes.rule=Host(`notes.ab18.in`)
+      - traefik.http.routers.notes.middlewares=auth
+      - traefik.http.services.notes.loadbalancer.server.port=5230
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
+  data-layer:
+    external: true

@@ -89,7 +89,7 @@ endpoints:
   - {name: draw (excalidraw), group: ab, url: "https://draw.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: pad (rustpad), group: ab, url: "https://pad.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: pdf (stirling), group: ab, url: "https://pdf.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: notes (joplin), group: ab, url: "https://notes.ab18.in/api/ping", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: notes (memos), group: ab, url: "https://notes.ab18.in/healthz", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
 
   # ── services on cd (same node, internal_bridge) ──
   - name: pihole dns
