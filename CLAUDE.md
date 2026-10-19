@@ -80,5 +80,5 @@ Always ensure `docker compose -f nodes/<node>/<stack>/compose.yaml config` passe
 Everything node-local is outside the deployed files, under `/home/dietpi/localstack/` on the node:
 - `data/traefik/acme.json` — TLS certs (must be `chmod 600`), both nodes
 - `data/esphome/`, `data/syncthing/` (ab), `data/pihole/` (cd) — app state; the repo's `syncthing/config.xml.template` and `config/pihole/` only seed a new node
-- `secrets/` — env files, Docker secrets, and `secrets/oauth2-proxy/config.toml` (oauth2-proxy is disabled)
+- `secrets/` — env files, Docker secrets, and `secrets/authelia/` (Authelia's secrets, `users.yml` and `clients.yml`, managed with `home auth`)
 - `terraform/secrets.auto.tfvars` (on the Mac) — Terraform variable values

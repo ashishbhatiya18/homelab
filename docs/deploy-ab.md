@@ -295,29 +295,7 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
 
 ---
 
-## Phase 4 — Fill in OAuth2-proxy secrets
-
-The `config.toml` in the repo is a template with placeholder values. Copy it into the
-secrets directory and fill in the real values there (the repo checkout stays untouched):
-
-```sh
-mkdir -p /home/dietpi/localstack/secrets/oauth2-proxy
-cp /home/dietpi/localstack/stacks/network/config/oauth2-proxy/config.toml \
-   /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
-chmod 600 /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
-nano /home/dietpi/localstack/secrets/oauth2-proxy/config.toml
-# Replace:
-#   client_id    = "REPLACE_WITH_GOOGLE_CLIENT_ID"
-#   client_secret = "REPLACE_WITH_GOOGLE_CLIENT_SECRET"
-#   cookie_secret = "REPLACE_WITH_COOKIE_SECRET_16_24_OR_32_BYTES"
-#
-# Generate a cookie secret:
-#   openssl rand -base64 24
-```
-
----
-
-## Phase 5 — Create Traefik acme.json
+## Phase 4 — Create Traefik acme.json
 
 Traefik requires this file with strict permissions. It is node state, so it lives in
 `data/`, outside the repo checkout.
@@ -330,7 +308,7 @@ chmod 600 /home/dietpi/localstack/data/traefik/acme.json
 
 ---
 
-## Phase 7 — First deploy (from your Mac)
+## Phase 5 — First deploy (from your Mac)
 
 ```sh
 home deploy dietpi-l --dry-run   # what will start, in node.conf order
@@ -347,7 +325,7 @@ same lifecycle by hand.
 
 ---
 
-## Phase 8 — Verify all containers
+## Phase 6 — Verify all containers
 
 ```sh
 docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
@@ -355,7 +333,7 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
 
 Expected running containers:
 ```
-tailscale, traefik, whoami, cloudflared, oauth2-proxy
+tailscale, traefik, whoami, cloudflared, authelia
 postgres, redis
 immich-server, immich_machine_learning
 kopia
@@ -380,7 +358,6 @@ rustpad
 | `network internal_bridge not found` | Stack started without node.sh | `~/localstack/stacks/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
 | cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
-| oauth2-proxy redirect loop | Placeholder secrets in config.toml | Fill in real values in `secrets/oauth2-proxy/config.toml` |
 | Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
 | Vaultwarden fails to connect to DB | `DATABASE_URL` password mismatch | Must match password used in `CREATE ROLE vaultwarden` |
 | ESPHome config missing | `/home/dietpi/localstack/data/esphome/` not restored | Restore from backup (kopia) |
