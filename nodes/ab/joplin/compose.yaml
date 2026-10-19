@@ -29,7 +29,8 @@ services:
       - network-layer
       - data-layer
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:22300/api/ping').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      # Joplin answers 404 to any Host other than APP_BASE_URL's.
+      test: ["CMD", "node", "-e", "require('http').get({host: 'localhost', port: 22300, path: '/api/ping', headers: {Host: 'notes.ab18.in'}}, r => process.exit(r.statusCode == 200 ? 0 : 1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 5s
       retries: 3
