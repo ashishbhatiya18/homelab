@@ -17,6 +17,7 @@
 | `bentopdf` | stirlingpdf | — |
 | `excalidraw` | excalidraw | `ab-excalidraw.env` |
 | `rustpad` | rustpad | `ab-rustpad.env` |
+| `joplin` | joplin (Joplin Server) | `ab-joplin.env` |
 
 ## Exposed services (ab18.in)
 
@@ -28,6 +29,7 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 |---|---|
 | `id.ab18.in` | authelia (passkey login, OIDC) |
 | `draw.ab18.in` | excalidraw |
+| `notes.ab18.in` | joplin (web UI behind Authelia; `/api/` uses Joplin's own login for the apps) |
 | `pad.ab18.in` | rustpad |
 | `pdf.ab18.in` | stirlingpdf |
 | `photos.ab18.in` | immich-server |
@@ -263,6 +265,23 @@ ESPHOME_DASHBOARD_USE_PING=true
 EOF
 ```
 
+### 3l.1 — Joplin stack
+
+Joplin connects as `joplin@postgres:5432/joplin`. After the data stack is running:
+
+```sh
+docker exec -it postgres psql -U immich -d postgres -c "
+  CREATE ROLE joplin WITH LOGIN PASSWORD 'your-joplin-db-password';
+  CREATE DATABASE joplin OWNER joplin;
+"
+cat > ab-joplin.env <<'EOF'
+POSTGRES_PASSWORD=your-joplin-db-password
+EOF
+```
+
+On first start, log in at https://notes.ab18.in as `admin@localhost` / `admin` and
+change that account's email and password at once: `/api/` is public.
+
 ### 3m — Set permissions
 
 ```sh
@@ -270,7 +289,7 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
           ab-data.env ab-immich.env ab-kopia.env ab-localstack.env \
           ab-vaultwarden.env ab-media.env ab-filebrowser.env \
           ab-syncthing.env ab-rustpad.env ab-excalidraw.env \
-          ab-homeautomation.env
+          ab-homeautomation.env ab-joplin.env
 ```
 
 ### Complete secrets layout
@@ -291,6 +310,7 @@ chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
   ab-rustpad.env
   ab-excalidraw.env
   ab-homeautomation.env
+  ab-joplin.env
 ```
 
 ---

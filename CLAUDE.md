@@ -17,7 +17,7 @@ Directory layout:
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
+**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, rustpad, bentopdf, claudecode, codeserver, isponsorblock, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth), joplin (Joplin Server at notes.ab18.in: web UI behind Authelia, `/api/` sync for the apps on Joplin's own login). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 

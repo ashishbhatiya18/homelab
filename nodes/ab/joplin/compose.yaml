@@ -1,0 +1,53 @@
+# Joplin Server – sync target for the Joplin apps (https://joplinapp.org).
+# Public at notes.ab18.in via the Cloudflare tunnel. The web UI is behind the
+# passkey `auth` middleware; /api/ is NOT (the desktop and phone apps sync
+# there and can't do passkeys) — Joplin's own login applies to it instead.
+# In the apps: Synchronisation target "Joplin Server", URL https://notes.ab18.in,
+# the Joplin account's email and password.
+# PostgreSQL: database/role `joplin` on the data stack's postgres; note content
+# is stored in the database too (default storage driver), so pg dumps cover it.
+# Secrets: /home/dietpi/localstack/secrets/ab-joplin.env
+#   POSTGRES_PASSWORD=<joplin role password>
+# First run: log in at https://notes.ab18.in as admin@localhost / admin and
+# change that account's email and password immediately.
+services:
+  joplin:
+    image: joplin/server:latest
+    container_name: joplin
+    restart: always
+    env_file: /home/dietpi/localstack/secrets/ab-joplin.env
+    environment:
+      TZ: Asia/Kolkata
+      APP_BASE_URL: https://notes.ab18.in
+      APP_PORT: 22300
+      DB_CLIENT: pg
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DATABASE: joplin
+      POSTGRES_USER: joplin
+    networks:
+      - network-layer
+      - data-layer
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:22300/api/ping').then(r => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=internal_bridge
+      - traefik.http.routers.notes.rule=Host(`notes.ab18.in`)
+      - traefik.http.routers.notes.middlewares=auth
+      - traefik.http.routers.notes.service=notes
+      # Sync API for the apps: longer rule, so it wins over `notes`.
+      - traefik.http.routers.notes-api.rule=Host(`notes.ab18.in`) && PathPrefix(`/api/`)
+      - traefik.http.routers.notes-api.service=notes
+      - traefik.http.services.notes.loadbalancer.server.port=22300
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
+  data-layer:
+    external: true

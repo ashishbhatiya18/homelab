@@ -39,6 +39,7 @@ services:
       - draw.ab18.in:10.10.10.11
       - pad.ab18.in:10.10.10.11
       - pdf.ab18.in:10.10.10.11
+      - notes.ab18.in:10.10.10.11
     labels:
       - com.centurylinklabs.watchtower.enable=true
 
