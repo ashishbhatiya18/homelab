@@ -39,6 +39,11 @@ authentication_backend:
 access_control:
   default_policy: deny
   rules:
+    # Authelia only offers credential registration (passkeys included) when
+    # some rule needs a second factor; this test path is that rule.
+    - domain: whoami.ab18.in
+      resources: ['^/2fa([/?].*)?$']
+      policy: two_factor
     # A passkey is a single factor; everything behind auth-oidc accepts it.
     - domain: '*.ab18.in'
       policy: one_factor
