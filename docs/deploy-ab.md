@@ -4,7 +4,7 @@
 ## Stacks
 | Stack | Services | Secrets needed |
 |---|---|---|
-| `network` | tailscale, traefik, whoami, cloudflared, oauth2-proxy | `ts_auth_key`, `cf_dns_api_token`, `ab-cloudflared.env` |
+| `network` | tailscale, traefik, whoami, cloudflared, authelia | `ts_auth_key`, `cf_dns_api_token`, `ab-cloudflared.env` |
 | `data` | postgres, redis | `ab-data.env` |
 | `immich` | immich-server, immich_machine_learning | `ab-immich.env` |
 | `kopia` | kopia | `ab-kopia.env` |
@@ -26,7 +26,7 @@ Tunnel name: `ab18-localstack` · Public ingress is **Terraform-managed** (`terr
 
 | Subdomain | Service |
 |---|---|
-| `auth.ab18.in` | oauth2-proxy |
+| `id.ab18.in` | authelia (passkey login, OIDC) |
 | `draw.ab18.in` | excalidraw |
 | `pad.ab18.in` | rustpad |
 | `pdf.ab18.in` | stirlingpdf |
@@ -125,7 +125,7 @@ EOF
 > `cloudflare_zero_trust_tunnel_cloudflared_config`. Do **not** edit routing rules
 > locally — they are pushed from Terraform.
 
-Authelia (`id.ab18.in`, on trial next to webauthn-proxy) needs its secrets
+Authelia (`id.ab18.in`) needs its secrets
 before the network stack starts. Seed them from the Mac (idempotent; it prints
 the first-login password and the OIDC client secrets once):
 

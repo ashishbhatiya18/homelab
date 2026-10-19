@@ -13,7 +13,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const TERMINAL_CMD = process.env.TERMINAL_CMD || 'claude';
 const TERMINAL_ARGS = process.env.TERMINAL_ARGS ? process.env.TERMINAL_ARGS.split(' ') : [];
 const TERMINAL_CWD = process.env.TERMINAL_CWD || process.env.HOME || '/workspace';
-// Access is already gated upstream by Traefik's passkey (webauthn) forward-auth
+// Access is already gated upstream by Traefik's passkey (Authelia) forward-auth
 // middleware, but these are cheap defense-in-depth caps against a client that
 // makes it past that gate (or a bug in it): a runaway input flood can't grow
 // memory unbounded, and a connection loop can't fork unlimited PTYs/processes.

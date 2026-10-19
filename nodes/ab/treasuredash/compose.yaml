@@ -1,5 +1,5 @@
 # Treasure Dash – association treasury app (ghcr.io/ashishbhatiya18/treasure-dash).
-# No login of its own: guarded by webauthn-proxy through the `auth` middleware.
+# No login of its own: guarded by Authelia through the `auth` middleware.
 # PostgreSQL: database/schema/role `treasuredash` on the data stack's postgres.
 # Secrets: /home/dietpi/localstack/secrets/ab-treasuredash.env
 #   DATABASE_URL=postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable

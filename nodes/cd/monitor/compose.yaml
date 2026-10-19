@@ -25,7 +25,7 @@ services:
     extra_hosts:
       - ntfy-lan.ab18.in:10.10.10.11
       - whoami.ab18.in:10.10.10.11
-      - auth.ab18.in:10.10.10.11
+      - id.ab18.in:10.10.10.11
       - photos.ab18.in:10.10.10.11
       - vault.ab18.in:10.10.10.11
       - jelly.ab18.in:10.10.10.11

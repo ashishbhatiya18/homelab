@@ -1,6 +1,7 @@
-# Authelia — passkey login, Traefik forward auth (middleware `auth-oidc`) and
-# the OpenID Connect provider at https://id.ab18.in. Runs alongside
-# webauthn-proxy while it is being trialled.
+# Authelia — passkey login, Traefik forward auth (the `auth` middleware every
+# protected router uses) and the OpenID Connect provider at https://id.ab18.in.
+# Users (users.yml) and OIDC clients (clients.yml) are node files managed with
+# `home auth`.
 #
 # No secrets here: they are files in /home/dietpi/localstack/secrets/authelia/
 # (mounted at /secrets), read through AUTHELIA_*_FILE env vars or the
@@ -44,7 +45,7 @@ access_control:
     - domain: whoami.ab18.in
       resources: ['^/2fa([/?].*)?$']
       policy: two_factor
-    # A passkey is a single factor; everything behind auth-oidc accepts it.
+    # A passkey is a single factor; everything behind `auth` accepts it.
     - domain: '*.ab18.in'
       policy: one_factor
 

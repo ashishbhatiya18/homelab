@@ -16,7 +16,6 @@ defaults:
     httpHostHeader: '{host}'
     originServerName: '{host}'
 ingress:
-  - auth.ab18.in
   - code.ab18.in
   - draw.ab18.in
   - id.ab18.in
