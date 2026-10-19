@@ -28,6 +28,13 @@ func TestUsersRoundTrip(t *testing.T) {
 	if err := u.Add(User{Name: "Bob!", Email: "b@x.org"}, "h"); err == nil {
 		t.Fatal("bad name accepted")
 	}
+	if err := u.Add(User{Name: "bob", Email: "A@X.org"}, "h"); err == nil {
+		t.Fatal("duplicate email accepted")
+	}
+	taken := "a@x.org"
+	if err := u.Set("ab18", Change{Email: &taken}); err == nil {
+		t.Fatal("set to a taken email accepted")
+	}
 	yes, mail := true, "new@x.org"
 	if err := u.Set("ab18", Change{Disabled: &yes, Email: &mail}); err != nil {
 		t.Fatal(err)

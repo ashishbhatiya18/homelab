@@ -3,6 +3,7 @@ package auth
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -76,6 +77,9 @@ func (u *Users) Add(x User, digest string) error {
 	if x.Email == "" {
 		return fmt.Errorf("user %q needs an email", x.Name)
 	}
+	if err := u.emailFree(x.Email, x.Name); err != nil {
+		return err
+	}
 	if x.DisplayName == "" {
 		x.DisplayName = x.Name
 	}
@@ -111,6 +115,9 @@ func (u *Users) Set(name string, c Change) error {
 		if *c.Email == "" {
 			return fmt.Errorf("user %q needs an email", name)
 		}
+		if err := u.emailFree(*c.Email, name); err != nil {
+			return err
+		}
 		set(e, "email", quoted(*c.Email))
 	}
 	if c.Password != nil {
@@ -124,6 +131,17 @@ func (u *Users) Set(name string, c Change) error {
 			set(e, "disabled", boolean(true))
 		} else {
 			del(e, "disabled")
+		}
+	}
+	return nil
+}
+
+// emailFree refuses an email another user already has: apps such as Immich
+// link accounts by email, so two Authelia users with one email are ambiguous.
+func (u *Users) emailFree(email, self string) error {
+	for _, x := range u.List() {
+		if x.Name != self && strings.EqualFold(x.Email, email) {
+			return fmt.Errorf("%s already belongs to user %q", email, x.Name)
 		}
 	}
 	return nil
