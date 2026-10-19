@@ -6,7 +6,8 @@
 #
 # Writes /home/dietpi/localstack/secrets/authelia/ and creates
 # /home/dietpi/localstack/data/authelia/. Prints, once, every plaintext the
-# operator needs (first-login password, OIDC client secrets).
+# operator needs (first-login password, the Immich client secret). Users and
+# clients are managed afterwards with `home auth`.
 set -euo pipefail
 
 user=${1:?usage: authelia-secrets.sh <username> <email> [display name]}
@@ -35,15 +36,41 @@ if [[ ! -s $dir/oidc_jwks.pem ]]; then
   rm -f "$dir/public.pem"
 fi
 
-# OIDC clients: plaintext (for the app) next to its PBKDF2 digest (for Authelia).
-for client in oidc-test immich; do
-  if [[ ! -s $dir/$client.digest ]]; then
+# OIDC clients live in clients.yml, managed with `home auth client …`.
+# Authelia needs at least one to start, so a new node gets Immich's; its
+# secret is shown once (only the PBKDF2 digest is kept).
+if [[ ! -s $dir/clients.yml ]]; then
+  if [[ ! -s $dir/immich.digest ]]; then
     secret=$(rand 64)
-    printf '%s' "$secret" >"$dir/$client.secret"
-    digest pbkdf2 "$secret" sha512 >"$dir/$client.digest"
-    echo "OIDC client $client secret: $secret"
+    digest pbkdf2 "$secret" sha512 >"$dir/immich.digest"
+    echo "OIDC client immich secret: $secret"
   fi
-done
+  cat >"$dir/clients.yml" <<'EOF'
+# OpenID Connect clients, managed with `home auth client …`.
+identity_providers:
+  oidc:
+    clients:
+      - client_id: immich
+        client_name: Immich
+        client_secret: '{{ secret "/secrets/immich.digest" }}'
+        public: false
+        authorization_policy: one_factor
+        consent_mode: pre-configured
+        pre_configured_consent_duration: 1y
+        require_pkce: true
+        pkce_challenge_method: S256
+        redirect_uris:
+          - https://photos.ab18.in/auth/login
+          - https://photos.ab18.in/user-settings
+          - app.immich:///oauth-callback
+        scopes: [openid, profile, email]
+        response_types: [code]
+        grant_types: [authorization_code]
+        access_token_signed_response_alg: none
+        userinfo_signed_response_alg: none
+        token_endpoint_auth_method: client_secret_basic
+EOF
+fi
 
 if [[ ! -s $dir/users.yml ]]; then
   password=$(rand 32)
@@ -58,7 +85,7 @@ EOF
   echo "Authelia user $user first-login password: $password"
 fi
 
-# The container runs as root; keep the files private to the owner.
+# Authelia runs as dietpi (1000); keep the files private to it.
 chmod 600 "$dir"/*
 echo "secrets in $dir:"
 ls -l "$dir"

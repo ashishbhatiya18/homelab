@@ -118,6 +118,7 @@ services:
       - /home/dietpi/localstack/secrets/authelia:/secrets:ro
       - /home/dietpi/localstack/data/authelia:/data
     environment:
+      - X_AUTHELIA_CONFIG=/config/configuration.yml,/secrets/clients.yml
       - X_AUTHELIA_CONFIG_FILTERS=template
       - AUTHELIA_SESSION_SECRET_FILE=/secrets/session_secret
       - AUTHELIA_STORAGE_ENCRYPTION_KEY_FILE=/secrets/storage_encryption_key
