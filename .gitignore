@@ -59,10 +59,6 @@ nodes/**/config/pihole/versions
 # Cloudflare / third-party OAuth tokens
 nodes/**/config/citrusdental-bfe/
 
-# Terraform secrets and generated files
-terraform/*.tfvars
-terraform/.terraform/
-terraform/.terraform.lock.hcl
-terraform/*.tfstate
-terraform/*.tfstate.backup
-terraform/*.tfplan
+
+# Old local Terraform working dir (holds secrets.auto.tfvars): never commit it.
+terraform/

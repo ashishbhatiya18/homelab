@@ -255,10 +255,9 @@ Edit compose or config in repo  →  git commit  →  git push main
             start changed stacks in order, health check, rollback on failure
 ```
 
-For Cloudflare DNS / cache rules:
+For Cloudflare tunnels, routes and DNS (from the Mac):
 ```
-Edit terraform/cloudflare.tf  →  git push main
-  └─► GitHub Actions: terraform plan + apply (automatic)
+Edit cloud/tunnels/*.yaml or cloud/zones/*.yaml  →  home cloud plan  →  home cloud apply
 ```
 
 ---

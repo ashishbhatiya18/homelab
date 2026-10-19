@@ -20,7 +20,7 @@
 
 ## Exposed services (ab18.in)
 
-Tunnel name: `ab18-localstack` · Public ingress is **Terraform-managed** (`terraform/ab18.tf`).
+Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/ab18-localstack.yaml` (`home cloud`).
 
 **Public (Cloudflare tunnel → Traefik):**
 
@@ -115,15 +115,15 @@ echo "your-cf-dns-api-token" > cf_dns_api_token
 
 # Cloudflare tunnel token — get it from the dashboard or CLI:
 #   cloudflared tunnel token ab18-localstack
-# The tunnel and its ingress rules are managed by Terraform (terraform/ab18.tf).
+# The tunnel and its ingress rules are managed by `home cloud` (cloud/tunnels/).
 cat > ab-cloudflared.env <<'EOF'
 TUNNEL_TOKEN=your-tunnel-token
 EOF
 ```
 
-> **Note:** Tunnel ingress routing is fully managed in `terraform/ab18.tf` via
-> `cloudflare_zero_trust_tunnel_cloudflared_config`. Do **not** edit routing rules
-> locally — they are pushed from Terraform.
+> **Note:** Tunnel ingress routing is declared in `cloud/tunnels/ab18-localstack.yaml`
+> and applied from the Mac with `home cloud apply` (or `home route add|remove`).
+> `home tunnel token ab18-localstack --install` writes the tunnel token to the node.
 
 Authelia (`id.ab18.in`) needs its secrets
 before the network stack starts. Seed them from the Mac (idempotent; it prints

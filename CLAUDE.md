@@ -13,7 +13,7 @@ Directory layout:
 - `scripts/bundle.Dockerfile` — the node bundle (FROM scratch: `/stacks` = `nodes/<node>/` + `node.sh`)
 - `home-cli/` — the `home` CLI (deploys, stack ops, node upgrades, backups, Authelia users and OIDC clients via `home auth`); released as `home-cli-v*` tags to the Homebrew tap
 - `down-cli/` — the `down` downloader CLI (magnets, torrents, YouTube, URLs; cleans up after); released as `down-cli-v*` tags to the Homebrew tap (Mac) and as GitHub release binaries that `down-cli/install.sh` installs natively on node ab
-- `terraform/` — Cloudflare DNS, tunnel ingress, and Tailscale ACLs (HCP Terraform remote state)
+- `cloud/` — Cloudflare tunnels, ingress routes and DNS, applied with `home cloud`
 
 ## Nodes and stacks
 
@@ -21,7 +21,7 @@ Directory layout:
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 
-All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI/Terraform setup is in `docs/github-actions.md`.
+All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI workflows are described in `docs/github-actions.md`, Cloudflare under "Cloudflare" below.
 
 ## Networking
 
@@ -35,7 +35,7 @@ Networks used by stacks as `external`, declared in each `node.conf` and created 
 - All traffic arrives via Cloudflare tunnel (public) or Tailscale (internal-only services).
 - Traefik terminates TLS and routes by `Host()` label.
 - Authelia (`id.ab18.in`) sits in front of most services via the `auth` forward-auth middleware, defined by labels on its container in `nodes/ab/network/compose.yaml`; it is also the OIDC provider (Immich). Users and OIDC clients: `home auth`.
-- Tunnel ingress rules (which subdomains are public) are **Terraform-managed** in `terraform/ab18.tf` — never edit them locally.
+- Tunnel ingress rules (which subdomains are public) live in `cloud/tunnels/*.yaml` and are applied with `home cloud apply` (or `home route add|remove`).
 
 ## Deploying changes
 
@@ -52,18 +52,17 @@ home jobs                                        # the background deploy job doe
 
 On a node, by hand: `~/localstack/stacks/node.sh start|stop|restart|status [stack…]`. Each node's `/home/dietpi/localstack/` holds exactly: `stacks/` (deployed files, with `.release`), `releases/` (extracted bundles), `data/` (state) and `secrets/`.
 
-## Terraform
+## Cloudflare
 
-State is in HCP Terraform (workspace `localstack-cloudflare`). Local use requires `terraform login` first.
+Tunnels, their ingress routes and DNS for every zone are declared in `cloud/` (`tunnels/<name>.yaml`, `zones/<zone>.yaml`) and applied from the Mac with `home cloud` — not by CI:
 
 ```sh
-cd terraform
-terraform init
-terraform plan
-terraform apply
+home cloud plan            # what would change to make Cloudflare match cloud/
+home cloud apply           # do it (snapshot first; `home cloud undo` reverts)
+home route add|set|remove <host>   # edit the files and apply in one step
 ```
 
-CI runs plan on PRs and plan+apply on pushes to `main`.
+Cloudflare Pages projects, cache rules and Tailscale settings (split DNS, auth keys) are managed in their dashboards.
 
 ## CI checks
 
@@ -81,4 +80,3 @@ Everything node-local is outside the deployed files, under `/home/dietpi/localst
 - `data/traefik/acme.json` — TLS certs (must be `chmod 600`), both nodes
 - `data/esphome/`, `data/syncthing/` (ab), `data/pihole/` (cd) — app state; the repo's `syncthing/config.xml.template` and `config/pihole/` only seed a new node
 - `secrets/` — env files, Docker secrets, and `secrets/authelia/` (Authelia's secrets, `users.yml` and `clients.yml`, managed with `home auth`)
-- `terraform/secrets.auto.tfvars` (on the Mac) — Terraform variable values
