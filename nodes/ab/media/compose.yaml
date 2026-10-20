@@ -11,7 +11,7 @@ services:
       - traefik.http.services.jelly.loadbalancer.server.port=8096
     env_file: /home/dietpi/localstack/secrets/ab-media.env
     volumes:
-      - /home/dietpi/movies:/data/movies:ro
+      - /home/dietpi/movies:/data/movies
       - /home/dietpi/music:/data/music:ro
       - /home/dietpi/localstack/data/jellyfin_data/config:/config
       - /home/dietpi/localstack/data/jellyfin_data/cache:/cache
