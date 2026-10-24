@@ -106,6 +106,8 @@ func (a *app) secretMigrate(ctx context.Context, args []string) error {
 	}
 	deploying := digest != cur.Digest
 	if deploying {
+		// What the moves are about to create isn't missing.
+		plan.MissingSecrets = notCreated(plan.MissingSecrets, dir, moves, st.States)
 		printPlan(plan)
 	} else {
 		fmt.Printf("\n%s: %s is deployed already\n", n.Name, cur.Short())
@@ -167,6 +169,26 @@ func (a *app) secretMigrate(ctx context.Context, args []string) error {
 	}
 	logf("%s/%s: secrets migrated ✓ — %s can go from the repo now", n.Name, stackName, secretfiles.MigrateFile)
 	return nil
+}
+
+// notCreated drops the missing secrets ("stack path") that a pending move
+// creates: the move's target or a file inside it.
+func notCreated(missing []string, dir string, moves []secretfiles.Move, states map[int]string) []string {
+	var out []string
+	for _, m := range missing {
+		_, p, _ := strings.Cut(m, " ")
+		made := false
+		for i, mv := range moves {
+			t := dir + "/" + mv.To
+			if states[i+1] == "pending" && (p == t || strings.HasPrefix(p, t+"/")) {
+				made = true
+			}
+		}
+		if !made {
+			out = append(out, m)
+		}
+	}
+	return out
 }
 
 // undoMigrate removes the files a migration created, after cause.
