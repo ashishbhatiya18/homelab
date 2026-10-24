@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -67,12 +68,24 @@ func (r Release) Short() string {
 	return r.Revision
 }
 
-type paths struct{ live, releases string }
+type paths struct{ live, releases, secrets string }
 
 func pathsOf(n homecfg.Node) paths {
 	live := strings.TrimRight(n.StacksDir, "/")
-	return paths{live: live, releases: path.Join(path.Dir(live), "releases")}
+	base := path.Dir(live)
+	return paths{live: live, releases: path.Join(base, "releases"), secrets: path.Join(base, "secrets")}
 }
+
+// SecretsDir is where node n keeps its secrets: next to stacks_dir.
+func SecretsDir(n homecfg.Node) string { return pathsOf(n).secrets }
+
+// ContentDir is where the stacks of the release with digest are on node n
+// once Prepare extracted it.
+func ContentDir(n homecfg.Node, digest string) string { return pathsOf(n).content(digest) }
+
+// ErrMissingSecrets is returned by Apply for a release whose stacks reference
+// secret files that don't exist on the node.
+var ErrMissingSecrets = errors.New("secret files missing on the node")
 
 func (p paths) releaseDir(digest string) string {
 	return p.releases + "/" + strings.TrimPrefix(digest, "sha256:")
@@ -145,12 +158,18 @@ type Plan struct {
 	// Recreate starts every stack with fresh containers (node.sh recreate),
 	// not only the changed ones.
 	Recreate bool
+	// MissingSecrets are the secret files ("stack path") that stacks to be
+	// started reference in their new compose.yaml but the node doesn't have;
+	// Apply refuses such a plan. Migrations are the stacks among them that
+	// ship a secrets.migrate.yaml (`home secret migrate` creates the files).
+	MissingSecrets []string
+	Migrations     map[string]bool
 }
 
 func (p *Plan) Empty() bool { return len(p.Changed)+len(p.Removed)+len(p.Files) == 0 }
 
 const prepareScript = `set -euo pipefail
-ref=%[1]s rel=%[2]s dir=%[3]s live=%[4]s
+ref=%[1]s rel=%[2]s dir=%[3]s live=%[4]s sec=%[5]s
 mkdir -p "$rel"
 if [ ! -d "$dir" ]; then
   docker pull -q "$ref" >/dev/null
@@ -176,6 +195,17 @@ for d in "$live"/*/; do
   s=$(basename "$d"); [ -d "$new/$s" ] || echo "removed=$s"
 done
 for f in node.sh node.conf; do cmp -s "$new/$f" "$live/$f" || echo "file=$f"; done
+# Secret files each stack's compose.yaml references (absolute paths under
+# $sec, comments left out) that the node doesn't have.
+secre=$(printf '%%s' "$sec" | sed 's/[].[\*^$]/\\&/g')
+for d in "$new"/*/; do
+  s=$(basename "$d"); [ -f "$d/compose.yaml" ] || continue
+  [ -f "$d/secrets.migrate.yaml" ] && echo "migrate=$s"
+  refs=$(grep -v '^[[:space:]]*#' "$d/compose.yaml" | sed 's/[[:space:]]#.*//' | grep -oE "$secre/[^]\"' :,}]+" | sort -u || true)
+  for p in $refs; do
+    [ -e "$p" ] || sudo -n test -e "$p" 2>/dev/null || echo "missing=$s $p"
+  done
+done
 bash "$new/node.sh" phases | sed 's/^/phase=/'
 `
 
@@ -188,7 +218,7 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 	}
 	p := pathsOf(n)
 	ref := repoOf(n.Bundle) + "@" + digest
-	script := fmt.Sprintf(prepareScript, remote.Quote(ref), remote.Quote(p.releases), remote.Quote(p.releaseDir(digest)), remote.Quote(p.live))
+	script := fmt.Sprintf(prepareScript, remote.Quote(ref), remote.Quote(p.releases), remote.Quote(p.releaseDir(digest)), remote.Quote(p.live), remote.Quote(p.secrets))
 	out, err := d.R.Output(ctx, n.Name, "bash -s <<'HOME_EOF'\n"+script+"HOME_EOF")
 	if err != nil {
 		return nil, fmt.Errorf("preparing release on %s: %w", n.Name, err)
@@ -196,6 +226,8 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 	plan := &Plan{Node: n, From: from, To: Release{Digest: digest, Image: n.Bundle}, Recreate: recreate}
 	changed := map[string]bool{}
 	var phases [][]string
+	var missing []string
+	migrations := map[string]bool{}
 	sc := bufio.NewScanner(strings.NewReader(out))
 	for sc.Scan() {
 		k, v, _ := strings.Cut(sc.Text(), "=")
@@ -210,6 +242,10 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 			plan.Files = append(plan.Files, v)
 		case "phase":
 			phases = append(phases, strings.Fields(v))
+		case "missing":
+			missing = append(missing, v)
+		case "migrate":
+			migrations[v] = true
 		}
 	}
 	for _, ph := range phases {
@@ -224,7 +260,61 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 			plan.Changed = append(plan.Changed, keep...)
 		}
 	}
+	plan.MissingSecrets, plan.Migrations = missingFor(plan.Changed, missing, migrations)
 	return plan, nil
+}
+
+// missingFor keeps the missing secrets ("stack path") and migrations of the
+// stacks that are going to be started.
+func missingFor(started, missing []string, migrations map[string]bool) ([]string, map[string]bool) {
+	start := map[string]bool{}
+	for _, s := range started {
+		start[s] = true
+	}
+	var out []string
+	mig := map[string]bool{}
+	for _, m := range missing {
+		s, _, _ := strings.Cut(m, " ")
+		if start[s] {
+			out = append(out, m)
+			if migrations[s] {
+				mig[s] = true
+			}
+		}
+	}
+	return out, mig
+}
+
+// MissingError explains a plan's missing secret files, or is nil.
+func (p *Plan) MissingError() error {
+	if len(p.MissingSecrets) == 0 {
+		return nil
+	}
+	var b strings.Builder
+	for _, m := range p.MissingSecrets {
+		s, f, _ := strings.Cut(m, " ")
+		fmt.Fprintf(&b, "\n  %s: %s", s, f)
+	}
+	var mig []string
+	other := false
+	for _, m := range p.MissingSecrets {
+		s, _, _ := strings.Cut(m, " ")
+		if !p.Migrations[s] {
+			other = true
+		}
+	}
+	for s := range p.Migrations {
+		mig = append(mig, p.Node.Name+"/"+s)
+	}
+	sort.Strings(mig)
+	hint := "create them on the node first"
+	if len(mig) > 0 {
+		hint = "run `home secret migrate " + strings.Join(mig, "`, `home secret migrate ") + "`"
+		if other {
+			hint += ", and create the others"
+		}
+	}
+	return fmt.Errorf("%s: %w:%s\n%s", p.Node.Name, ErrMissingSecrets, b.String(), hint)
 }
 
 const syncScript = `set -euo pipefail
@@ -280,6 +370,9 @@ func (d *Deployer) start(ctx context.Context, n homecfg.Node, names []string, re
 // Apply deploys a prepared plan. On a stack that does not come up healthy it
 // rolls the node back to the previous release and returns the error.
 func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
+	if err := p.MissingError(); err != nil {
+		return err
+	}
 	n := p.Node
 	to := p.To
 	to.Previous = p.From.Digest

@@ -74,6 +74,7 @@ Set `bundle:` on the node in config.yaml and `stacks_dir` to e.g.
 | `home deploy <node> --tag <sha>` | deploy a specific bundle |
 | `home deploy <node> --rollback` | back to the release before the current one |
 | `home deploy <node> --recreate` | every stack with fresh containers, e.g. after moving `stacks_dir` |
+| `home secret migrate <node>/<stack> [--dry-run] [--yes] [--keep-old]` | move a stack's secret files into a new layout: follows the `secrets.migrate.yaml` its release ships (copy a file or directory, one variable of an env file into its own file, or some lines into a new env file — all done on the node, values never cross SSH), deploys, then deletes the old files no deployed stack references; a failed deploy rolls back and removes the new files |
 
 Releases are extracted to `releases/<digest>/` next to `stacks_dir` (the
 newest five are kept) and `stacks_dir/.release` records what is deployed. Changed files are
@@ -196,7 +197,7 @@ now, and `brew services list` shows them like any other service. Each logs to
 | `home-backup` | 15 min | **Backups** when due (daily at your chosen time; catches up after sleep): ✓ after each backup; a warning with the reason when one can't run |
 | `home-check` | 15 min | **Node check** once a day after `checks.daily_at`: one summary — `ab: 13 apt updates · cd: reboot required · stack updates: network` — or "all nodes healthy" |
 | `home-cleanup` | 1 h | **Pruning** once a day: what is re-created on demand — dangling/unused images, build cache, apt cache and rollback images older than 30 days. Never logs or the journal |
-| `home-deploy` | 5 min | **Deploys** a new bundle to nodes that already run one, with the same health check and rollback as `home deploy`; notifies on every deploy and failure. A node's first deploy is always manual |
+| `home-deploy` | 5 min | **Deploys** a new bundle to nodes that already run one, with the same health check and rollback as `home deploy`; notifies on every deploy and failure (a release waiting for `home secret migrate` once). A node's first deploy is always manual |
 
 (Homebrew allows one service per formula, so each job is a small companion
 formula in the tap that runs `home jobs run <job> --if-due`.)

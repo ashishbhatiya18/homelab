@@ -1,6 +1,8 @@
 package deploy
 
 import (
+	"errors"
+	"strings"
 	"testing"
 
 	"github.com/ashishbhatiya18/home/internal/homecfg"
@@ -36,5 +38,29 @@ func TestParseRelease(t *testing.T) {
 	}
 	if (Release{}).Short() != "none" {
 		t.Fatal("empty release should read as none")
+	}
+}
+
+func TestMissingSecrets(t *testing.T) {
+	missing := []string{"network /s/network/cf", "vault /s/vault.env", "idle /s/idle"}
+	got, mig := missingFor([]string{"network", "vault"}, missing, map[string]bool{"network": true, "idle": true})
+	if len(got) != 2 || got[0] != "network /s/network/cf" || got[1] != "vault /s/vault.env" {
+		t.Fatalf("missing = %v (idle is not started, so it doesn't count)", got)
+	}
+	if len(mig) != 1 || !mig["network"] {
+		t.Fatalf("migrations = %v", mig)
+	}
+	p := &Plan{Node: homecfg.Node{Name: "ab"}, MissingSecrets: got, Migrations: mig}
+	err := p.MissingError()
+	if !errors.Is(err, ErrMissingSecrets) {
+		t.Fatalf("err = %v", err)
+	}
+	for _, want := range []string{"network: /s/network/cf", "vault: /s/vault.env", "home secret migrate ab/network", "create the others"} {
+		if !strings.Contains(err.Error(), want) {
+			t.Errorf("%q not in %q", want, err)
+		}
+	}
+	if (&Plan{}).MissingError() != nil {
+		t.Error("no missing secrets should be no error")
 	}
 }

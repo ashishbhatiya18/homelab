@@ -165,6 +165,9 @@ func printPlan(p *deploy.Plan) {
 	if p.Empty() {
 		fmt.Println("  no stack changes (only records the new release)")
 	}
+	if err := p.MissingError(); err != nil {
+		fmt.Printf("  ✗ %v\n", err)
+	}
 }
 
 // ---- background jobs ------------------------------------------------------------
@@ -228,7 +231,10 @@ func (a *app) deployJob(ctx context.Context) error {
 			err = d.Apply(ctx, p)
 		}
 		if err != nil {
-			notify.Send("home: deploy to "+n.Name+" failed", err.Error())
+			// A release waiting for its secrets is reported once, not every run.
+			if !errors.Is(err, deploy.ErrMissingSecrets) || !strings.Contains(loadJobs()["deploy"].Result, err.Error()) {
+				notify.Send("home: deploy to "+n.Name+" failed", err.Error())
+			}
 			errs = append(errs, n.Name+": "+err.Error())
 			continue
 		}

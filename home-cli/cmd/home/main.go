@@ -55,6 +55,14 @@ Deploy (node bundles):
   home deploy <node> --tag <sha>    deploy a specific bundle (a commit)
   home deploy <node> --rollback     back to the release deployed before the current one
   home deploy <node> --recreate     every stack with fresh containers (e.g. after moving stacks_dir)
+                                    a release whose stacks reference secret files the node lacks
+                                    is refused (see home secret migrate)
+
+Secrets (files under secrets/ next to stacks_dir):
+  home secret migrate <node>/<stack> [--dry-run] [--yes] [--keep-old]
+                                    move the stack's secret files as its secrets.migrate.yaml
+                                    says (copied on the node), deploy, then delete the old files
+                                    no deployed stack uses
 
 Stacks:
   home stack list [node] [--updates]         every stack with health (--updates: check images)
@@ -323,6 +331,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return a.dnsCmd(ctx, args)
 	case "auth":
 		return a.authCmd(ctx, args)
+	case "secret":
+		return a.secretCmd(ctx, args)
 	}
 	return fmt.Errorf("unknown command %q — see `home help`", cmd)
 }

@@ -21,7 +21,7 @@ Directory layout:
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + pihole + tailscale), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 
-All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI workflows are described in `docs/github-actions.md`, Cloudflare under "Cloudflare" below.
+All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Layout and rules for secret files (one secret file per value or document under `secrets/<stack>/`, env files `secrets/<stack>.env` only for apps that can't read files) and how stacks move to it with `home secret migrate` are in `docs/secrets.md`. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI workflows are described in `docs/github-actions.md`, Cloudflare under "Cloudflare" below.
 
 ## Networking
 
