@@ -33,9 +33,11 @@ alerting:
         token: ${NTFY_TOKEN}
         priority: 4
 
-# Web checks follow redirects and want a final 200: a service behind the passkey
-# `auth` middleware ends on the login page (its router exists, so its container
-# runs), while a stopped one falls to the catch-all and loops on error.ab18.in.
+# Web checks follow redirects and want a final 200. A service behind the passkey
+# `auth` middleware wants 401 instead: Authelia answers non-browser requests
+# with 401, so it means its router exists (its container runs) and is still
+# protected; 200 there would mean the route lost `auth`. A stopped service falls
+# to the catch-all and loops on error.ab18.in, which fails either way.
 # LAN checks reach ab directly through extra_hosts in compose.yaml; anything not
 # listed there resolves publicly and goes through the Cloudflare tunnel.
 endpoints:
@@ -79,16 +81,16 @@ endpoints:
   - {name: photos (immich), group: ab, url: "https://photos.ab18.in/api/server/ping", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: vault (vaultwarden), group: ab, url: "https://vault.ab18.in/alive", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
   - {name: jelly (jellyfin), group: ab, url: "https://jelly.ab18.in/health", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: backup (kopia), group: ab, url: "https://backup.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: backup (kopia), group: ab, url: "https://backup.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
   - {name: sync (syncthing), group: ab, url: "https://sync.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: files (filebrowser), group: ab, url: "https://files.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: esphome, group: ab, url: "https://esphome.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: treasuredash, group: ab, url: "https://treasuredash.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: code (code-server), group: ab, url: "https://code.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: term (claudecode), group: ab, url: "https://term.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: draw (excalidraw), group: ab, url: "https://draw.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: files (filebrowser), group: ab, url: "https://files.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
+  - {name: esphome, group: ab, url: "https://esphome.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
+  - {name: treasuredash, group: ab, url: "https://treasuredash.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
+  - {name: code (code-server), group: ab, url: "https://code.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
+  - {name: term (claudecode), group: ab, url: "https://term.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
+  - {name: draw (excalidraw), group: ab, url: "https://draw.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
   - {name: pad (rustpad), group: ab, url: "https://pad.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
-  - {name: pdf (stirling), group: ab, url: "https://pdf.ab18.in/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: pdf (stirling), group: ab, url: "https://pdf.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
   - {name: notes (memos), group: ab, url: "https://notes.ab18.in/healthz", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
 
   # ── services on cd (same node, internal_bridge) ──
