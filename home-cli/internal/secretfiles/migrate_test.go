@@ -79,6 +79,7 @@ func TestScriptOnNode(t *testing.T) {
 		{From: "ab-cloudflared.env", To: "network/tunnel_token", Key: "TUNNEL_TOKEN"},
 		{From: "ab-cloudflared.env", To: "network/quoted", Key: "QUOTED"},
 		{From: "ab-cloudflared.env", To: "network/unquoted", Key: "UNQ"},
+		{From: "ab-cloudflared.env", To: "network/escaped", Key: "ESC"},
 		{From: "ab-vault.env", To: "vault.env", Keys: []string{"ADMIN_TOKEN", "SSO"}},
 	}
 	bad := []Move{{From: "cf_dns_api_token", To: "x/cf"}, {From: "bad.env", To: "x/bad", Key: "BAD"}}
@@ -103,6 +104,7 @@ TUNNEL_TOKEN=eyJhIjoi=
 TUNNEL_TOKEN_FILE=/nope
 QUOTED='va$lue #x'
 UNQ=hello  #comment
+ESC=$$argon2id$$v=19$$m=65540
 BAD=has$dollar
 E
 printf 'TZ=Asia/Kolkata\nADMIN_TOKEN=adm\nSSO=s3\n' > ab-vault.env
@@ -115,7 +117,7 @@ cp /t/*.sh /home/dietpi/
 su dietpi -c 'bash ~/status.sh' | sed 's/^/status1: /'
 su dietpi -c 'bash ~/apply.sh' | sed 's/^/apply: /'
 su dietpi -c 'bash ~/status.sh' | sed 's/^/status2: /'
-for f in network/cf_dns_api_token network/tunnel_token network/quoted network/unquoted vault.env network/authelia/memos.json; do
+for f in network/cf_dns_api_token network/tunnel_token network/quoted network/unquoted network/escaped vault.env network/authelia/memos.json; do
   printf 'file %s %s %s [%s]\n' "$f" "$(stat -c %u "$f")" "$(stat -c %a "$f")" "$(cat "$f" | tr '\n' '|')"
 done
 printf 'dirmode %s %s\n' "$(stat -c %a network)" "$(stat -c %u network)"
@@ -140,13 +142,14 @@ test -e /srv/secrets/x/cf && echo "undo: still there" || echo "undo: gone"
 		t.Fatalf("container: %v", err)
 	}
 	for _, want := range []string{
-		"status1: move 1 pending", "status1: move 6 pending",
+		"status1: move 1 pending", "status1: move 7 pending",
 		"apply: created network/cf_dns_api_token", "apply: created network/authelia", "apply: created vault.env",
-		"status2: move 1 copied", "status2: move 2 copied", "status2: move 3 copied", "status2: move 6 copied",
+		"status2: move 1 copied", "status2: move 2 copied", "status2: move 3 copied", "status2: move 7 copied",
 		"file network/cf_dns_api_token 1000 600 [cftoken]",
 		"file network/tunnel_token 1000 600 [eyJhIjoi=]",
 		"file network/quoted 1000 600 [va$lue #x]",
 		"file network/unquoted 1000 600 [hello]",
+		"file network/escaped 1000 600 [$argon2id$v=19$m=65540]",
 		"file vault.env 1000 600 [ADMIN_TOKEN=adm|SSO=s3|]",
 		"file network/authelia/memos.json 10001 600 [{}]",
 		"dirmode 700 1000",

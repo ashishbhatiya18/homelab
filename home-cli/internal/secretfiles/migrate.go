@@ -144,7 +144,10 @@ value() {
         if (v ~ /[\\$]/) { print k ": double-quoted value with \\ or $, move it by hand" > "/dev/stderr"; exit 3 }
       } else {
         sub(/[ \t]+#.*$/, "", v); sub(/[ \t]+$/, "", v)
-        if (v ~ /\$/) { print k ": unquoted value with $, move it by hand" > "/dev/stderr"; exit 3 }
+        # compose reads $$ as a literal $ and expands any other $.
+        t = v; gsub(/\$\$/, "", t)
+        if (t ~ /\$/) { print k ": unquoted value with $, move it by hand" > "/dev/stderr"; exit 3 }
+        gsub(/\$\$/, "$", v)
       }
       printf "%s", v
     }' "$2"

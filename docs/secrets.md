@@ -53,6 +53,7 @@ a deploy never starts a stack whose secret files are missing on the node.
 - from: authelia                        # copy a directory
   to: network/authelia
 - from: ab-cloudflared.env              # one value from an env file → a secret file
+                                        # (the value compose reads: quotes off, $$ → $)
   key: TUNNEL_TOKEN
   to: network/cloudflared_tunnel_token
 - from: ab-vaultwarden.env              # some lines of an env file → the new env file
