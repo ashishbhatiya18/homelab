@@ -4,6 +4,8 @@ services:
     container_name: api
     platform: linux/amd64
     restart: always
+    # dietpi, which owns data/cdstack_data and secrets/api; never root.
+    user: "1000:1000"
     depends_on:
       - peripheral
     env_file:
@@ -26,6 +28,8 @@ services:
     container_name: peripheral
     platform: linux/amd64
     restart: always
+    # dietpi, which owns secrets/peripheral (it rewrites gauth/token.json); never root.
+    user: "1000:1000"
     env_file:
       - /home/dietpi/localstack/secrets/peripheral/env
     volumes:

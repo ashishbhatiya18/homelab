@@ -27,6 +27,8 @@ services:
     image: traefik/whoami
     container_name: whoami
     restart: always
+    # Stateless: nobody, never root.
+    user: "65534:65534"
     networks:
       - network-layer
     labels:
