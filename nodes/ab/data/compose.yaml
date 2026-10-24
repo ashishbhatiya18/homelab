@@ -29,16 +29,17 @@ services:
     image: redis:alpine
     container_name: redis
     restart: always
+    # The config secret holds `requirepass <password>`, so the password is in
+    # neither the command line nor the environment. Immich (redis:6379 on
+    # internal_bridge) has the same password in secrets/immich/redis_password.
+    command: ["redis-server", "/run/secrets/redis_conf"]
+    secrets:
+      - redis_conf
     networks:
       - data-layer
       - network-layer
     volumes:
       - /home/dietpi/localstack/data/redis_data:/data
-    labels:
-      - traefik.enable=true
-      - traefik.tcp.routers.redis.rule=HostSNI(`redis.ab18.in`)
-      - traefik.tcp.routers.redis.entrypoints=websecure
-      - traefik.tcp.routers.redis.tls=true
 networks:
   data-layer:
     external: true
@@ -48,3 +49,5 @@ networks:
 secrets:
   postgres_password:
     file: /home/dietpi/localstack/secrets/data/postgres_password
+  redis_conf:
+    file: /home/dietpi/localstack/secrets/data/redis.conf

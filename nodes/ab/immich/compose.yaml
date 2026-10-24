@@ -26,10 +26,11 @@ services:
     environment:
       <<: *immich-env
       DB_URL_FILE: /run/secrets/db_url
+      REDIS_HOSTNAME: redis
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
     secrets:
       - db_url
-    # REDIS_URL: Immich has no file variant for it (rediss://, so not REDIS_PASSWORD_FILE).
-    env_file: /home/dietpi/localstack/secrets/immich.env
+      - redis_password
     labels:
       - traefik.enable=true
       - traefik.http.routers.immich.rule=Host(`photos.ab18.in`)
@@ -80,3 +81,5 @@ networks:
 secrets:
   db_url:
     file: /home/dietpi/localstack/secrets/immich/db_url
+  redis_password:
+    file: /home/dietpi/localstack/secrets/immich/redis_password
