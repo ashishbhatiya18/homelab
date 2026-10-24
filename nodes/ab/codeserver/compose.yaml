@@ -8,7 +8,6 @@ services:
       - PGID=1000
       - TZ=Asia/Kolkata
       - DEFAULT_WORKSPACE=/repos
-    env_file: /home/dietpi/localstack/secrets/ab-codeserver.env
     volumes:
       - /home/dietpi/localstack/data/codeserver_config:/config
       - /home/dietpi/localstack/data/codeserver_claude:/config/.claude

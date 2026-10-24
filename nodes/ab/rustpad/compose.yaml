@@ -10,7 +10,10 @@ services:
       - traefik.http.routers.pad.rule=Host(`pad.ab18.in`)
       - traefik.http.services.pad.loadbalancer.server.port=3030
       - traefik.http.routers.pad.service=pad
-    env_file: /home/dietpi/localstack/secrets/ab-rustpad.env
+    environment:
+      EXPIRY_DAYS: "30"
+      SQLITE_URI: /data/db.sqlite
+      RUST_LOG: info
     volumes:
       - /home/dietpi/localstack/data/rustpad_data:/data
 networks:

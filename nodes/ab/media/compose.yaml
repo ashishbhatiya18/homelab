@@ -9,7 +9,11 @@ services:
       - traefik.enable=true
       - traefik.http.routers.jelly.rule=Host(`jelly.ab18.in`)
       - traefik.http.services.jelly.loadbalancer.server.port=8096
-    env_file: /home/dietpi/localstack/secrets/ab-media.env
+    environment:
+      PUID: "1000"
+      PGID: "1000"
+      TZ: Asia/Kolkata
+      UMASK_SET: "022"
     volumes:
       - /home/dietpi/movies:/data/movies
       - /home/dietpi/music:/data/music:ro
