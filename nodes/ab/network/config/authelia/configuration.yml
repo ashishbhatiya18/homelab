@@ -10,8 +10,9 @@
 
 # Branding: the ab18.in logo (assets/logo.png, favicon.ico, rendered from the
 # site's icon.svg); dark like the site. assets/locales/en/{portal,settings}.json
-# are full copies of 4.39's English strings with the Authelia name taken out
-# (tab titles, the "Powered by" footer); refresh them from
+# are full copies of 4.39's English strings with ab18 in the tab titles.
+# Authelia refuses to start if a value drops a key's "authelia" placeholder
+# (tab titles, "Powered by" footer, privacy notice); refresh them from
 # https://id.ab18.in/locales/en/<ns>.json when upgrading.
 theme: dark
 

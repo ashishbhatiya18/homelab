@@ -103,7 +103,7 @@
   "Security": "Security",
   "Select a Method": "Select a Method",
   "Settings": "Settings",
-  "Settings - {{authelia}}": "Settings · ab18",
+  "Settings - {{authelia}}": "Settings · ab18 · {{authelia}}",
   "Start": "Start",
   "Submit": "Submit",
   "Successfully {{action}} the {{item}}": "Successfully {{action}} the {{item}}",
