@@ -12,7 +12,20 @@ services:
       - "3012"
     networks:
       - network-layer
-    env_file: /home/dietpi/localstack/secrets/ab-vaultwarden.env
+    # Secrets are files (docs/secrets.md): Vaultwarden reads any setting X from
+    # the file X_FILE names. The rest is configuration, here and in config.json.
+    environment:
+      TZ: Asia/Kolkata
+      WEBSOCKET_ENABLED: "true"
+      SESSION_LIFETIME_SECONDS: "2592000"
+      SSO_CLIENT_ID: 517071319106-78gu4i6ct3qk97onhjiecm514rahf5ql.apps.googleusercontent.com
+      ADMIN_TOKEN_FILE: /run/secrets/admin_token
+      DATABASE_URL_FILE: /run/secrets/database_url
+      SSO_CLIENT_SECRET_FILE: /run/secrets/sso_client_secret
+    secrets:
+      - admin_token
+      - database_url
+      - sso_client_secret
     extra_hosts:
       - pg.ab18.in=10.10.10.11
     labels:
@@ -31,3 +44,10 @@ networks:
   network-layer:
     name: internal_bridge
     external: true
+secrets:
+  admin_token:
+    file: /home/dietpi/localstack/secrets/vaultwarden/admin_token
+  database_url:
+    file: /home/dietpi/localstack/secrets/vaultwarden/database_url
+  sso_client_secret:
+    file: /home/dietpi/localstack/secrets/vaultwarden/sso_client_secret
