@@ -6,18 +6,19 @@
 # at startup and the UI can't change them (edit, deploy, restart):
 #   config/memos-instance-setting-general.json   SSO only, SSO sign-up allowed
 #   config/memos-instance-setting-access.json    private instance
-#   secrets/memos-idp-authelia.json              the OIDC client (owned by 10001)
+#   secrets/memos/idp-authelia.json              the OIDC client (owned by 10001)
 # PostgreSQL: database/role `memos` on the data stack's postgres; attachments are
 # stored in the database too (default storage), so pg dumps cover them.
-# Secrets: /home/dietpi/localstack/secrets/ab-memos.env
+# Secrets: /home/dietpi/localstack/secrets/memos.env (an env file: Memos reads
+#   the DSN only from its environment)
 #   MEMOS_DSN=postgres://memos:<password>@postgres:5432/memos?sslmode=disable
-# Recovery: admin account `admin`, password in secrets/memos-admin-password.
+# Recovery: admin account `admin`, password in secrets/memos/admin_password.
 services:
   memos:
     image: neosmemo/memos:stable
     container_name: memos
     restart: always
-    env_file: /home/dietpi/localstack/secrets/ab-memos.env
+    env_file: /home/dietpi/localstack/secrets/memos.env
     environment:
       TZ: Asia/Kolkata
       MEMOS_PORT: 5230
@@ -27,7 +28,7 @@ services:
       - /home/dietpi/localstack/data/memos:/var/opt/memos
       - ./config/memos-instance-setting-general.json:/etc/secrets/memos-instance-setting-general.json:ro
       - ./config/memos-instance-setting-access.json:/etc/secrets/memos-instance-setting-access.json:ro
-      - /home/dietpi/localstack/secrets/memos-idp-authelia.json:/etc/secrets/memos-idp-authelia.json:ro
+      - /home/dietpi/localstack/secrets/memos/idp-authelia.json:/etc/secrets/memos-idp-authelia.json:ro
     networks:
       - network-layer
       - data-layer
