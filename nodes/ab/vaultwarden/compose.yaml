@@ -3,6 +3,8 @@ services:
     image: vaultwarden/server:latest
     container_name: vaultwarden
     restart: always
+    # dietpi, which owns data/vaultwarden_data and config/config.json; never root.
+    user: "1000:1000"
     volumes:
       - /home/dietpi/localstack/data/vaultwarden_data:/data
       - ./config/config.json:/data/config.json

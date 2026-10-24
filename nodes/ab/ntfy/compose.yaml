@@ -9,12 +9,15 @@
 #   home stack exec dietpi-l/ntfy -- ntfy user add publisher
 #   home stack exec dietpi-l/ntfy -- ntfy access publisher 'homelab*' write-only
 #   home stack exec dietpi-l/ntfy -- ntfy token add --label=<sender> publisher
-# State: /home/dietpi/localstack/data/ntfy (message cache + user database).
+# State: /home/dietpi/localstack/data/ntfy (message cache + user database),
+# owned by dietpi (1000:1000), the user ntfy runs as.
 services:
   ntfy:
     image: binwiederhier/ntfy:latest
     container_name: ntfy
     restart: always
+    # dietpi, which owns data/ntfy; never root.
+    user: "1000:1000"
     command: serve
     environment:
       TZ: Asia/Kolkata

@@ -2,6 +2,13 @@ services:
   immich-server:
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
     container_name: immich-server
+    # Rootless, as in Immich's docker-compose.rootless.yml: dietpi (1000:1000)
+    # owns immich_data and immich_model on cd's NFS exports.
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     volumes:
       - nfs-data:/data
       - /etc/localtime:/etc/localtime:ro
@@ -27,6 +34,11 @@ services:
   immich-machine-learning:
     container_name: immich_machine_learning
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
+    user: "1000:1000"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - NET_RAW
     volumes:
       - model-cache:/cache
     restart: always

@@ -3,6 +3,9 @@ services:
     image: esphome/esphome
     container_name: esphome
     restart: always
+    # dietpi, which owns data/esphome; never root. The image supports it: the
+    # PlatformIO toolchains and build output stay under /config.
+    user: "1000:1000"
     networks:
       - network-layer
     volumes:

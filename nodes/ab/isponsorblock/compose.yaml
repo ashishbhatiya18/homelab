@@ -3,5 +3,7 @@ services:
     image: dmunozv04/isponsorblocktv
     container_name: isponsorblock
     restart: always
+    # dietpi, which owns the deployed config/ directory; never root.
+    user: "1000:1000"
     volumes:
       - ./config:/app/data
