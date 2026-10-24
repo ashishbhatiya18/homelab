@@ -71,15 +71,17 @@ chmod 700 /home/dietpi/localstack/secrets
 ### 3a — Network stack secrets
 
 ```sh
+mkdir -p secrets/network && chmod 700 secrets/network
+
 # Tailscale auth key — generate at https://login.tailscale.com/admin/settings/keys
-echo "tskey-auth-XXXX" > secrets/ts_auth_key
+echo "tskey-auth-XXXX" > secrets/network/ts_auth_key
 
 # Cloudflare DNS API token — used by Traefik for ACME DNS-01 challenge
 # Needs Zone:Read and DNS:Edit permissions
-echo "your-cf-dns-api-token" > secrets/cf_dns_api_token
+echo "your-cf-dns-api-token" > secrets/network/cf_dns_api_token
 
 # Pi-hole web UI password (plaintext — pihole hashes it on first start)
-echo "your-pihole-password" > secrets/pihole_web_password
+echo "your-pihole-password" > secrets/network/pihole_web_password
 ```
 
 ### 3b — Citrusdental stack secrets
@@ -125,9 +127,9 @@ printf 'WATCHTOWER_HTTP_API_TOKEN=%s\n' "$(openssl rand -hex 32)" > secrets/cd-w
 
 ```sh
 chmod 600 secrets/cloudflare_tunnel_token \
-          secrets/ts_auth_key \
-          secrets/cf_dns_api_token \
-          secrets/pihole_web_password \
+          secrets/network/ts_auth_key \
+          secrets/network/cf_dns_api_token \
+          secrets/network/pihole_web_password \
           secrets/cd-localstack.env \
           secrets/cd-watchtower.env \
           secrets/api/env \
@@ -140,9 +142,10 @@ chmod 600 secrets/cloudflare_tunnel_token \
 The full secrets layout:
 ```
 /home/dietpi/localstack/secrets/
-  ts_auth_key
-  cf_dns_api_token
-  pihole_web_password
+  network/
+    ts_auth_key
+    cf_dns_api_token
+    pihole_web_password
   cloudflare_tunnel_token
   cd-localstack.env
   api/

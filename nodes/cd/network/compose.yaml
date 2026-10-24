@@ -125,10 +125,11 @@ networks:
   pihole_macvlan:
     name: pihole_macvlan
     external: true
+# Secret files (docs/secrets.md), mounted at /run/secrets/<name>.
 secrets:
   cf_dns_api_token:
-    file: /home/dietpi/localstack/secrets/cf_dns_api_token
+    file: /home/dietpi/localstack/secrets/network/cf_dns_api_token
   pihole_web_password:
-    file: /home/dietpi/localstack/secrets/pihole_web_password
+    file: /home/dietpi/localstack/secrets/network/pihole_web_password
   ts_auth_key:
-    file: /home/dietpi/localstack/secrets/ts_auth_key
+    file: /home/dietpi/localstack/secrets/network/ts_auth_key
