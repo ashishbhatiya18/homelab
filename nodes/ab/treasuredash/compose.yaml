@@ -1,7 +1,8 @@
 # Treasure Dash – association treasury app (ghcr.io/ashishbhatiya18/treasure-dash).
 # No login of its own: guarded by Authelia through the `auth` middleware.
 # PostgreSQL: database/schema/role `treasuredash` on the data stack's postgres.
-# Secrets: /home/dietpi/localstack/secrets/ab-treasuredash.env
+# Secrets: /home/dietpi/localstack/secrets/treasuredash.env (an env file: the
+#   app reads its settings only from flags and the environment)
 #   DATABASE_URL=postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable
 # State: uploaded bills in /home/dietpi/localstack/data/treasuredash (owned by 65532).
 services:
@@ -10,7 +11,7 @@ services:
     container_name: treasuredash
     restart: always
     user: "65532:65532"
-    env_file: /home/dietpi/localstack/secrets/ab-treasuredash.env
+    env_file: /home/dietpi/localstack/secrets/treasuredash.env
     environment:
       TZ: Asia/Kolkata
     volumes:
