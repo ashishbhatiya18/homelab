@@ -1,7 +1,8 @@
 # Gatus – health checks for both nodes, alerting through ntfy (config/config.yaml).
 # Runs on cd so it can report ab being down; alerts about ab and the path to
 # ntfy go to the fallback topic on ntfy.sh, the rest to ntfy on ab.
-# Secrets: /home/dietpi/localstack/secrets/cd-monitor.env
+# Secrets: /home/dietpi/localstack/secrets/monitor.env (an env file: Gatus reads
+#   secrets only from its environment)
 #   NTFY_TOKEN=tk_…                 write-only token for homelab* on ntfy.ab18.in
 #   NTFY_FALLBACK_TOPIC=<topic>     the private topic on ntfy.sh
 # State: /home/dietpi/localstack/data/gatus (check history), owned by dietpi.
@@ -14,7 +15,7 @@ services:
     # non-root Gatus pings over unprivileged ICMP sockets, which Docker allows
     # for every group (net.ipv4.ping_group_range).
     user: "1000:1000"
-    env_file: /home/dietpi/localstack/secrets/cd-monitor.env
+    env_file: /home/dietpi/localstack/secrets/monitor.env
     environment:
       TZ: Asia/Kolkata
       GATUS_CONFIG_PATH: /config/config.yaml

@@ -2,7 +2,7 @@
 # Checks run on cd. Alerts about the path to ntfy itself (group `path`: ab, its
 # Traefik, the ntfy container, the Cloudflare tunnel) go to the fallback topic
 # on ntfy.sh, since ntfy on ab can't deliver them; groups ab and cd go to ntfy.
-# ${…} come from secrets/cd-monitor.env (see compose.yaml).
+# ${…} come from secrets/monitor.env (see compose.yaml).
 
 storage:
   type: sqlite
