@@ -18,7 +18,8 @@ services:
       TZ: Asia/Kolkata
       WEBSOCKET_ENABLED: "true"
       SESSION_LIFETIME_SECONDS: "2592000"
-      SSO_CLIENT_ID: 517071319106-78gu4i6ct3qk97onhjiecm514rahf5ql.apps.googleusercontent.com
+      # Sign-in through Authelia (OIDC client `vaultwarden`, see `home auth client`).
+      SSO_CLIENT_ID: vaultwarden
       ADMIN_TOKEN_FILE: /run/secrets/admin_token
       DATABASE_URL_FILE: /run/secrets/database_url
       SSO_CLIENT_SECRET_FILE: /run/secrets/sso_client_secret
@@ -26,8 +27,10 @@ services:
       - admin_token
       - database_url
       - sso_client_secret
+    # Postgres and Authelia over the LAN, not through the Cloudflare tunnel.
     extra_hosts:
       - pg.ab18.in=10.10.10.11
+      - id.ab18.in=10.10.10.11
     labels:
       - traefik.enable=true
       - traefik.http.routers.vault.rule=Host(`vault.ab18.in`)
@@ -50,4 +53,4 @@ secrets:
   database_url:
     file: /home/dietpi/localstack/secrets/vaultwarden/database_url
   sso_client_secret:
-    file: /home/dietpi/localstack/secrets/vaultwarden/sso_client_secret
+    file: /home/dietpi/localstack/secrets/vaultwarden/authelia_client_secret

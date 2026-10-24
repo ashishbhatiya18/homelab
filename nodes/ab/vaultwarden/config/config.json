@@ -32,7 +32,7 @@
     "sso_only": true,
     "sso_signups_match_email": true,
     "sso_allow_unknown_email_verification": false,
-    "sso_authority": "https://accounts.google.com",
+    "sso_authority": "https://id.ab18.in",
     "sso_scopes": "email profile",
     "sso_pkce": true,
     "sso_callback_path": "https://vault.ab18.in/identity/connect/oidc-signin",
