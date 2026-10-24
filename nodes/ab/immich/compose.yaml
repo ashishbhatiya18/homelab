@@ -1,3 +1,11 @@
+# Configuration both containers get; secrets are only the server's (docs/secrets.md).
+x-immich-env: &immich-env
+  UPLOAD_LOCATION: /home/dietpi/photos
+  REVERSE_GEOCODING_PRECISION: "3"
+  IMMICH_MACHINE_LEARNING_URL: http://immich-machine-learning:3003
+  IMMICH_VERSION: release
+  IMMICH_METRICS: "true"
+
 services:
   immich-server:
     image: ghcr.io/immich-app/immich-server:${IMMICH_VERSION:-release}
@@ -15,7 +23,13 @@ services:
     networks:
       - network-layer
       - default
-    env_file: /home/dietpi/localstack/secrets/ab-immich.env
+    environment:
+      <<: *immich-env
+      DB_URL_FILE: /run/secrets/db_url
+    secrets:
+      - db_url
+    # REDIS_URL: Immich has no file variant for it (rediss://, so not REDIS_PASSWORD_FILE).
+    env_file: /home/dietpi/localstack/secrets/immich.env
     labels:
       - traefik.enable=true
       - traefik.http.routers.immich.rule=Host(`photos.ab18.in`)
@@ -44,7 +58,7 @@ services:
     restart: always
     networks:
       - default
-    env_file: /home/dietpi/localstack/secrets/ab-immich.env
+    environment: *immich-env
 volumes:
   nfs-data:
     driver: local
@@ -63,3 +77,6 @@ networks:
   network-layer:
     name: internal_bridge
     external: true
+secrets:
+  db_url:
+    file: /home/dietpi/localstack/secrets/immich/db_url
