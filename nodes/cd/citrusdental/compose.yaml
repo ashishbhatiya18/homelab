@@ -12,6 +12,14 @@ services:
       - /home/dietpi/localstack/secrets/api/env
     volumes:
       - /home/dietpi/localstack/data/cdstack_data:/app/files:ro
+      # Smile design writes patient photos here; the rest of the tree stays read-only.
+      - /home/dietpi/localstack/data/cdstack_data/patients:/app/files/patients
+      # Marketing images uploaded in the admin (served at /public); kept across recreates.
+      - /home/dietpi/localstack/data/cdstack_public:/app/public
+    # The bank statement upload stages files in ./temp_uploads (relative to /app,
+    # which only root can write).
+    tmpfs:
+      - /app/temp_uploads:uid=1000,gid=1000,mode=0700
     networks:
       - internal_bridge
     extra_hosts:
