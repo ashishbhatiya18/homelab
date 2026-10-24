@@ -2,6 +2,20 @@
 
 CONFIG="${KOPIA_CONFIG_PATH:-/app/config/repository.config}"
 
+# Snapshots are grouped by user@host. Kopia records the container's hostname
+# at connect time, which changes on every recreate, so pin it to the stable
+# one set in compose.yaml (hostname: ab) on every start.
+pin_client() {
+  [ -f "$CONFIG" ] || return 0
+  host=$(hostname)
+  # Docker's default hostname is the container id: never pin that.
+  if echo "$host" | grep -Eq '^[0-9a-f]{12}$'; then
+    echo "[entrypoint] WARNING: no hostname set in compose.yaml, not pinning the client"
+    return 0
+  fi
+  /usr/bin/kopia repository set-client --hostname="$host" --username=root
+}
+
 patch_enable_actions() {
   [ -f "$CONFIG" ] || return 0
   awk '{gsub(/"enableActions": false/, "\"enableActions\": true")}1' \
@@ -54,6 +68,7 @@ if ! /usr/bin/kopia repository status > /dev/null 2>&1; then
   init_repository
 fi
 
+pin_client
 apply_policy
 
 exec /usr/bin/kopia "$@"

@@ -3,6 +3,8 @@ services:
     # Built by .github/workflows/build-kopia.yml from this directory.
     image: ghcr.io/ashishbhatiya18/kopia:latest
     container_name: kopia
+    # Snapshot source identity (root@ab:/data-ab); entrypoint.sh pins it.
+    hostname: ab
     restart: always
     command:
       - server
