@@ -116,9 +116,6 @@ echo "xoxb-..." > secrets/peripheral/slack/token.txt
 ### 3c — Localstack stack secrets
 
 ```sh
-# Arcane env vars (add any required vars, can be empty)
-touch secrets/cd-localstack.env
-
 # Watchtower HTTP API token (metrics at watchtower.citrusdental.in)
 mkdir -p secrets/localstack && chmod 700 secrets/localstack
 openssl rand -hex 32 > secrets/localstack/watchtower_http_api_token
@@ -134,7 +131,6 @@ chmod 600 secrets/cloudflare_tunnel_token \
           secrets/network/ts_auth_key \
           secrets/network/cf_dns_api_token \
           secrets/network/pihole_web_password \
-          secrets/cd-localstack.env \
           secrets/localstack/watchtower_http_api_token \
           secrets/localstack.env \
           secrets/api/env \
@@ -152,7 +148,6 @@ The full secrets layout:
     cf_dns_api_token
     pihole_web_password
   cloudflare_tunnel_token
-  cd-localstack.env
   localstack.env
   localstack/
     watchtower_http_api_token
