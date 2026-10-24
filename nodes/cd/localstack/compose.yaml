@@ -3,15 +3,17 @@ services:
     image: nickfedor/watchtower
     container_name: watchtower
     restart: always
-    # WATCHTOWER_HTTP_API_TOKEN (secrets, not the repo)
-    env_file: /home/dietpi/localstack/secrets/cd-watchtower.env
     environment:
+      # Watchtower reads a secret's value from the file it names.
+      - WATCHTOWER_HTTP_API_TOKEN=/run/secrets/watchtower_http_api_token
       - WATCHTOWER_UPDATE_ON_START=true
       - WATCHTOWER_POLL_INTERVAL=300
       - WATCHTOWER_HTTP_API_METRICS=true
       # Detect new images but never apply them; updates are done with
       # `home stack update` / `home upgrade` (backup first, auto-rollback).
       - WATCHTOWER_MONITOR_ONLY=true
+    secrets:
+      - watchtower_http_api_token
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
@@ -25,13 +27,14 @@ services:
   # pings Healthchecks.io — when pings stop (node, Docker, or the home's
   # internet/power down) Healthchecks.io alerts the fallback ntfy topic on
   # ntfy.sh — and pushes disk-space level changes of the host's / to ntfy.
-  # secrets/cd-heartbeat.env: HC_PING_URL=https://hc-ping.com/<uuid>,
-  #   NTFY_TOKEN=tk_… (write-only token for homelab*)
+  # secrets/localstack.env (an env file: heartbeat.sh reads its environment, and
+  # curl_user can't read dietpi's secret files): HC_PING_URL=https://hc-ping.com/<uuid>,
+  #   NTFY_TOKEN=tk_… (write-only token for homelab*; unset on cd)
   heartbeat:
     image: curlimages/curl:latest
     container_name: heartbeat
     restart: always
-    env_file: /home/dietpi/localstack/secrets/cd-heartbeat.env
+    env_file: /home/dietpi/localstack/secrets/localstack.env
     environment:
       NODE: cd
       NTFY_URL: https://ntfy-lan.ab18.in/homelab
@@ -48,3 +51,6 @@ services:
 networks:
   internal_bridge:
     external: true
+secrets:
+  watchtower_http_api_token:
+    file: /home/dietpi/localstack/secrets/localstack/watchtower_http_api_token
