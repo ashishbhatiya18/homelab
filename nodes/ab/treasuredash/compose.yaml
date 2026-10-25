@@ -1,26 +1,32 @@
 # Treasure Dash – association treasury app (ghcr.io/ashishbhatiya18/treasure-dash).
 # No login of its own: guarded by Authelia through the `auth` middleware.
 # PostgreSQL: database/schema/role `treasuredash` on the data stack's postgres.
-# Secrets: /home/dietpi/localstack/secrets/treasuredash.env (an env file: the
-#   app reads its settings only from flags and the environment)
-#   DATABASE_URL=postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable
-# State: uploaded bills in /home/dietpi/localstack/data/treasuredash (owned by 65532).
+# Secrets (docs/secrets.md): secrets/treasuredash/database_url holds
+#   postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable
+#   and reaches the app as DATABASE_URL_FILE.
+# State: uploaded bills and snapshots in /home/dietpi/localstack/data/treasuredash
+#   (owned by dietpi, 1000:1000). Root filesystem read-only; temp files in a tmpfs.
 services:
   treasuredash:
     image: ghcr.io/ashishbhatiya18/treasure-dash:latest
     container_name: treasuredash
     restart: always
-    user: "65532:65532"
-    env_file: /home/dietpi/localstack/secrets/treasuredash.env
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
     environment:
       TZ: Asia/Kolkata
+      DATABASE_URL_FILE: /run/secrets/database_url
+    secrets:
+      - database_url
     volumes:
       - /home/dietpi/localstack/data/treasuredash:/data
     networks:
       - network-layer
       - data-layer
     healthcheck:
-      test: ["CMD", "/usr/local/bin/treasuredash", "-healthcheck"]
+      test: ["CMD", "/app/treasuredash", "-healthcheck"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -31,6 +37,10 @@ services:
       - traefik.http.routers.treasuredash.rule=Host(`treasuredash.ab18.in`)
       - traefik.http.routers.treasuredash.middlewares=auth
       - traefik.http.services.treasuredash.loadbalancer.server.port=8080
+
+secrets:
+  database_url:
+    file: /home/dietpi/localstack/secrets/treasuredash/database_url
 
 networks:
   network-layer:
