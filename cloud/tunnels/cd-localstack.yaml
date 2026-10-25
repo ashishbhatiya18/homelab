@@ -9,7 +9,7 @@ id: ba49b407-186d-48f3-8caa-3599fcc25a65
 node: dietpi
 stack: citrusdental
 container: cloudflare
-secret: /home/dietpi/localstack/secrets/cloudflare_tunnel_token
+secret: /home/dietpi/localstack/secrets/citrusdental/cloudflare_tunnel_token
 originRequest:
   http2Origin: true
   noTLSVerify: false

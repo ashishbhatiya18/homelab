@@ -3,22 +3,52 @@ services:
     image: ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
     container_name: api
     restart: always
-    # dietpi, which owns data/cdstack_data and secrets/api; never root.
+    # The image runs as 1000 (dietpi) already; kept here so an older image
+    # can't come back as root. /app is root-owned and read-only: the api writes
+    # only to the mounts below and to /tmp.
     user: "1000:1000"
     depends_on:
       - peripheral
-    env_file:
-      - /home/dietpi/localstack/secrets/api/env
+    # Secrets are files (docs/secrets.md); the api reads any setting X from the
+    # file X_FILE names. The rest is configuration.
+    environment:
+      TZ: Asia/Kolkata
+      PORT: "8000"
+      GIN_MODE: release
+      BACKEND_URL: https://api.citrusdental.in
+      WEBSITE_URL: https://citrusdental.in
+      CORS_ALLOWED_ORIGINS: https://citrusdental.in,https://admin.citrusdental.in
+      COOKIE_DOMAIN: citrusdental.in
+      WEBAUTHN_RP_ID: admin.citrusdental.in
+      WEBAUTHN_RP_ORIGIN: https://admin.citrusdental.in
+      GOOGLE_CLIENT_ID: 517071319106-v7uo4gg12j310ol1n2v03nmtvad6ram2.apps.googleusercontent.com
+      AUTH_TOKEN_EXPIRY_HOURS: "24"
+      DOCUMENT_TOKEN_EXPIRY_HOURS: "8760"
+      AUTH_RATE_LIMIT: "10"
+      AUTH_RATE_WINDOW_MINUTES: "1"
+      PERIPHERAL_BASE_URL: http://peripheral:8080
+      SMTP_HOST: peripheral
+      SMTP_PORT: "1025"
+      SENDER_EMAIL: noreply@citrusdental.in
+      SLACK_CHANNEL: "#general"
+      RECONCILIATION_CUTOFF_DATE: "2026-04-01"
+      MAX_AUTO_RECONCILE_CARD_MDR_PERCENT: "4.0"
+      FEATURE_SMILE_DESIGN: "false"
+      FILES_DIR: /app/files
+      MARKETING_DIR: /app/public/marketing
+      SECRET_KEY_FILE: /run/secrets/api_secret_key
+      DATABASE_URL_FILE: /run/secrets/api_database_url
+      OPENAI_API_KEY_FILE: /run/secrets/api_openai_api_key
+    secrets:
+      - api_secret_key
+      - api_database_url
+      - api_openai_api_key
     volumes:
       - /home/dietpi/localstack/data/cdstack_data:/app/files:ro
       # Smile design writes patient photos here; the rest of the tree stays read-only.
       - /home/dietpi/localstack/data/cdstack_data/patients:/app/files/patients
-      # Marketing images uploaded in the admin (served at /public); kept across recreates.
+      # Marketing images uploaded in the admin (MARKETING_DIR, served at /public/marketing).
       - /home/dietpi/localstack/data/cdstack_public:/app/public
-    # The bank statement upload stages files in ./temp_uploads (relative to /app,
-    # which only root can write).
-    tmpfs:
-      - /app/temp_uploads:uid=1000,gid=1000,mode=0700
     networks:
       - internal_bridge
     extra_hosts:
@@ -34,14 +64,23 @@ services:
     image: ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
     container_name: peripheral
     restart: always
-    # dietpi, which owns secrets/peripheral (it rewrites gauth/token.json); never root.
+    # The image runs as 1000 (dietpi), which owns secrets/peripheral: it
+    # rewrites gauth/token.json when Google refreshes it.
     user: "1000:1000"
-    env_file:
-      - /home/dietpi/localstack/secrets/peripheral/env
+    environment:
+      GOOGLE_CALENDAR_ID: feaf973a093315679dae3c442a82b4b8534e63248447544a18f15bad5cb77c2f@group.calendar.google.com
+      GOOGLE_PLACE_ID: ChIJZxB3LF0TrjsR5oXSTxvVO4s
+      GAUTH_TOKEN_FILE: /app/token.json
+      GAUTH_CREDENTIALS_FILE: /app/credentials.json
+      SLACK_ACCESS_TOKEN_FILE: /run/secrets/peripheral_slack_access_token
+      GOOGLE_API_KEY_FILE: /run/secrets/peripheral_google_api_key
+    secrets:
+      - peripheral_slack_access_token
+      - peripheral_google_api_key
     volumes:
+      # Managed by the app (it refreshes token.json), so bind mounts, not secrets.
       - /home/dietpi/localstack/secrets/peripheral/gauth/token.json:/app/token.json
       - /home/dietpi/localstack/secrets/peripheral/gauth/credentials.json:/app/credentials.json
-      - /home/dietpi/localstack/secrets/peripheral/slack/token.txt:/app/slack_token.txt
     networks:
       - internal_bridge
   cloudflared:
@@ -61,5 +100,15 @@ networks:
     external: true
 
 secrets:
+  api_secret_key:
+    file: /home/dietpi/localstack/secrets/api/secret_key
+  api_database_url:
+    file: /home/dietpi/localstack/secrets/api/database_url
+  api_openai_api_key:
+    file: /home/dietpi/localstack/secrets/api/openai_api_key
+  peripheral_slack_access_token:
+    file: /home/dietpi/localstack/secrets/peripheral/slack_access_token
+  peripheral_google_api_key:
+    file: /home/dietpi/localstack/secrets/peripheral/google_api_key
   cloudflare_tunnel_token:
-    file: /home/dietpi/localstack/secrets/cloudflare_tunnel_token
+    file: /home/dietpi/localstack/secrets/citrusdental/cloudflare_tunnel_token

@@ -86,31 +86,28 @@ echo "your-pihole-password" > secrets/network/pihole_web_password
 
 ### 3b — Citrusdental stack secrets
 
+One secret file per value (`docs/secrets.md`); the api and peripheral read
+each one through `X_FILE`. Their plain configuration is in the compose file.
+
 ```sh
-# Cloudflare tunnel token — from Zero Trust → Networks → Tunnels → citrusdental.in → Configure → Run token
-echo "eyJhXXXX..." > secrets/cloudflare_tunnel_token
+mkdir -p secrets/citrusdental secrets/api secrets/peripheral/gauth
+chmod 700 secrets/citrusdental secrets/api secrets/peripheral
 
-# api service env vars
-mkdir -p secrets/api
-cat > secrets/api/env <<'EOF'
-DATABASE_URL=postgresql://...
-# add all vars the api container needs
-EOF
+# Cloudflare tunnel token (`home tunnel token cd-localstack --install` writes it)
+echo "eyJhXXXX..." > secrets/citrusdental/cloudflare_tunnel_token
 
-# peripheral service env vars + credential files
-mkdir -p secrets/peripheral/gauth
-mkdir -p secrets/peripheral/slack
+# api: JWT signing key, Postgres URL, OpenAI key
+openssl rand -base64 48 > secrets/api/secret_key
+echo "postgresql://..." > secrets/api/database_url
+echo "sk-..."           > secrets/api/openai_api_key
 
-cat > secrets/peripheral/env <<'EOF'
-# add all vars the peripheral container needs
-EOF
+# peripheral: Google Places key, Slack bot token
+echo "AIza..."  > secrets/peripheral/google_api_key
+echo "xoxb-..." > secrets/peripheral/slack_access_token
 
-# Google auth credentials (from Google Cloud Console)
+# Google OAuth files (from Google Cloud Console); peripheral rewrites token.json
 cp /path/to/credentials.json secrets/peripheral/gauth/credentials.json
 cp /path/to/token.json       secrets/peripheral/gauth/token.json
-
-# Slack bot token
-echo "xoxb-..." > secrets/peripheral/slack/token.txt
 ```
 
 ### 3c — Localstack stack secrets
@@ -127,17 +124,17 @@ printf "HC_PING_URL='%s'\n" "https://hc-ping.com/<uuid>" > secrets/localstack.en
 ### 3d — Set permissions
 
 ```sh
-chmod 600 secrets/cloudflare_tunnel_token \
+chmod 600 secrets/citrusdental/cloudflare_tunnel_token \
           secrets/network/ts_auth_key \
           secrets/network/cf_dns_api_token \
           secrets/network/pihole_web_password \
           secrets/localstack/watchtower_http_api_token \
           secrets/localstack.env \
-          secrets/api/env \
-          secrets/peripheral/env \
+          secrets/api/* \
+          secrets/peripheral/google_api_key \
+          secrets/peripheral/slack_access_token \
           secrets/peripheral/gauth/credentials.json \
-          secrets/peripheral/gauth/token.json \
-          secrets/peripheral/slack/token.txt
+          secrets/peripheral/gauth/token.json
 ```
 
 The full secrets layout:
@@ -147,20 +144,22 @@ The full secrets layout:
     ts_auth_key
     cf_dns_api_token
     pihole_web_password
-  cloudflare_tunnel_token
+  citrusdental/
+    cloudflare_tunnel_token
   localstack.env
   localstack/
     watchtower_http_api_token
   monitor.env
   api/
-    env
+    secret_key
+    database_url
+    openai_api_key
   peripheral/
-    env
+    google_api_key
+    slack_access_token
     gauth/
       credentials.json
       token.json
-    slack/
-      token.txt
 ```
 
 ---
