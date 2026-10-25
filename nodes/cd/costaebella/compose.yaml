@@ -27,6 +27,9 @@ services:
     networks:
       - internal_bridge
       - native
+    # The token is a secret file, owned by cloudflared's user (65532), mode
+    # 600; `home tunnel token nikview.com --install` writes it
+    # (cloud/tunnels/nikview.com.yaml).
     environment:
       - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
     secrets:
