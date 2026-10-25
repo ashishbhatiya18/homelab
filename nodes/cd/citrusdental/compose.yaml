@@ -2,7 +2,6 @@ services:
   api:
     image: ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
     container_name: api
-    platform: linux/amd64
     restart: always
     # dietpi, which owns data/cdstack_data and secrets/api; never root.
     user: "1000:1000"
@@ -34,7 +33,6 @@ services:
   peripheral:
     image: ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
     container_name: peripheral
-    platform: linux/amd64
     restart: always
     # dietpi, which owns secrets/peripheral (it rewrites gauth/token.json); never root.
     user: "1000:1000"
