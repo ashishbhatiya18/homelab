@@ -9,9 +9,13 @@
 #   - checks how full the host's root filesystem (mounted at /host) is and
 #     pushes to ntfy when it changes level: ok → warning (DISK_WARN%) →
 #     critical (DISK_CRIT%), and back. Without NTFY_TOKEN this is log-only.
-# Env: HC_PING_URL, NTFY_TOKEN (secrets/<node>-heartbeat.env); NODE, NTFY_URL
-# (topic URL), DISK_WARN (85), DISK_CRIT (95).
+# Env: HC_PING_URL, NTFY_TOKEN (secrets), or HC_PING_URL_FILE, NTFY_TOKEN_FILE
+# naming files that hold them; NODE, NTFY_URL (topic URL), DISK_WARN (85),
+# DISK_CRIT (95).
 set -u
+
+[ -n "${HC_PING_URL_FILE:-}" ] && HC_PING_URL=$(cat "$HC_PING_URL_FILE")
+[ -n "${NTFY_TOKEN_FILE:-}" ] && NTFY_TOKEN=$(cat "$NTFY_TOKEN_FILE")
 
 warn=${DISK_WARN:-85}
 crit=${DISK_CRIT:-95}

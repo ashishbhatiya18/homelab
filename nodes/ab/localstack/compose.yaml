@@ -3,7 +3,8 @@ services:
     image: nickfedor/watchtower
     container_name: watchtower
     restart: always
-    env_file: /home/dietpi/localstack/secrets/ab-localstack.env
+    # WATCHTOWER_UPDATE_ON_START, WATCHTOWER_POLL_INTERVAL
+    env_file: /home/dietpi/localstack/secrets/localstack.env
     environment:
       # Detect new images but never apply them; updates are done with
       # `home stack update` / `home upgrade` (backup first, auto-rollback).
@@ -16,16 +17,19 @@ services:
   # pings Healthchecks.io — when pings stop (node, Docker, or the home's
   # internet/power down) Healthchecks.io alerts the fallback ntfy topic on
   # ntfy.sh — and pushes disk-space level changes of the host's / to ntfy.
-  # secrets/ab-heartbeat.env: HC_PING_URL=https://hc-ping.com/<uuid>,
-  #   NTFY_TOKEN=tk_… (write-only token for homelab*)
+  # secrets/localstack/hc_ping_url: https://hc-ping.com/<uuid> (no ntfy token on
+  # ab yet: disk alerts are log-only). Runs as dietpi, who owns the secret.
   heartbeat:
     image: curlimages/curl:latest
     container_name: heartbeat
     restart: always
-    env_file: /home/dietpi/localstack/secrets/ab-heartbeat.env
+    user: "1000:1000"
     environment:
       NODE: ab
       NTFY_URL: http://ntfy/homelab
+      HC_PING_URL_FILE: /run/secrets/hc_ping_url
+    secrets:
+      - hc_ping_url
     # A fresh run each round, so a deployed edit applies without a restart.
     entrypoint: ["sh", "-c", "while true; do sh /heartbeat.sh; sleep 300; done"]
     volumes:
@@ -49,3 +53,6 @@ networks:
   network-layer:
     name: internal_bridge
     external: true
+secrets:
+  hc_ping_url:
+    file: /home/dietpi/localstack/secrets/localstack/hc_ping_url
