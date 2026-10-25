@@ -2,6 +2,18 @@
 
 CONFIG="${KOPIA_CONFIG_PATH:-/app/config/repository.config}"
 
+# The repository password comes from the file KOPIA_PASSWORD_FILE names
+# (docs/secrets.md), or KOPIA_PASSWORD. It is only needed to connect or create
+# the repository (afterwards it is in repository.config.kopia-password), and is
+# passed through kopia's environment, never on a command line.
+repo_password() {
+  if [ -n "${KOPIA_PASSWORD_FILE:-}" ]; then
+    cat "$KOPIA_PASSWORD_FILE"
+  else
+    printf '%s' "${KOPIA_PASSWORD:-}"
+  fi
+}
+
 # Snapshots are grouped by user@host. Kopia records the container's hostname
 # at connect time, which changes on every recreate, so pin it to the stable
 # one set in compose.yaml (hostname: ab) on every start.
@@ -45,17 +57,15 @@ apply_policy() {
 
 init_repository() {
   echo "[entrypoint] Connecting to existing repository..."
-  if /usr/bin/kopia repository connect rclone \
-      --remote-path="${KOPIA_RCLONE_PATH}" \
-      --password="${KOPIA_PASSWORD}" 2>/dev/null; then
+  if KOPIA_PASSWORD="$(repo_password)" /usr/bin/kopia repository connect rclone \
+      --remote-path="${KOPIA_RCLONE_PATH}" 2>/dev/null; then
     patch_enable_actions
     return 0
   fi
 
   echo "[entrypoint] No existing repository found, creating..."
-  if /usr/bin/kopia repository create rclone \
-      --remote-path="${KOPIA_RCLONE_PATH}" \
-      --password="${KOPIA_PASSWORD}"; then
+  if KOPIA_PASSWORD="$(repo_password)" /usr/bin/kopia repository create rclone \
+      --remote-path="${KOPIA_RCLONE_PATH}"; then
     patch_enable_actions
   else
     echo "[entrypoint] ERROR: repository init failed, server will start without a repository"

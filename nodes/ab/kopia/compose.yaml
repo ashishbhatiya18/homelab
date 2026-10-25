@@ -32,9 +32,21 @@ services:
       - KOPIA_CONFIG_PATH=/app/config/repository.config
       - KOPIA_CACHE_DIRECTORY=/app/cache
       - RCLONE_CONFIG=/app/rclone/rclone.conf
-    env_file: /home/dietpi/localstack/secrets/ab-kopia.env
+      - KOPIA_RCLONE_PATH=cd:/home/dietpi/backup
+      # Secrets are files (docs/secrets.md); entrypoint.sh and
+      # scripts/pre-snapshot.sh read them.
+      - KOPIA_PASSWORD_FILE=/run/secrets/repository_password
+      - PG_PASSWORD_FILE=/run/secrets/postgres_password
+    secrets:
+      - repository_password
+      - postgres_password
 
 networks:
   network-layer:
     name: internal_bridge
     external: true
+secrets:
+  repository_password:
+    file: /home/dietpi/localstack/secrets/kopia/repository_password
+  postgres_password:
+    file: /home/dietpi/localstack/secrets/kopia/postgres_password
