@@ -3,8 +3,17 @@ services:
     image: ghcr.io/ashishbhatiya18/costaebella-backend:latest
     container_name: costaebella-be
     restart: always
-    env_file:
-      - /home/dietpi/localstack/secrets/costaebella/env
+    environment:
+      PORT: "8080"
+      ALLOWED_ORIGINS: https://costaebella.pages.dev
+      GOOGLE_CLIENT_ID: 719888124802-ap7f2ldmvj76791i944k7e47dv7dhin1.apps.googleusercontent.com
+      ADMIN_EMAIL: ashishbhatiya18@gmail.com
+      DATABASE_URL: postgres://shiftly@pg.ab18.in:443/shiftly
+      DATABASE_PASSWORD_FILE: /run/secrets/database_password
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+    secrets:
+      - database_password
+      - jwt_secret
     networks:
       - internal_bridge
       - native
@@ -29,5 +38,9 @@ networks:
     external: true
 
 secrets:
+  database_password:
+    file: /home/dietpi/localstack/secrets/costaebella/database_password
+  jwt_secret:
+    file: /home/dietpi/localstack/secrets/costaebella/jwt_secret
   cloudflare_tunnel_token:
-    file: /home/dietpi/localstack/secrets/costaebella_cloudflare_tunnel_token
+    file: /home/dietpi/localstack/secrets/costaebella/cloudflare_tunnel_token
