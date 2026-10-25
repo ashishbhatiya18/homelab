@@ -4,20 +4,19 @@
 ## Stacks
 | Stack | Services | Secrets needed |
 |---|---|---|
-| `network` | tailscale, traefik, whoami, cloudflared, authelia | `ts_auth_key`, `cf_dns_api_token`, `ab-cloudflared.env` |
-| `data` | postgres, redis | `ab-data.env` |
-| `immich` | immich-server, immich_machine_learning | `ab-immich.env` |
-| `kopia` | kopia | `ab-kopia.env` |
-| `localstack` | watchtower | `ab-localstack.env` |
-| `vaultwarden` | vaultwarden | `ab-vaultwarden.env` |
-| `homeautomation` | esphome | `ab-homeautomation.env` (config gitignored) |
-| `syncthing` | syncthing | `ab-syncthing.env` (config gitignored) |
-| `filebrowser` | filebrowser | `ab-filebrowser.env` |
-| `media` | jellyfin | `ab-media.env` |
-| `bentopdf` | stirlingpdf | — |
-| `excalidraw` | excalidraw | `ab-excalidraw.env` |
-| `rustpad` | rustpad | `ab-rustpad.env` |
-| `memos` | memos | `ab-memos.env`, `memos-idp-authelia.json`, `memos-admin-password` |
+| `network` | tailscale, traefik, whoami, cloudflared, authelia | `network/{ts_auth_key,cf_dns_api_token,cloudflared_tunnel_token}`, `network/authelia/` |
+| `data` | postgres, redis | `data/postgres_password`, `data/redis.conf` |
+| `immich` | immich-server, immich_machine_learning | `immich/{db_url,redis_password}` |
+| `kopia` | kopia | `kopia/{repository_password,postgres_password}` |
+| `localstack` | watchtower, heartbeat | `localstack.env`, `localstack/hc_ping_url` |
+| `vaultwarden` | vaultwarden | `vaultwarden/{admin_token,database_url,authelia_client_secret}` |
+| `memos` | memos | `memos.env`, `memos/{idp-authelia.json,admin_password}` |
+| `treasuredash` | treasuredash | `treasuredash.env` |
+| `syncthing` | syncthing | `syncthing/` (its identity; config gitignored) |
+| `homeautomation`, `filebrowser`, `media`, `bentopdf`, `excalidraw`, `rustpad`, `codeserver`, `claudecode`, `isponsorblock`, `ntfy` | | — |
+
+Paths are relative to `/home/dietpi/localstack/secrets/`; the layout and its
+rules are in [secrets.md](secrets.md).
 
 ## Exposed services (ab18.in)
 
@@ -47,7 +46,6 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 | `proxy.ab18.in` | traefik dashboard |
 | `sync.ab18.in` | syncthing |
 | `pg.ab18.in` | postgres (TCP/TLS) |
-| `redis.ab18.in` | redis (TCP/TLS) |
 
 ---
 
@@ -100,36 +98,37 @@ nodes:
 
 ## Phase 3 — Create secrets
 
+Secrets follow [secrets.md](secrets.md): a secret file per value under
+`secrets/<stack>/`, and `secrets/<stack>.env` only for apps that can't read a
+file. Everything else is configuration in the stacks' compose files. Files are
+mode 600 and owned by the user their container runs as (dietpi unless noted);
+`home deploy` refuses a release whose stacks reference a secret file that is
+missing, so create a stack's secrets before its first deploy.
+
 ```sh
-mkdir -p /home/dietpi/localstack/secrets
-chmod 700 /home/dietpi/localstack/secrets
-cd /home/dietpi/localstack/secrets
+cd /home/dietpi/localstack
+install -d -m 700 secrets
+cd secrets
+umask 077
+put() { mkdir -p "$(dirname "$1")"; printf '%s' "$2" > "$1"; }   # put <file> <value>
 ```
 
 ### 3a — Network stack
 
 ```sh
-# Tailscale auth key — https://login.tailscale.com/admin/settings/keys
-echo "tskey-auth-XXXX" > ts_auth_key
-
-# Cloudflare DNS API token — Zone:Read + DNS:Edit permissions
-echo "your-cf-dns-api-token" > cf_dns_api_token
-
-# Cloudflare tunnel token — get it from the dashboard or CLI:
-#   cloudflared tunnel token ab18-localstack
-# The tunnel and its ingress rules are managed by `home cloud` (cloud/tunnels/).
-cat > ab-cloudflared.env <<'EOF'
-TUNNEL_TOKEN=your-tunnel-token
-EOF
+put network/ts_auth_key "tskey-auth-XXXX"            # https://login.tailscale.com/admin/settings/keys
+put network/cf_dns_api_token "your-cf-dns-api-token" # Zone:Read + DNS:Edit
 ```
 
-> **Note:** Tunnel ingress routing is declared in `cloud/tunnels/ab18-localstack.yaml`
-> and applied from the Mac with `home cloud apply` (or `home route add|remove`).
-> `home tunnel token ab18-localstack --install` writes the tunnel token to the node.
+The tunnel token: from the Mac, `home tunnel token ab18-localstack --install`
+writes it to `network/cloudflared_tunnel_token` (the `secret:` of
+`cloud/tunnels/ab18-localstack.yaml`). The file must be owned by cloudflared's
+user: `sudo chown 65532:65532 network/cloudflared_tunnel_token`. Ingress rules
+are applied with `home cloud apply` (or `home route add|remove`).
 
-Authelia (`id.ab18.in`) needs its secrets
-before the network stack starts. Seed them from the Mac (idempotent; it prints
-the first-login password and the OIDC client secrets once):
+Authelia (`id.ab18.in`) needs its secrets before the network stack starts. Seed
+them from the Mac (idempotent; it prints the first-login password and the OIDC
+client secrets once):
 
 ```bash
 ssh dietpi@100.108.211.112 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
@@ -138,19 +137,18 @@ ssh dietpi@100.108.211.112 'bash -s -- <username> <email> "<display name>"' < sc
 After that, users and OIDC clients are managed from the Mac with `home auth`
 (`auth: {node: dietpi-l, url: https://id.ab18.in}` in `~/.config/home/config.yaml`):
 `home auth user add|set|disable|rm …`, `home auth client add|set|rotate|rm …`,
-`home auth code --wait` for one-time codes. Clients live in
-`secrets/authelia/clients.yml`, not in git.
+`home auth code --wait` for one-time codes. Everything lives in
+`secrets/network/authelia/` (`users.yml`, `clients.yml`, client secret digests).
 
 ### 3b — Data stack (postgres + redis)
 
 ```sh
-cat > ab-data.env <<'EOF'
-DB_USERNAME=immich
-DB_DATABASE_NAME=photos
-POSTGRES_INITDB_ARGS=--data-checksums
-POSTGRES_PASSWORD=your-pg-password
-EOF
+put data/postgres_password "your-pg-password"
+printf 'requirepass %s\n' "$(openssl rand -hex 24)" > data/redis.conf
+sudo chown 999:1000 data/redis.conf       # the redis image's user
 ```
+
+Immich authenticates to Redis with the same password (3c).
 
 ### 3b.1 — Provision Vaultwarden postgres user/database
 
@@ -166,106 +164,37 @@ docker exec -it postgres psql -U immich -d postgres -c "
 ### 3c — Immich stack
 
 ```sh
-cat > ab-immich.env <<'EOF'
-DB_HOSTNAME=postgres
-DB_USERNAME=immich
-DB_PASSWORD=your-pg-password
-DB_DATABASE_NAME=photos
-REDIS_HOSTNAME=redis
-EOF
+put immich/db_url "postgresql://immich:your-pg-password@postgres:5432/photos"
+put immich/redis_password "$(sudo sed -n 's/^requirepass //p' data/redis.conf)"
 ```
 
 ### 3d — Kopia stack
 
 ```sh
-cat > ab-kopia.env <<'EOF'
-KOPIA_PASSWORD=your-kopia-repository-password
-KOPIA_SERVER_USERNAME=admin
-KOPIA_SERVER_PASSWORD=admin
-EOF
+put kopia/repository_password "your-kopia-repository-password"
+put kopia/postgres_password "your-pg-password"      # for the pre-snapshot pg_dump
 ```
 
-### 3e — Localstack stack (watchtower)
+### 3e — Localstack stack (watchtower, heartbeat)
 
 ```sh
-cat > ab-localstack.env <<'EOF'
-WATCHTOWER_UPDATE_ON_START=true
-WATCHTOWER_POLL_INTERVAL=300
-EOF
+printf 'WATCHTOWER_UPDATE_ON_START=true\nWATCHTOWER_POLL_INTERVAL=300\n' > localstack.env
+put localstack/hc_ping_url "https://hc-ping.com/<uuid>"
 ```
 
 ### 3f — Vaultwarden stack
 
 ```sh
-cat > ab-vaultwarden.env <<'EOF'
-TZ=Asia/Kolkata
-DATABASE_URL=postgresql://vaultwarden:your-vaultwarden-db-password@pg.ab18.in:443/ab18
-WEBSOCKET_ENABLED=true
-DOMAIN=https://vault.ab18.in
-SESSION_LIFETIME_SECONDS=2592000
-EOF
+put vaultwarden/database_url "postgresql://vaultwarden:your-vaultwarden-db-password@pg.ab18.in:443/ab18"
+put vaultwarden/admin_token '$argon2id$…'            # vaultwarden hash (`vaultwarden hash`)
 ```
 
-### 3g — Media stack (jellyfin)
+Sign-in is Authelia (OIDC client `vaultwarden`): run
+`home auth client add vaultwarden --redirect https://vault.ab18.in/identity/connect/oidc-signin --name Vaultwarden --pkce`
+in your own terminal, then put the secret it prints in place with
+`home node edit dietpi-l secrets/vaultwarden/authelia_client_secret`.
 
-```sh
-cat > ab-media.env <<'EOF'
-PUID=1000
-PGID=1000
-TZ=Asia/Kolkata
-UMASK_SET=022
-EOF
-```
-
-### 3h — Filebrowser stack
-
-```sh
-cat > ab-filebrowser.env <<'EOF'
-PUID=1000
-PGID=1000
-TZ=Asia/Kolkata
-FB_AUTH_HEADER=X-Auth-Request-User
-FB_AUTH_METHOD=proxy
-EOF
-```
-
-### 3i — Syncthing stack
-
-```sh
-cat > ab-syncthing.env <<'EOF'
-PUID=1000
-PGID=1000
-TZ=Asia/Kolkata
-EOF
-```
-
-### 3j — Rustpad stack
-
-```sh
-cat > ab-rustpad.env <<'EOF'
-EXPIRY_DAYS=30
-SQLITE_URI=/data/db.sqlite
-RUST_LOG=info
-EOF
-```
-
-### 3k — Excalidraw stack
-
-```sh
-cat > ab-excalidraw.env <<'EOF'
-NODE_ENV=production
-EOF
-```
-
-### 3l — Homeautomation stack (esphome)
-
-```sh
-cat > ab-homeautomation.env <<'EOF'
-ESPHOME_DASHBOARD_USE_PING=true
-EOF
-```
-
-### 3l.1 — Memos stack
+### 3g — Memos stack
 
 Memos connects as `memos@postgres:5432/memos` and signs users in through Authelia
 (OIDC client `memos`). After the data stack is running:
@@ -275,17 +204,17 @@ docker exec -it postgres psql -U immich -d postgres -c "
   CREATE ROLE memos WITH LOGIN PASSWORD 'your-memos-db-password';
   CREATE DATABASE memos OWNER memos;
 "
-echo 'MEMOS_DSN=postgres://memos:your-memos-db-password@postgres:5432/memos?sslmode=disable' > ab-memos.env
-openssl rand -hex 24 > memos-admin-password
+echo "MEMOS_DSN='postgres://memos:your-memos-db-password@postgres:5432/memos?sslmode=disable'" > memos.env
+put memos/admin_password "$(openssl rand -hex 24)"
 ```
 
 From the Mac, `home auth client add memos --name Memos --redirect
 https://notes.ab18.in/auth/callback --policy one_factor --consent pre-configured
 --scopes openid,profile,email` prints the client secret. Put it in
-`memos-idp-authelia.json` (format: header of `nodes/ab/memos/compose.yaml` and
+`memos/idp-authelia.json` (format: header of `nodes/ab/memos/compose.yaml` and
 https://usememos.com/docs/configuration/deployment-configuration; identifier
-`preferred_username`), then `sudo chown 10001:10001 memos-idp-authelia.json`: Memos
-reads it as its container user.
+`preferred_username`), then `sudo chown 10001:10001 memos/idp-authelia.json`:
+Memos reads it as its container user.
 
 The first account created on an empty Memos becomes its admin, whatever the
 settings say. Create it before Memos is reachable: add `traefik.http.routers.notes.middlewares=auth`
@@ -294,42 +223,34 @@ to its labels for the first start, then, from the node:
 ```sh
 ip=$(docker inspect -f '{{(index .NetworkSettings.Networks "internal_bridge").IPAddress}}' memos)
 curl -s -X POST "http://$ip:5230/api/v1/users" -H 'Content-Type: application/json' \
-  -d "{\"username\": \"admin\", \"password\": \"$(cat memos-admin-password)\"}"
+  -d "{\"username\": \"admin\", \"password\": \"$(cat memos/admin_password)\"}"
 ```
 
 and drop the middleware again.
 
-### 3m — Set permissions
+### 3h — Treasure Dash
 
 ```sh
-chmod 600 ts_auth_key cf_dns_api_token ab-cloudflared.env \
-          ab-data.env ab-immich.env ab-kopia.env ab-localstack.env \
-          ab-vaultwarden.env ab-media.env ab-filebrowser.env \
-          ab-syncthing.env ab-rustpad.env ab-excalidraw.env \
-          ab-homeautomation.env ab-memos.env memos-admin-password
+echo "DATABASE_URL='postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable'" > treasuredash.env
 ```
 
 ### Complete secrets layout
 
 ```
 /home/dietpi/localstack/secrets/
-  ts_auth_key
-  cf_dns_api_token
-  ab-cloudflared.env
-  ab-data.env
-  ab-immich.env
-  ab-kopia.env
-  ab-localstack.env
-  ab-vaultwarden.env
-  ab-media.env
-  ab-filebrowser.env
-  ab-syncthing.env
-  ab-rustpad.env
-  ab-excalidraw.env
-  ab-homeautomation.env
-  ab-memos.env
-  memos-admin-password
-  memos-idp-authelia.json   (owned by 10001)
+  data/postgres_password          data/redis.conf (owned by 999)
+  immich/db_url                   immich/redis_password
+  kopia/repository_password       kopia/postgres_password
+  localstack.env                  localstack/hc_ping_url
+  memos.env                       memos/admin_password
+  memos/idp-authelia.json (owned by 10001)
+  network/cf_dns_api_token        network/ts_auth_key
+  network/cloudflared_tunnel_token (owned by 65532)
+  network/authelia/               (home auth)
+  syncthing/                      (Syncthing's identity: cert, key, device id)
+  treasuredash.env
+  vaultwarden/admin_token         vaultwarden/database_url
+  vaultwarden/authelia_client_secret
 ```
 
 ---
@@ -396,8 +317,8 @@ rustpad
 | `home deploy` cannot pull the bundle | No GHCR login on the node | `docker login ghcr.io` (read:packages token) |
 | `network internal_bridge not found` | Stack started without node.sh | `~/localstack/stacks/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
-| cloudflared `tunnel not found` | Wrong `TUNNEL_TOKEN` in `ab-cloudflared.env` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
-| Immich fails to connect to DB | `DB_PASSWORD` mismatch | Must match `POSTGRES_PASSWORD` in `ab-data.env` |
+| cloudflared `tunnel not found` | Wrong token in `secrets/network/cloudflared_tunnel_token` | Re-fetch with `cloudflared tunnel token ab18-localstack` and restart cloudflared |
+| Immich fails to connect to DB | Password mismatch | `immich/db_url` must match `data/postgres_password` |
 | Vaultwarden fails to connect to DB | `DATABASE_URL` password mismatch | Must match password used in `CREATE ROLE vaultwarden` |
 | ESPHome config missing | `/home/dietpi/localstack/data/esphome/` not restored | Restore from backup (kopia) |
 | Syncthing won't start | `/home/dietpi/localstack/data/syncthing/` not present | Restore from backup (kopia); an empty dir is seeded from `config.xml.template` |
