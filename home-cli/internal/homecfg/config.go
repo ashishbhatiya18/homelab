@@ -41,7 +41,7 @@ type Config struct {
 }
 
 // Auth is where Authelia runs. Only Node is required; the rest default to the
-// layout of a node's stacks_dir (…/secrets/authelia, …/data/authelia).
+// layout of a node's stacks_dir (…/secrets/network/authelia, …/data/authelia).
 type Auth struct {
 	Node string `yaml:"node"`
 	// Stack and Service hold the Authelia container (restarted to apply
@@ -70,7 +70,7 @@ func (a Auth) Resolved(n *Node) Auth {
 	def(&a.Stack, "network")
 	def(&a.Container, "authelia")
 	def(&a.Service, a.Container)
-	def(&a.Dir, base+"/secrets/authelia")
+	def(&a.Dir, base+"/secrets/network/authelia")
 	def(&a.Data, base+"/data/authelia")
 	def(&a.Mount, "/secrets")
 	return a
