@@ -3,7 +3,7 @@
 # Users (users.yml) and OIDC clients (clients.yml) are node files managed with
 # `home auth`.
 #
-# No secrets here: they are files in /home/dietpi/localstack/secrets/authelia/
+# No secrets here: they are files in /home/dietpi/localstack/secrets/network/authelia/
 # (mounted at /secrets), read through AUTHELIA_*_FILE env vars or the
 # `secret` template function (X_AUTHELIA_CONFIG_FILTERS=template).
 # State (SQLite, notifications) is in /home/dietpi/localstack/data/authelia/.

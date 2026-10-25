@@ -70,7 +70,12 @@ services:
     container_name: cloudflared
     restart: always
     command: tunnel --no-autoupdate run
-    env_file: /home/dietpi/localstack/secrets/ab-cloudflared.env
+    # The token is a secret file, owned by cloudflared's user (65532); `home
+    # tunnel token --install` writes it (cloud/tunnels/ab18-localstack.yaml).
+    environment:
+      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflared_tunnel_token
+    secrets:
+      - cloudflared_tunnel_token
     networks:
       network-layer:
         # Fixed so Traefik can trust exactly this hop's X-Forwarded-For
@@ -86,14 +91,14 @@ services:
     image: authelia/authelia:4.39
     container_name: authelia
     restart: always
-    # dietpi, which owns secrets/authelia and data/authelia; never root.
+    # dietpi, which owns secrets/network/authelia and data/authelia; never root.
     user: "1000:1000"
     networks:
       - network-layer
     volumes:
       - ./config/authelia/configuration.yml:/config/configuration.yml:ro
       - ./config/authelia/assets:/config/assets:ro
-      - /home/dietpi/localstack/secrets/authelia:/secrets:ro
+      - /home/dietpi/localstack/secrets/network/authelia:/secrets:ro
       - /home/dietpi/localstack/data/authelia:/data
     environment:
       - X_AUTHELIA_CONFIG=/config/configuration.yml,/secrets/clients.yml
@@ -128,6 +133,8 @@ networks:
 
 secrets:
   cf_dns_api_token:
-    file: /home/dietpi/localstack/secrets/cf_dns_api_token
+    file: /home/dietpi/localstack/secrets/network/cf_dns_api_token
   ts_auth_key:
-    file: /home/dietpi/localstack/secrets/ts_auth_key
+    file: /home/dietpi/localstack/secrets/network/ts_auth_key
+  cloudflared_tunnel_token:
+    file: /home/dietpi/localstack/secrets/network/cloudflared_tunnel_token

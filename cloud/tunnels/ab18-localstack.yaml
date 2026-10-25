@@ -9,7 +9,7 @@ id: 0a2e8420-e3cb-4cb0-99c7-d36181d4e01b
 node: dietpi-l
 stack: network
 container: cloudflared
-secret: /home/dietpi/localstack/secrets/ab-cloudflared.env
+secret: /home/dietpi/localstack/secrets/network/cloudflared_tunnel_token
 # Every route reaches Traefik over HTTP/2 (tunnel-wide origin setting).
 originRequest:
   http2Origin: true

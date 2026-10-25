@@ -4,7 +4,7 @@
 #
 #   ssh dietpi@100.108.211.112 'bash -s -- <username> <email> "<display name>"' < scripts/authelia-secrets.sh
 #
-# Writes /home/dietpi/localstack/secrets/authelia/ and creates
+# Writes /home/dietpi/localstack/secrets/network/authelia/ and creates
 # /home/dietpi/localstack/data/authelia/. Prints, once, every plaintext the
 # operator needs (first-login password, the Immich client secret). Users and
 # clients are managed afterwards with `home auth`.
@@ -14,7 +14,7 @@ user=${1:?usage: authelia-secrets.sh <username> <email> [display name]}
 email=${2:?usage: authelia-secrets.sh <username> <email> [display name]}
 name=${3:-$user}
 
-dir=${AUTHELIA_SECRETS:-/home/dietpi/localstack/secrets/authelia}
+dir=${AUTHELIA_SECRETS:-/home/dietpi/localstack/secrets/network/authelia}
 data=${AUTHELIA_DATA:-/home/dietpi/localstack/data/authelia}
 image=authelia/authelia:4.39
 
