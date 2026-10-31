@@ -15,7 +15,7 @@ ingress:
     service: http://api:8080
     originRequest:
       httpHostHeader: ""
-  # Nikview API (nodes/cd/nikview), called by the nikview.com Pages Function.
+  # Nikview API (nodes/cd/nikview), called by the web app at nikview.com.
   - hostname: api.nikview.com
     service: http://nikview:8080
   - service: http_status:404
