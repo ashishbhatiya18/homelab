@@ -21,9 +21,12 @@ services:
       # The web app's origin: CORS allows it (with the cookie), passkeys are checked against it.
       APP_ORIGIN: https://nikview.com
       PASSKEY_RP_ID: nikview.com
+      # Costa È Bella website's Cloudflare Pages deploy hook: nikview rebuilds the site after menu changes.
+      MENU_PUBLISH_HOOK_COSTAEBELLA_FILE: /run/secrets/menu_publish_hook_costaebella
     secrets:
       - db_app_password
       - db_owner_password
+      - menu_publish_hook_costaebella
     networks:
       - internal_bridge
     extra_hosts:
@@ -38,3 +41,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/nikview/db_app_password
   db_owner_password:
     file: /home/dietpi/localstack/secrets/nikview/db_owner_password
+  menu_publish_hook_costaebella:
+    file: /home/dietpi/localstack/secrets/nikview/menu_publish_hook_costaebella
