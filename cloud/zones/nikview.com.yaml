@@ -6,5 +6,5 @@
 zone: nikview.com
 id: ecf8cc152b7b38bbf879a7bbcd05cdf6
 records:
-  - {name: '@', type: A, content: 2.57.91.91, proxied: true}
+  - {name: '@', type: CNAME, content: nikview-com.pages.dev, proxied: true} # Cloudflare Pages project nikview-com (web app)
   - {name: www, type: CNAME, content: nikview.com, proxied: true}
