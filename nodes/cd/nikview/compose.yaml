@@ -1,0 +1,40 @@
+# Nikview (github.com/ashishbhatiya18/nikview): the admin apps for Costa È Bella and Citrus Dental.
+# The web app is static on Cloudflare Pages (nikview.com); its /api Pages Function calls
+# api.nikview.com, which the nikview.com tunnel (costaebella stack's cloudflared, on
+# internal_bridge) routes here. Data lives in node ab's shared Postgres (database nikview),
+# set up once with deploy/shared-postgres-bootstrap.sql in the nikview repo.
+# CLI: docker exec nikview nikview tenant list
+services:
+  nikview:
+    image: ghcr.io/ashishbhatiya18/nikview:latest
+    container_name: nikview
+    restart: always
+    read_only: true
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://nikview_app@pg.ab18.in:443/nikview?sslmode=require
+      DATABASE_PASSWORD_FILE: /run/secrets/db_app_password
+      DATABASE_OWNER_URL: postgres://nikview@pg.ab18.in:443/nikview?sslmode=require
+      DATABASE_OWNER_PASSWORD_FILE: /run/secrets/db_owner_password
+      # Public OAuth client id; its JavaScript origins are https://nikview.com and http://localhost:3000.
+      GOOGLE_CLIENT_ID: 814968473657-7b574enut0cl61euidma94lariu15s8d.apps.googleusercontent.com
+      # Only reached through the Pages Function, which sets X-Forwarded-Host: nikview.com.
+      TRUST_FORWARDED_HOST: "true"
+      PASSKEY_RP_ID: nikview.com
+    secrets:
+      - db_app_password
+      - db_owner_password
+    networks:
+      - internal_bridge
+    extra_hosts:
+      - "pg.ab18.in:10.10.10.11"
+
+networks:
+  internal_bridge:
+    external: true
+
+secrets:
+  db_app_password:
+    file: /home/dietpi/localstack/secrets/nikview/db_app_password
+  db_owner_password:
+    file: /home/dietpi/localstack/secrets/nikview/db_owner_password

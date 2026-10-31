@@ -106,4 +106,6 @@ endpoints:
   - {name: citrusdental peripheral, group: cd, url: "http://peripheral:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
   - {name: smiledesign api, group: cd, url: "http://smiledesign-be:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
   - {name: costaebella api, group: cd, url: "http://costaebella-be:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
+  - {name: nikview api, group: cd, url: "http://nikview:8080/healthz", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
+  - {name: nikview public, group: cd, url: "https://nikview.com/", interval: 5m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy, description: "nikview.com is unreachable from the internet"}]}
   - {name: citrusdental public, group: cd, url: "https://api.citrusdental.in/", interval: 5m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy, description: "api.citrusdental.in is unreachable from the internet"}]}
