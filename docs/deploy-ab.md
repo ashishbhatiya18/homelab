@@ -30,7 +30,7 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 | `draw.ab18.in` | excalidraw |
 | `notes.ab18.in` | memos (sign-in via Authelia OIDC) |
 | `pad.ab18.in` | rustpad |
-| `pdf.ab18.in` | stirlingpdf |
+| `pdf.ab18.in` | bentopdf |
 | `photos.ab18.in` | immich-server |
 | `vault.ab18.in` | vaultwarden (Cloudflare cache bypass active) |
 | `whoami.ab18.in` | whoami |
@@ -303,7 +303,7 @@ esphome
 syncthing
 filebrowser
 jellyfin
-stirlingpdf
+bentopdf
 excalidraw
 rustpad
 ```

@@ -1,14 +1,25 @@
 services:
-  stirlingpdf:
-    image: stirlingtools/stirling-pdf:latest-ultra-lite
-    container_name: stirlingpdf
+  bentopdf:
+    # Static nginx app: PDFs are processed in the browser, never on the server.
+    image: bentopdfteam/bentopdf:v2.8.11@sha256:b107c37d9f1f27b7edae28d262e526d8e225541a7cc26005b84dbab42c904105
+    container_name: bentopdf
     networks:
       - network-layer
     restart: always
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777
+      - /etc/nginx/tmp:mode=1777
+      - /var/cache/nginx:mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     labels:
       - traefik.enable=true
       - traefik.http.routers.pdf.rule=Host(`pdf.ab18.in`)
       - traefik.http.routers.pdf.middlewares=auth
+      - traefik.http.services.pdf.loadbalancer.server.port=8080
 networks:
   network-layer:
     name: internal_bridge
