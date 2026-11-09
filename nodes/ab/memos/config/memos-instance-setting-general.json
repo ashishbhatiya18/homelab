@@ -1,8 +1,0 @@
-{
-  "key": "GENERAL",
-  "generalSetting": {
-    "disallowUserRegistration": false,
-    "disallowPasswordAuth": true,
-    "weekStartDayOffset": 1
-  }
-}

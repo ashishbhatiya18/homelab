@@ -10,10 +10,9 @@
 | `kopia` | kopia | `kopia/{repository_password,postgres_password}` |
 | `localstack` | watchtower, heartbeat | `localstack.env`, `localstack/hc_ping_url` |
 | `vaultwarden` | vaultwarden | `vaultwarden/{admin_token,database_url,authelia_client_secret}` |
-| `memos` | memos | `memos.env`, `memos/{idp-authelia.json,admin_password}` |
 | `treasuredash` | treasuredash | `treasuredash.env` |
 | `syncthing` | syncthing | `syncthing/` (its identity; config gitignored) |
-| `homeautomation`, `filebrowser`, `media`, `bentopdf`, `excalidraw`, `rustpad`, `codeserver`, `claudecode`, `isponsorblock`, `ntfy` | | — |
+| `homeautomation`, `filebrowser`, `media`, `bentopdf`, `excalidraw`, `codeserver`, `claudecode`, `ntfy` | | — |
 
 Paths are relative to `/home/dietpi/localstack/secrets/`; the layout and its
 rules are in [secrets.md](secrets.md).
@@ -28,8 +27,6 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 |---|---|
 | `id.ab18.in` | authelia (passkey login, OIDC) |
 | `draw.ab18.in` | excalidraw |
-| `notes.ab18.in` | memos (sign-in via Authelia OIDC) |
-| `pad.ab18.in` | rustpad |
 | `pdf.ab18.in` | bentopdf |
 | `photos.ab18.in` | immich-server |
 | `vault.ab18.in` | vaultwarden (Cloudflare cache bypass active) |
@@ -194,41 +191,7 @@ Sign-in is Authelia (OIDC client `vaultwarden`): run
 in your own terminal, then put the secret it prints in place with
 `home node edit dietpi-l secrets/vaultwarden/authelia_client_secret`.
 
-### 3g — Memos stack
-
-Memos connects as `memos@postgres:5432/memos` and signs users in through Authelia
-(OIDC client `memos`). After the data stack is running:
-
-```sh
-docker exec -it postgres psql -U immich -d postgres -c "
-  CREATE ROLE memos WITH LOGIN PASSWORD 'your-memos-db-password';
-  CREATE DATABASE memos OWNER memos;
-"
-echo "MEMOS_DSN='postgres://memos:your-memos-db-password@postgres:5432/memos?sslmode=disable'" > memos.env
-put memos/admin_password "$(openssl rand -hex 24)"
-```
-
-From the Mac, `home auth client add memos --name Memos --redirect
-https://notes.ab18.in/auth/callback --policy one_factor --consent pre-configured
---scopes openid,profile,email` prints the client secret. Put it in
-`memos/idp-authelia.json` (format: header of `nodes/ab/memos/compose.yaml` and
-https://usememos.com/docs/configuration/deployment-configuration; identifier
-`preferred_username`), then `sudo chown 10001:10001 memos/idp-authelia.json`:
-Memos reads it as its container user.
-
-The first account created on an empty Memos becomes its admin, whatever the
-settings say. Create it before Memos is reachable: add `traefik.http.routers.notes.middlewares=auth`
-to its labels for the first start, then, from the node:
-
-```sh
-ip=$(docker inspect -f '{{(index .NetworkSettings.Networks "internal_bridge").IPAddress}}' memos)
-curl -s -X POST "http://$ip:5230/api/v1/users" -H 'Content-Type: application/json' \
-  -d "{\"username\": \"admin\", \"password\": \"$(cat memos/admin_password)\"}"
-```
-
-and drop the middleware again.
-
-### 3h — Treasure Dash
+### 3g — Treasure Dash
 
 ```sh
 echo "DATABASE_URL='postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable'" > treasuredash.env
@@ -242,8 +205,6 @@ echo "DATABASE_URL='postgres://treasuredash:<password>@postgres:5432/treasuredas
   immich/db_url                   immich/redis_password
   kopia/repository_password       kopia/postgres_password
   localstack.env                  localstack/hc_ping_url
-  memos.env                       memos/admin_password
-  memos/idp-authelia.json (owned by 10001)
   network/cf_dns_api_token        network/ts_auth_key
   network/cloudflared_tunnel_token (owned by 65532)
   network/authelia/               (home auth)
@@ -305,7 +266,6 @@ filebrowser
 jellyfin
 bentopdf
 excalidraw
-rustpad
 ```
 
 ---
