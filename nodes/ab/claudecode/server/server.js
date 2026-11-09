@@ -3,7 +3,6 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 const WebSocket = require('ws');
 const pty = require('node-pty');
 const share = require('./lib/share');
@@ -96,39 +95,80 @@ const wss = new WebSocket.Server({
   },
 });
 
-let activeSessions = 0;
+// One shared terminal for every connection: closing a tab (or a dropped
+// websocket) detaches from it instead of killing it, so the Claude session
+// survives reconnects and every open tab shows the same session.
+const SCROLLBACK_BYTES = 2 * 1024 * 1024;
+const PING_INTERVAL_MS = 30 * 1000;
+const clients = new Set();
+let term = null;
+let scrollback = '';
 
-wss.on('connection', (ws) => {
-  if (activeSessions >= MAX_CONCURRENT_SESSIONS) {
-    console.warn(`rejecting connection: ${MAX_CONCURRENT_SESSIONS} sessions already active`);
-    ws.close(1013, 'too many active sessions');
-    return;
+function broadcast(msg) {
+  const payload = JSON.stringify(msg);
+  for (const ws of clients) {
+    if (ws.readyState === WebSocket.OPEN) ws.send(payload);
   }
-  activeSessions += 1;
+}
 
-  const sessionId = crypto.randomUUID();
-  const term = pty.spawn(TERMINAL_CMD, TERMINAL_ARGS, {
+function ensureTerm() {
+  if (term) return term;
+  term = pty.spawn(TERMINAL_CMD, TERMINAL_ARGS, {
     name: 'xterm-256color',
     cols: 80,
     rows: 24,
     cwd: TERMINAL_CWD,
     env: process.env,
   });
-
-  console.log(`[${sessionId}] session started, pid=${term.pid}`);
+  console.log(`terminal started, pid=${term.pid}`);
 
   term.onData((data) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ type: 'data', data }));
-    }
+    // shortcut: raw byte replay, trimmed from the front, can cut an escape
+    // sequence in half on a new tab; use @xterm/headless + serialize if it shows.
+    scrollback = (scrollback + data).slice(-SCROLLBACK_BYTES);
+    broadcast({ type: 'data', data });
   });
 
   term.onExit(({ exitCode }) => {
-    console.log(`[${sessionId}] terminal process exited (${exitCode})`);
-    if (ws.readyState === WebSocket.OPEN) ws.close();
+    console.log(`terminal process exited (${exitCode})`);
+    term = null;
+    scrollback = '';
+    // Clients reconnect on close and get a fresh terminal.
+    for (const ws of clients) ws.close();
+  });
+  return term;
+}
+
+// Cloudflare's tunnel drops websockets idle for ~100s; pings keep them open
+// and reap connections whose peer went away without closing.
+setInterval(() => {
+  for (const ws of clients) {
+    if (ws.isAlive === false) {
+      ws.terminate();
+      continue;
+    }
+    ws.isAlive = false;
+    ws.ping();
+  }
+}, PING_INTERVAL_MS);
+
+wss.on('connection', (ws) => {
+  if (clients.size >= MAX_CONCURRENT_SESSIONS) {
+    console.warn(`rejecting connection: ${MAX_CONCURRENT_SESSIONS} connections already open`);
+    ws.close(1013, 'too many connections');
+    return;
+  }
+  clients.add(ws);
+  ws.isAlive = true;
+  ws.on('pong', () => {
+    ws.isAlive = true;
   });
 
+  ensureTerm();
+  if (scrollback) ws.send(JSON.stringify({ type: 'data', data: scrollback }));
+
   ws.on('message', (raw) => {
+    if (!term) return;
     let msg;
     try {
       msg = JSON.parse(raw.toString());
@@ -148,13 +188,11 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    console.log(`[${sessionId}] websocket closed, killing pty`);
-    activeSessions -= 1;
-    term.kill();
+    clients.delete(ws);
   });
 
   ws.on('error', () => {
-    term.kill();
+    ws.terminate();
   });
 });
 
