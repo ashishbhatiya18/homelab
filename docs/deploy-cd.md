@@ -4,7 +4,7 @@
 ## Stacks
 | Stack | Services |
 |---|---|
-| `network` | traefik, tailscale, pihole |
+| `network` | traefik, tailscale, dnsdist + blocky (DNS), pihole (LAN DNS until the router switches to 10.10.10.12) |
 | `localstack` | dockerproxy, watchtower, arcane |
 | `citrusdental` | api, peripheral, cloudflared |
 
@@ -243,6 +243,10 @@ docker exec tailscale tailscale status
 
 # Pi-hole DNS resolving
 docker exec pihole nslookup google.com 127.0.0.1
+
+# dnsdist → Blocky (from the Mac: full DNS + ingress suite)
+dig @127.0.0.1 -p 5354 doubleclick.net   # Blocky: 0.0.0.0
+LAN_DNS=10.10.10.12 scripts/net-test.sh  # on the Mac, from the repo
 
 # Traefik routing table
 docker exec traefik traefik version

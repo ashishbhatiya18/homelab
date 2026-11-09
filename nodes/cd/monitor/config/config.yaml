@@ -99,6 +99,13 @@ endpoints:
     dns: {query-name: ab18.in, query-type: A}
     conditions: ["[DNS_RCODE] == NOERROR"]
     alerts: [{type: ntfy, description: "Pi-hole does not answer: DNS is down for the LAN"}]
+  - name: blocky dns
+    group: cd
+    url: blocky:5353
+    interval: 1m
+    dns: {query-name: google.com, query-type: A}
+    conditions: ["[DNS_RCODE] == NOERROR"]
+    alerts: [{type: ntfy, description: "Blocky does not answer: DNS via dnsdist (Tailscale, and the LAN once switched) is down"}]
   # The backends answer 404 on /, so anything below 500 means they're serving.
   - {name: citrusdental api, group: cd, url: "http://api:8000/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
   - {name: citrusdental peripheral, group: cd, url: "http://peripheral:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
