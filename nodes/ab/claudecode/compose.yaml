@@ -23,9 +23,9 @@ services:
       # below, instead of a separate top-level ~/.claude.json that would
       # sit outside the mount (and fail to write on the read-only rootfs).
       - CLAUDE_CONFIG_DIR=/home/node/.claude
-      # Caps concurrent websocket connections (defense-in-depth behind the
-      # passkey gate). All of them share one Claude session; raise if you
-      # regularly need more than this many tabs open at once.
+      # Caps concurrent PTY sessions this server will spawn (defense-in-depth
+      # behind the passkey gate). Raise if you regularly need more than this
+      # many simultaneous terminal tabs/connections open at once.
       - MAX_CONCURRENT_SESSIONS=8
       # Public URL of the share viewer (served by this same container at
       # /share) — injected into each Claude session by the SessionStart hook.
