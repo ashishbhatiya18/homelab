@@ -8,7 +8,7 @@ if [ -n "${PG_PASSWORD_FILE:-}" ]; then
 fi
 mkdir -p "$DUMP_DIR"
 
-for db in ab18 citrusdental photos memos; do
+for db in ab18 citrusdental photos; do
   PGPASSWORD="$PG_PASSWORD" pg_dump \
     -h postgres \
     -U postgres \
