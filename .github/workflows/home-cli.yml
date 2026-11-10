@@ -38,10 +38,10 @@ jobs:
       run:
         working-directory: home-cli
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: home-cli/go.mod
           cache-dependency-path: home-cli/go.sum
@@ -60,11 +60,11 @@ jobs:
       TAG: ${{ inputs.tag || github.ref_name }}
       PACKAGE: ghcr.io/ashishbhatiya18/home-cli
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           ref: ${{ inputs.tag || github.ref }}
           fetch-depth: 0
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@v7
         with:
           go-version-file: home-cli/go.mod
           cache-dependency-path: home-cli/go.sum
@@ -83,7 +83,7 @@ jobs:
           done
           cd ../dist && shasum -a 256 *.tar.gz > checksums.txt && cat checksums.txt
 
-      - uses: oras-project/setup-oras@v1
+      - uses: oras-project/setup-oras@v2
 
       - name: Publish the package
         run: |
