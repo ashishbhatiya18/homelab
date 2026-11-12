@@ -26,7 +26,7 @@ updates:
 
   # Third-party images, pinned tag@sha256 in every stack: daily PRs for new
   # versions and digests (Gatus reminds every 12h while any are open). Floating
-  # tags without a digest (costaebella's) are left alone by Dependabot.
+  # tags without a digest are left alone by Dependabot.
   - package-ecosystem: docker-compose
     directories: ["/nodes/*/*"]
     schedule:

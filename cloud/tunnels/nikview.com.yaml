@@ -7,14 +7,10 @@
 tunnel: nikview.com
 id: 6a318c45-5c6c-4aaf-897e-4d3b269d69c5
 node: dietpi
-stack: costaebella
-container: costaebella-cloudflare
-secret: /home/dietpi/localstack/secrets/costaebella/cloudflare_tunnel_token
+stack: nikview
+container: nikview-cloudflare
+secret: /home/dietpi/localstack/secrets/nikview/cloudflare_tunnel_token
 ingress:
-  - hostname: costaebella-be.nikview.com
-    service: http://api:8080
-    originRequest:
-      httpHostHeader: ""
   # Nikview API (nodes/cd/nikview), called by the web app at nikview.com.
   - hostname: api.nikview.com
     service: http://nikview:8080

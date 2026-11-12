@@ -1,6 +1,6 @@
 # Nikview (github.com/ashishbhatiya18/nikview.com): the admin apps for Costa È Bella and Citrus Dental.
 # The web app is static on Cloudflare Pages (nikview.com) and calls
-# api.nikview.com directly, which the nikview.com tunnel (costaebella stack's cloudflared, on
+# api.nikview.com directly, which the nikview.com tunnel (this stack's cloudflared, on
 # internal_bridge) routes here. Data lives in node ab's shared Postgres (database nikview),
 # set up once with deploy/shared-postgres-bootstrap.sql in the nikview repo.
 # CLI: docker exec nikview nikview tenant list
@@ -31,6 +31,20 @@ services:
       - internal_bridge
     extra_hosts:
       - "pg.ab18.in:10.10.10.11"
+  # The nikview.com tunnel (cloud/tunnels/nikview.com.yaml): api.nikview.com → nikview:8080.
+  cloudflared:
+    image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    command: tunnel --no-autoupdate run
+    container_name: nikview-cloudflare
+    restart: always
+    networks:
+      - internal_bridge
+    # The token is a secret file, owned by cloudflared's user (65532), mode
+    # 600; `home tunnel token nikview.com --install` writes it.
+    environment:
+      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
+    secrets:
+      - cloudflare_tunnel_token
 
 networks:
   internal_bridge:
@@ -43,3 +57,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/nikview/db_owner_password
   menu_publish_hook_costaebella:
     file: /home/dietpi/localstack/secrets/nikview/menu_publish_hook_costaebella
+  cloudflare_tunnel_token:
+    file: /home/dietpi/localstack/secrets/nikview/cloudflare_tunnel_token
