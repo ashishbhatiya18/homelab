@@ -40,19 +40,6 @@ nodes/**/config/homeassistant/core
 nodes/**/config/homeassistant/tts/
 nodes/**/config/homeassistant/image/
 
-# Pi-hole databases and runtime state
-nodes/**/config/pihole/*.db
-nodes/**/config/pihole/*.db-shm
-nodes/**/config/pihole/*.db-wal
-nodes/**/config/pihole/gravity_backups/
-nodes/**/config/pihole/config_backups/
-nodes/**/config/pihole/listsCache/
-nodes/**/config/pihole/migration_backup/
-nodes/**/config/pihole/dhcp.leases
-nodes/**/config/pihole/cli_pw
-nodes/**/config/pihole/logrotate
-nodes/**/config/pihole/versions
-
 # Cloudflare / third-party OAuth tokens
 nodes/**/config/citrusdental-bfe/
 

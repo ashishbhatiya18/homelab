@@ -23,8 +23,10 @@ services:
       - ./config/config.yaml:/config/config.yaml:ro
       - /home/dietpi/localstack/data/gatus:/data
     networks:
-      - internal_bridge
-    # LAN checks reach ab directly, independent of DNS (Pi-hole runs on this
+      # Fixed address: dnsdist's ACL lets only this one in from the bridge.
+      internal_bridge:
+        ipv4_address: 11.11.11.250
+    # LAN checks reach ab directly, independent of DNS (dnsdist runs on this
     # node and is checked on its own). Never add ntfy.ab18.in: the tunnel check
     # must resolve it publicly; ntfy-lan.ab18.in is its LAN-only alias.
     extra_hosts:

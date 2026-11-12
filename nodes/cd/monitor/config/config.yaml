@@ -92,20 +92,20 @@ endpoints:
   - {name: pdf (bentopdf), group: ab, url: "https://pdf.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
 
   # ── services on cd (same node, internal_bridge) ──
-  - name: pihole dns
+  - name: lan dns (dnsdist)
     group: cd
-    url: pihole:53
+    url: 10.10.10.12:53
     interval: 1m
-    dns: {query-name: ab18.in, query-type: A}
+    dns: {query-name: google.com, query-type: A}
     conditions: ["[DNS_RCODE] == NOERROR"]
-    alerts: [{type: ntfy, description: "Pi-hole does not answer: DNS is down for the LAN"}]
+    alerts: [{type: ntfy, description: "dnsdist does not answer: DNS is down for the LAN and Tailscale"}]
   - name: blocky dns
     group: cd
     url: blocky:5353
     interval: 1m
     dns: {query-name: google.com, query-type: A}
     conditions: ["[DNS_RCODE] == NOERROR"]
-    alerts: [{type: ntfy, description: "Blocky does not answer: DNS via dnsdist (Tailscale, and the LAN once switched) is down"}]
+    alerts: [{type: ntfy, description: "Blocky does not answer: DNS via dnsdist (LAN and Tailscale) is down"}]
   # The backends answer 404 on /, so anything below 500 means they're serving.
   - {name: citrusdental api, group: cd, url: "http://api:8000/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}
   - {name: citrusdental peripheral, group: cd, url: "http://peripheral:8080/", interval: 2m, conditions: ["[STATUS] < 500"], alerts: [{type: ntfy}]}

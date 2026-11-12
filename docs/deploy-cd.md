@@ -4,7 +4,7 @@
 ## Stacks
 | Stack | Services |
 |---|---|
-| `network` | traefik, tailscale, dnsdist + blocky (DNS), pihole (LAN DNS until the router switches to 10.10.10.12) |
+| `network` | traefik, tailscale, dnsdist + blocky (DNS for the LAN and Tailscale at 10.10.10.12; the router hands it out) |
 | `localstack` | dockerproxy, watchtower, arcane |
 | `citrusdental` | api, peripheral, cloudflared |
 
@@ -79,9 +79,6 @@ echo "tskey-auth-XXXX" > secrets/network/ts_auth_key
 # Cloudflare DNS API token — used by Traefik for ACME DNS-01 challenge
 # Needs Zone:Read and DNS:Edit permissions
 echo "your-cf-dns-api-token" > secrets/network/cf_dns_api_token
-
-# Pi-hole web UI password (plaintext — pihole hashes it on first start)
-echo "your-pihole-password" > secrets/network/pihole_web_password
 ```
 
 ### 3b — Citrusdental stack secrets
@@ -127,7 +124,6 @@ printf "HC_PING_URL='%s'\n" "https://hc-ping.com/<uuid>" > secrets/localstack.en
 chmod 600 secrets/citrusdental/cloudflare_tunnel_token \
           secrets/network/ts_auth_key \
           secrets/network/cf_dns_api_token \
-          secrets/network/pihole_web_password \
           secrets/localstack/watchtower_http_api_token \
           secrets/localstack.env \
           secrets/api/* \
@@ -143,7 +139,6 @@ The full secrets layout:
   network/
     ts_auth_key
     cf_dns_api_token
-    pihole_web_password
   citrusdental/
     cloudflare_tunnel_token
   localstack.env
@@ -169,9 +164,6 @@ The full secrets layout:
 Networks are declared in `nodes/cd/node.conf` and created by `node.sh start` (and so by
 `home deploy`) before any stack starts.
 
-> **Note:** The macvlan uses `parent=eth0`. If your LAN interface is named differently
-> (check with `ip link`), change it in `nodes/cd/node.conf`.
-
 ---
 
 ## Phase 5 — Create Traefik acme.json
@@ -183,13 +175,6 @@ state, so it lives in `data/`, outside the repo checkout.
 mkdir -p /home/dietpi/localstack/data/traefik
 touch /home/dietpi/localstack/data/traefik/acme.json
 chmod 600 /home/dietpi/localstack/data/traefik/acme.json
-```
-
-Seed Pi-hole's state directory from the repo (Pi-hole owns it from then on):
-
-```sh
-# after the first deploy has synced nodes/cd (or from the extracted release):
-cp -a /home/dietpi/localstack/stacks/network/config/pihole /home/dietpi/localstack/data/pihole
 ```
 
 ---
@@ -211,11 +196,6 @@ same lifecycle by hand.
 
 ---
 
-**Pi-hole note:** Pi-hole rewrites `pihole.toml` (password hash, settings) at runtime. That
-happens in `data/pihole/`, so a deploy never touches it.
-
----
-
 ## Phase 7 — Verify all containers
 
 ```sh
@@ -227,7 +207,8 @@ Expected:
 NAMES             STATUS    IMAGE
 traefik           Up        traefik:3.6.10
 tailscale         Up        tailscale/tailscale:latest
-pihole            Up        pihole/pihole
+dnsdist           Up        powerdns/dnsdist-19
+blocky            Up (healthy) spx01/blocky:v0.35.0
 cloudflare        Up        cloudflare/cloudflared:latest
 api               Up        ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
 peripheral        Up        ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
@@ -241,12 +222,9 @@ Spot checks:
 # Tailscale — node should appear in your admin console
 docker exec tailscale tailscale status
 
-# Pi-hole DNS resolving
-docker exec pihole nslookup google.com 127.0.0.1
-
 # dnsdist → Blocky (from the Mac: full DNS + ingress suite)
 dig @127.0.0.1 -p 5354 doubleclick.net   # Blocky: 0.0.0.0
-LAN_DNS=10.10.10.12 scripts/net-test.sh  # on the Mac, from the repo
+scripts/net-test.sh                      # on the Mac, from the repo
 
 # Traefik routing table
 docker exec traefik traefik version
@@ -279,6 +257,5 @@ Edit cloud/tunnels/*.yaml or cloud/zones/*.yaml  →  home cloud plan  →  home
 | `home deploy` cannot pull the bundle | No GHCR login on the node | `docker login ghcr.io` (read:packages token) |
 | `network internal_bridge not found` | Stack started without node.sh | `~/localstack/stacks/node.sh start <stack>` (creates networks first) |
 | Traefik fails to start | `data/traefik/acme.json` missing or wrong permissions | `touch /home/dietpi/localstack/data/traefik/acme.json && chmod 600 $_` |
-| macvlan creation fails | Wrong parent interface name | `ip link` to find correct name, edit `node.conf` |
 | `api` or `peripheral` won't start | Missing secret file | Check `secrets/api/env`, `secrets/peripheral/env` and credential files exist |
 | A push is not deployed | Bundle build failed validation, or the Mac was asleep | Check the *Node bundles* run in Actions; `home jobs` / `home deploy dietpi` |

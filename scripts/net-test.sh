@@ -6,14 +6,13 @@
 #
 # Run from the Mac on the home LAN; Tailscale up for the Tailscale checks
 # (skipped, not passed, when it is down):
-#   scripts/net-test.sh                        # LAN DNS = Pi-hole
-#   LAN_DNS=10.10.10.12 scripts/net-test.sh    # LAN DNS = dnsdist (after Blocky)
+#   scripts/net-test.sh                        # LAN DNS = dnsdist on cd
 #   PUBLIC_IP=x.x.x.x scripts/net-test.sh      # from OUTSIDE the LAN: open ports
 # Exit status is the number of failures.
 set -u
 cd "$(dirname "$0")/.." || exit
 
-LAN_DNS=${LAN_DNS:-10.10.10.10}
+LAN_DNS=${LAN_DNS:-10.10.10.12}
 TS_DNS=${TS_DNS:-100.116.167.96}
 AB_LAN=10.10.10.11 AB_TS=100.108.211.112 CD_LAN=10.10.10.12 CD_TS=100.116.167.96
 CURL=/usr/bin/curl # Homebrew curl has no macOS Local Network permission
@@ -26,9 +25,9 @@ section() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 check()   { if [[ $2 == "$3" ]]; then ok "$1"; else bad "$1" "got '${2}', want '$3'"; fi; }
 
 # Final A/AAAA/MX… answers only (CNAME chain dropped), sorted, one line.
-q() { dig +time=2 +tries=1 +short "@$1" "$2" "${3:-A}" | grep -vE '^;|\.$' | sort | xargs; }
+q() { dig +time=2 +tries=2 +short "@$1" "$2" "${3:-A}" | grep -vE '^;|\.$' | sort | xargs; }
 # "STATUS ANSWERCOUNT", e.g. "NOERROR 0" for an empty answer.
-rc() { dig +time=2 +tries=1 "@$1" "$2" "${3:-A}" ${4:+"$4"} | grep -oE 'status: [A-Z]+|ANSWER: [0-9]+' | cut -d' ' -f2 | xargs; }
+rc() { dig +time=2 +tries=2 "@$1" "$2" "${3:-A}" ${4:+"$4"} | grep -oE 'status: [A-Z]+|ANSWER: [0-9]+' | cut -d' ' -f2 | xargs; }
 private='^(0\.0\.0\.0|127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|100\.(6[4-9]|[7-9][0-9]|1[01][0-9]|12[0-7])\.)'
 is_public() { # name answers
   if [[ -z $2 ]]; then bad "$1" "no answer"

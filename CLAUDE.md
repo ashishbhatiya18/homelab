@@ -19,16 +19,15 @@ Directory layout:
 
 **Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
 
-**Node cd** (ARM, Raspberry Pi 4): network (traefik + tailscale + dnsdist → blocky for DNS; pihole still serves the LAN until the router hands out 10.10.10.12), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
+**Node cd** (ARM, Raspberry Pi 4): network (traefik + tailscale + dnsdist → blocky: DNS for the LAN and Tailscale at 10.10.10.12), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 
-All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Pi-hole, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Layout and rules for secret files (one secret file per value or document under `secrets/<stack>/`, env files `secrets/<stack>.env` only for apps that can't read files) and how stacks move to it with `home secret migrate` are in `docs/secrets.md`. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI workflows are described in `docs/github-actions.md`, Cloudflare under "Cloudflare" below.
+All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Layout and rules for secret files (one secret file per value or document under `secrets/<stack>/`, env files `secrets/<stack>.env` only for apps that can't read files) and how stacks move to it with `home secret migrate` are in `docs/secrets.md`. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI workflows are described in `docs/github-actions.md`, Cloudflare under "Cloudflare" below.
 
 ## Networking
 
 Networks used by stacks as `external`, declared in each `node.conf` and created by `node.sh start` before any stack starts:
 - `internal_bridge` — used by the network/reverse-proxy stack and all app stacks that need Traefik routing
 - `data-layer` (ab only) — isolated network for postgres/redis; only stacks that need DB access join it
-- `pihole_macvlan` (cd only) — Pi-hole's LAN address 10.10.10.10 on eth0
 
 ## Traefik routing pattern
 
@@ -78,5 +77,5 @@ Always ensure `docker compose -f nodes/<node>/<stack>/compose.yaml config` passe
 
 Everything node-local is outside the deployed files, under `/home/dietpi/localstack/` on the node:
 - `data/traefik/acme.json` — TLS certs (must be `chmod 600`), both nodes
-- `data/esphome/`, `data/syncthing/` (ab), `data/pihole/` (cd) — app state; the repo's `syncthing/config.xml.template` and `config/pihole/` only seed a new node
+- `data/esphome/`, `data/syncthing/` (ab) — app state; the repo's `syncthing/config.xml.template` only seeds a new node
 - `secrets/` — env files, Docker secrets, and `secrets/network/authelia/` (Authelia's secrets, `users.yml` and `clients.yml`, managed with `home auth`)

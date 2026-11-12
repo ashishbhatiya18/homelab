@@ -68,8 +68,8 @@ services:
     depends_on:
       blocky:
         condition: service_healthy
-  # Ad blocking, cache and upstream behind dnsdist. Replaces Pi-hole once the
-  # router hands out 10.10.10.12 (dnsdist) as the LAN's DNS server.
+  # Ad blocking, cache and upstream behind dnsdist, the LAN's and Tailscale's
+  # DNS server (10.10.10.12, handed out by the router).
   blocky:
     image: spx01/blocky:v0.35.0@sha256:4f165b63db0d76c96ecc47c7a8f57caeedc003a912bdce29abb0e283ce02e16b
     container_name: blocky
@@ -95,53 +95,6 @@ services:
       - "127.0.0.1:5354:5353/tcp"
     volumes:
       - ./config/blocky/config.yml:/app/config.yml:ro
-  pihole:
-    image: pihole/pihole
-    container_name: pihole
-    hostname: pihole
-    restart: always
-    healthcheck:
-      test: ["CMD", "dig", "+noall", "+answer", "@127.0.0.1", "-p", "53", "pi.hole"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
-    labels:
-      - com.centurylinklabs.watchtower.enable=false
-      - traefik.enable=false
-    networks:
-      internal_bridge: {}
-      pihole_macvlan:
-        ipv4_address: 10.10.10.10
-    ports:
-      - "127.0.0.1:5353:53/udp"
-      - "127.0.0.1:5353:53/tcp"
-    environment:
-      - TZ=Asia/Kolkata
-      - FTLCONF_DNS_REVSERVERS=true,10.10.0.0/24,10.10.10.1,lan
-      - FTLCONF_DNS_DOMAINNEEDED=true
-      - FTLCONF_DNS_BLOCKESNI=false
-      - FTLCONF_DNS_EXPANDHOSTS=true
-      - FTLCONF_DNS_DNSSEC=true
-      - FTLCONF_DNS_SHOWDNSSEC=false
-      - FTLCONF_DNS_UPSTREAMS=1.1.1.1
-      - WEBPASSWORD_FILE=/run/secrets/pihole_web_password
-      - FTLCONF_DATABASE_MAXDBDAYS=3
-      - PIHOLE_UID=1000
-      - PIHOLE_GID=1000
-      - FTLCONF_WEBSERVER_PORT=80
-      - DNSMASQ_LISTENING=all
-    cap_add:
-      - CAP_SYS_NICE
-      - CAP_SYS_TIME
-      - NET_ADMIN
-    volumes:
-      # Pi-hole rewrites everything in /etc/pihole at runtime, so it is node
-      # state in data/. The files in ./config/pihole only seed a new node.
-      - /home/dietpi/localstack/data/pihole:/etc/pihole
-      - ./config/pihole/dnsmasq.d:/etc/dnsmasq.d
-    secrets:
-      - pihole_web_password
 volumes:
   tailscale_state:
 
@@ -149,14 +102,9 @@ networks:
   internal_bridge:
     name: internal_bridge
     external: true
-  pihole_macvlan:
-    name: pihole_macvlan
-    external: true
 # Secret files (docs/secrets.md), mounted at /run/secrets/<name>.
 secrets:
   cf_dns_api_token:
     file: /home/dietpi/localstack/secrets/network/cf_dns_api_token
-  pihole_web_password:
-    file: /home/dietpi/localstack/secrets/network/pihole_web_password
   ts_auth_key:
     file: /home/dietpi/localstack/secrets/network/ts_auth_key

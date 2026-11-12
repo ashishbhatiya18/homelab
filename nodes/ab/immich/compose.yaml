@@ -45,7 +45,7 @@ services:
       - "traefik.http.middlewares.immich-cors.headers.accesscontrolmaxage=3600"
     restart: always
     dns:
-      - 10.10.10.10
+      - 10.10.10.12
   immich-machine-learning:
     container_name: immich_machine_learning
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_VERSION:-release}
