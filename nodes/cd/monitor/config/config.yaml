@@ -46,19 +46,20 @@ alerting:
 # LAN checks reach ab directly through extra_hosts in compose.yaml; anything not
 # listed there resolves publicly and goes through the Cloudflare tunnel.
 endpoints:
-  # ── updates: image pins are bumped by Renovate PRs (renovate.json) ──
-  # Fails while any Renovate PR is open; reminds every 12h until they're merged
+  # ── updates: image pins, Go modules and Actions are bumped by Dependabot PRs
+  # (.github/dependabot.yml) ──
+  # Fails while any Dependabot PR is open; reminds every 12h until they're merged
   # or closed. Public repo: GitHub's unauthenticated search API (10/min) is enough.
-  - name: renovate prs
+  - name: dependabot prs
     group: updates
-    url: "https://api.github.com/search/issues?q=repo:ashishbhatiya18/homelab+is:pr+is:open+author:app/renovate"
+    url: "https://api.github.com/search/issues?q=repo:ashishbhatiya18/homelab+is:pr+is:open+author:app/dependabot"
     interval: 1h
     conditions: ["[BODY].total_count == 0"]
     alerts:
       - type: ntfy
         failure-threshold: 1
         minimum-reminder-interval: 12h
-        description: "Renovate has open update PRs: https://github.com/ashishbhatiya18/homelab/pulls"
+        description: "Dependabot has open update PRs: https://github.com/ashishbhatiya18/homelab/pulls"
   # ── path: ntfy's own delivery path → alerts via ntfy.sh ──
   - name: ab host
     group: path

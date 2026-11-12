@@ -15,3 +15,20 @@ updates:
     groups:
       all-actions:
         patterns: ["*"]
+
+  # Third-party images, pinned tag@sha256 in every stack: daily PRs for new
+  # versions and digests (Gatus reminds every 12h while any are open). Floating
+  # tags without a digest (costaebella's) are left alone by Dependabot.
+  - package-ecosystem: docker-compose
+    directories: ["/nodes/*/*"]
+    schedule:
+      interval: daily
+    ignore:
+      # Own images: built by their repos' CI, updated with `home stack update`.
+      - dependency-name: "ghcr.io/ashishbhatiya18/*"
+      # Immich's Postgres follows Immich's release notes, not semver.
+      - dependency-name: "ghcr.io/immich-app/postgres"
+    groups:
+      # Server and machine learning must run the same Immich version.
+      immich:
+        patterns: ["ghcr.io/immich-app/immich-*"]
