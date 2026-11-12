@@ -25,10 +25,11 @@ updates:
       interval: daily
     ignore:
       # Own images: built by their repos' CI, updated with `home stack update`.
-      - dependency-name: "ghcr.io/ashishbhatiya18/*"
+      # Dependabot names images without the registry host.
+      - dependency-name: "ashishbhatiya18/*"
       # Immich's Postgres follows Immich's release notes, not semver.
-      - dependency-name: "ghcr.io/immich-app/postgres"
+      - dependency-name: "immich-app/postgres"
     groups:
       # Server and machine learning must run the same Immich version.
       immich:
-        patterns: ["ghcr.io/immich-app/immich-*"]
+        patterns: ["immich-app/immich-*"]
