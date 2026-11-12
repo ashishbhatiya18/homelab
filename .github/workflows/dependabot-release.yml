@@ -1,0 +1,60 @@
+# dependabot-release: when a Dependabot PR that changes home-cli/ or down-cli/
+# is merged, tag that CLI's next patch version (home-cli-vX.Y.Z+1 at the merge
+# commit) and start its release workflow, which publishes the binaries and
+# updates the formula in ashishbhatiya18/homebrew-tap.
+#
+# A tag pushed with GITHUB_TOKEN triggers no workflows, so the release is
+# started with workflow_dispatch (allowed with GITHUB_TOKEN) and the tag as
+# input — the same "Run workflow" path used to re-publish a tag by hand.
+name: dependabot-release
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  release:
+    if: github.event.pull_request.merged && github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        cli: [home-cli, down-cli]
+    # One tag at a time per CLI, so two merges can't claim the same version.
+    concurrency:
+      group: dependabot-release-${{ matrix.cli }}
+      cancel-in-progress: false
+    permissions:
+      contents: write # push the tag
+      actions: write  # start the release workflow
+    env:
+      CLI: ${{ matrix.cli }}
+      MERGE: ${{ github.event.pull_request.merge_commit_sha }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Tag and release when the PR changed this CLI
+        run: |
+          set -euo pipefail
+          # First parent = main before the merge (merge and squash commits alike).
+          if git diff --quiet "$MERGE^1" "$MERGE" -- "$CLI/"; then
+            echo "PR #${{ github.event.pull_request.number }} doesn't touch $CLI/; nothing to release."
+            exit 0
+          fi
+          if tag=$(git tag --points-at "$MERGE" -l "$CLI-v*" | head -1) && [ -n "$tag" ]; then
+            echo "$MERGE is already $tag."
+          else
+            last=$(git tag -l "$CLI-v*" --sort=-v:refname | head -1)
+            [ -n "$last" ] || { echo "no $CLI-v* tag to bump" >&2; exit 1; }
+            IFS=. read -r major minor patch <<< "${last#"$CLI"-v}"
+            tag="$CLI-v$major.$minor.$((patch + 1))"
+            git tag "$tag" "$MERGE"
+            git push origin "$tag"
+            echo "Tagged $tag (after $last)."
+          fi
+          gh workflow run "$CLI.yml" --ref main -f tag="$tag"
+          echo "Started $CLI.yml for $tag." >> "$GITHUB_STEP_SUMMARY"

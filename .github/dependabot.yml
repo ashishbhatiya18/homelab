@@ -8,6 +8,14 @@ updates:
       home-cli-go:
         patterns: ["*"]
 
+  - package-ecosystem: gomod
+    directory: /down-cli
+    schedule:
+      interval: weekly
+    groups:
+      down-cli-go:
+        patterns: ["*"]
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
