@@ -25,7 +25,6 @@ ingress:
   - pdf.ab18.in
   - photos.ab18.in
   - vault.ab18.in
-  - whoami.ab18.in
   - term.ab18.in
   - ntfy.ab18.in
   - service: http_status:404

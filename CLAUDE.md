@@ -17,9 +17,9 @@ Directory layout:
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (watchtower), excalidraw, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
+**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (heartbeat), excalidraw, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
 
-**Node cd** (ARM, Raspberry Pi 4): network (traefik + tailscale + dnsdist → blocky: DNS for the LAN and Tailscale at 10.10.10.12), localstack (watchtower), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
+**Node cd** (ARM, Raspberry Pi 4): network (traefik + tailscale + dnsdist → blocky: DNS for the LAN and Tailscale at 10.10.10.12), localstack (heartbeat), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, costaebella, smiledesign.
 
 All secrets live outside the repo at `/home/dietpi/localstack/secrets/` on each node and are referenced via Docker `secrets:` or `env_file:` entries. Node state (TLS certs, Syncthing, ESPHome, databases…) lives in `/home/dietpi/localstack/data/`, never next to the compose files. Layout and rules for secret files (one secret file per value or document under `secrets/<stack>/`, env files `secrets/<stack>.env` only for apps that can't read files) and how stacks move to it with `home secret migrate` are in `docs/secrets.md`. Full per-node bootstrap procedures (registry access, secrets layout, first deploy, troubleshooting) are in `docs/deploy-ab.md` and `docs/deploy-cd.md`; CI workflows are described in `docs/github-actions.md`, Cloudflare under "Cloudflare" below.
 
@@ -47,7 +47,7 @@ home deploy <node> --rollback                    # previous release
 home jobs                                        # the background deploy job does this every 15 min
 ```
 
-(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode) are built by their own workflows.
+(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode) are built by their own workflows. Third-party images are pinned `tag@sha256:…`; Renovate (`renovate.json`) opens PRs to bump them and Gatus nags every 12h while any are open. Own `ghcr.io/ashishbhatiya18/*` images stay on tags and update with `home stack update`. Traefik reads Docker through `socket-proxy` (read-only API) in each network stack, never the socket.
 
 On a node, by hand: `~/localstack/stacks/node.sh start|stop|restart|status [stack…]`. Each node's `/home/dietpi/localstack/` holds exactly: `stacks/` (deployed files, with `.release`), `releases/` (extracted bundles), `data/` (state) and `secrets/`.
 

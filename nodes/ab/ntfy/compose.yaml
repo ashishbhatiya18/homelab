@@ -13,7 +13,7 @@
 # owned by dietpi (1000:1000), the user ntfy runs as.
 services:
   ntfy:
-    image: binwiederhier/ntfy:latest
+    image: binwiederhier/ntfy:v2.37.2@sha256:1875ddcf815c8a3c981d6d78c67a93452d0abba79b1ab9520b1f5f5238902bd7
     container_name: ntfy
     restart: always
     # dietpi, which owns data/ntfy; never root.

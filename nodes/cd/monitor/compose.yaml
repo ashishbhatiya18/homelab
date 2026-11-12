@@ -8,7 +8,7 @@
 # State: /home/dietpi/localstack/data/gatus (check history), owned by dietpi.
 services:
   gatus:
-    image: twinproduction/gatus:latest
+    image: twinproduction/gatus:latest@sha256:9ee527bcb8f4a35890b4d4ce786fc8ea2c046cb052492ac78f52fd77c7adb0af
     container_name: gatus
     restart: always
     # dietpi, which owns data/gatus; never root. ICMP checks still work: as
@@ -31,7 +31,6 @@ services:
     # must resolve it publicly; ntfy-lan.ab18.in is its LAN-only alias.
     extra_hosts:
       - ntfy-lan.ab18.in:10.10.10.11
-      - whoami.ab18.in:10.10.10.11
       - id.ab18.in:10.10.10.11
       - photos.ab18.in:10.10.10.11
       - vault.ab18.in:10.10.10.11

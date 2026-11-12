@@ -1,16 +1,16 @@
 services:
   traefik:
-    image: traefik:latest
+    image: traefik:v3.7.17@sha256:f4bb143d1135a579b630ed491e17ec50f6f7c9c6a30585ff3d385471d2a86f5a
     container_name: traefik
     restart: always
     networks:
       - network-layer
+      - socket
     ports:
       - 80:80
       - 443:443
       - 443:443/udp
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml
       - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
       - /home/dietpi/localstack/data/traefik/acme.json:/etc/acme/acme.json
@@ -23,22 +23,28 @@ services:
       - com.centurylinklabs.watchtower.enable=false
     secrets:
       - cf_dns_api_token
-  whoami:
-    image: traefik/whoami
-    container_name: whoami
+  # Read-only Docker API for Traefik (containers, events, version): Traefik
+  # never holds the socket itself. Only Traefik shares its network.
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    container_name: socket-proxy
     restart: always
-    # Stateless: nobody, never root.
-    user: "65534:65534"
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - CONTAINERS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
-      - network-layer
-    labels:
-      - traefik.enable=true
-      - traefik.http.routers.whoami.rule=Host(`whoami.ab18.in`)
-      - traefik.http.routers.whoami.middlewares=auth
-    depends_on:
-      - traefik
+      - socket
   tailscale:
-    image: tailscale/tailscale:latest
+    image: tailscale/tailscale:latest@sha256:ed6480b33c6eb67c9cbd203ed42b9fb57e361986725b6856def71b7a3d9e276c
     container_name: tailscale
     hostname: ab-node
     restart: always
@@ -66,7 +72,7 @@ services:
       - com.centurylinklabs.watchtower.enable=false
 
   cloudflared:
-    image: cloudflare/cloudflared:latest
+    image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     container_name: cloudflared
     restart: always
     command: tunnel --no-autoupdate run
@@ -88,7 +94,7 @@ services:
   # seeded by scripts/authelia-secrets.sh; users and OIDC clients are managed
   # with `home auth`.
   authelia:
-    image: authelia/authelia:4.39
+    image: authelia/authelia:4.39.28@sha256:bd97cff4fcbf715b5ff1f9ae286afbe6033afce385302520b0368122d43a6f54
     container_name: authelia
     restart: always
     # dietpi, which owns secrets/network/authelia and data/authelia; never root.
@@ -127,6 +133,9 @@ volumes:
   tailscale_state:
 
 networks:
+  # Traefik ↔ socket-proxy only; internal: no route out.
+  socket:
+    internal: true
   network-layer:
     name: internal_bridge
     external: true

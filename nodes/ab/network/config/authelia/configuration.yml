@@ -51,14 +51,11 @@ authentication_backend:
 access_control:
   default_policy: deny
   rules:
-    # Authelia only offers credential registration (passkeys included) when
-    # some rule needs a second factor; this test path is that rule.
-    - domain: whoami.ab18.in
-      resources: ['^/2fa([/?].*)?$']
-      policy: two_factor
-    # A passkey is a single factor; everything behind `auth` accepts it.
+    # Two factors everywhere: a passkey with user verification counts as two
+    # (webauthn above), so passkey login is unchanged; a password alone is not
+    # enough. This rule is also what makes Authelia offer passkey registration.
     - domain: '*.ab18.in'
-      policy: one_factor
+      policy: two_factor
 
 session:
   name: ab18_session

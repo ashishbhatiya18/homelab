@@ -4,11 +4,11 @@
 ## Stacks
 | Stack | Services | Secrets needed |
 |---|---|---|
-| `network` | tailscale, traefik, whoami, cloudflared, authelia | `network/{ts_auth_key,cf_dns_api_token,cloudflared_tunnel_token}`, `network/authelia/` |
+| `network` | tailscale, traefik, socket-proxy, cloudflared, authelia | `network/{ts_auth_key,cf_dns_api_token,cloudflared_tunnel_token}`, `network/authelia/` |
 | `data` | postgres, redis | `data/postgres_password`, `data/redis.conf` |
 | `immich` | immich-server, immich_machine_learning | `immich/{db_url,redis_password}` |
 | `kopia` | kopia | `kopia/{repository_password,postgres_password}` |
-| `localstack` | watchtower, heartbeat | `localstack.env`, `localstack/hc_ping_url` |
+| `localstack` | heartbeat | `localstack/hc_ping_url` |
 | `vaultwarden` | vaultwarden | `vaultwarden/{admin_token,database_url,authelia_client_secret}` |
 | `treasuredash` | treasuredash | `treasuredash.env` |
 | `syncthing` | syncthing | `syncthing/` (its identity; config gitignored) |
@@ -30,7 +30,6 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 | `pdf.ab18.in` | bentopdf |
 | `photos.ab18.in` | immich-server |
 | `vault.ab18.in` | vaultwarden (Cloudflare cache bypass active) |
-| `whoami.ab18.in` | whoami |
 
 **Internal only (Tailscale → Traefik, not in tunnel):**
 
@@ -172,10 +171,9 @@ put kopia/repository_password "your-kopia-repository-password"
 put kopia/postgres_password "your-pg-password"      # for the pre-snapshot pg_dump
 ```
 
-### 3e — Localstack stack (watchtower, heartbeat)
+### 3e — Localstack stack (heartbeat)
 
 ```sh
-printf 'WATCHTOWER_UPDATE_ON_START=true\nWATCHTOWER_POLL_INTERVAL=300\n' > localstack.env
 put localstack/hc_ping_url "https://hc-ping.com/<uuid>"
 ```
 
@@ -204,7 +202,7 @@ echo "DATABASE_URL='postgres://treasuredash:<password>@postgres:5432/treasuredas
   data/postgres_password          data/redis.conf (owned by 999)
   immich/db_url                   immich/redis_password
   kopia/repository_password       kopia/postgres_password
-  localstack.env                  localstack/hc_ping_url
+  localstack/hc_ping_url
   network/cf_dns_api_token        network/ts_auth_key
   network/cloudflared_tunnel_token (owned by 65532)
   network/authelia/               (home auth)
@@ -254,11 +252,10 @@ docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Image}}"
 
 Expected running containers:
 ```
-tailscale, traefik, whoami, cloudflared, authelia
+tailscale, traefik, socket-proxy, cloudflared, authelia
 postgres, redis
 immich-server, immich_machine_learning
 kopia
-watchtower
 vaultwarden
 esphome
 syncthing

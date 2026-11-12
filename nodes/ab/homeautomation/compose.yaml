@@ -1,6 +1,6 @@
 services:
   esphome:
-    image: esphome/esphome
+    image: esphome/esphome:2026.10.2@sha256:c994a49a945094643b14c213bfd500a95ffed94cd68848772828192e126bd375
     container_name: esphome
     restart: always
     # dietpi, which owns data/esphome; never root. The image supports it: the

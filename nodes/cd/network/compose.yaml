@@ -1,16 +1,16 @@
 services:
   traefik:
-    image: traefik:latest
+    image: traefik:v3.7.17@sha256:f4bb143d1135a579b630ed491e17ec50f6f7c9c6a30585ff3d385471d2a86f5a
     container_name: traefik
     restart: always
     networks:
       - internal_bridge
+      - socket
     ports:
       - 80:80
       - 443:443
       - "443:443/udp"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
       - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml
       - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
       - /home/dietpi/localstack/data/traefik/acme.json:/etc/acme/acme.json
@@ -26,8 +26,29 @@ services:
     secrets:
       - cf_dns_api_token
 
+  # Read-only Docker API for Traefik (containers, events, version): Traefik
+  # never holds the socket itself. Only Traefik shares its network.
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
+    container_name: socket-proxy
+    restart: always
+    read_only: true
+    tmpfs:
+      - /run
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - CONTAINERS=1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket
+
   tailscale:
-    image: tailscale/tailscale:latest
+    image: tailscale/tailscale:latest@sha256:ed6480b33c6eb67c9cbd203ed42b9fb57e361986725b6856def71b7a3d9e276c
     container_name: tailscale
     hostname: cd-node
     restart: always
@@ -54,7 +75,7 @@ services:
       - com.centurylinklabs.watchtower.enable=false
 
   dnsdist:
-    image: powerdns/dnsdist-19
+    image: powerdns/dnsdist-19@sha256:260b1120947a10c494fad4d93cde33ebace34bf4800c88ebb114dd7f9e829809
     container_name: dnsdist
     restart: always
     network_mode: host
@@ -99,6 +120,9 @@ volumes:
   tailscale_state:
 
 networks:
+  # Traefik ↔ socket-proxy only; internal: no route out.
+  socket:
+    internal: true
   internal_bridge:
     name: internal_bridge
     external: true

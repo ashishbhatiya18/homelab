@@ -32,6 +32,11 @@ alerting:
         topic: homelab-status
         token: ${NTFY_TOKEN}
         priority: 4
+      - group: updates
+        url: https://ntfy-lan.ab18.in
+        topic: homelab-status
+        token: ${NTFY_TOKEN}
+        priority: 3
 
 # Web checks follow redirects and want a final 200. A service behind the passkey
 # `auth` middleware wants 401 instead: Authelia answers non-browser requests
@@ -41,6 +46,19 @@ alerting:
 # LAN checks reach ab directly through extra_hosts in compose.yaml; anything not
 # listed there resolves publicly and goes through the Cloudflare tunnel.
 endpoints:
+  # ── updates: image pins are bumped by Renovate PRs (renovate.json) ──
+  # Fails while any Renovate PR is open; reminds every 12h until they're merged
+  # or closed. Public repo: GitHub's unauthenticated search API (10/min) is enough.
+  - name: renovate prs
+    group: updates
+    url: "https://api.github.com/search/issues?q=repo:ashishbhatiya18/homelab+is:pr+is:open+author:app/renovate"
+    interval: 1h
+    conditions: ["[BODY].total_count == 0"]
+    alerts:
+      - type: ntfy
+        failure-threshold: 1
+        minimum-reminder-interval: 12h
+        description: "Renovate has open update PRs: https://github.com/ashishbhatiya18/homelab/pulls"
   # ── path: ntfy's own delivery path → alerts via ntfy.sh ──
   - name: ab host
     group: path
@@ -50,11 +68,10 @@ endpoints:
     alerts: [{type: ntfy, description: "ab does not answer ping"}]
   - name: ab traefik
     group: path
-    # whoami sits behind Authelia (`auth`), which answers non-browser
-    # requests with 401: either status means Traefik routed the request.
-    url: https://whoami.ab18.in/
+    # Authelia's health endpoint, reached through Traefik on ab.
+    url: https://id.ab18.in/api/health
     interval: 1m
-    conditions: ["[STATUS] == any(200, 401)"]
+    conditions: ["[STATUS] == 200"]
     alerts: [{type: ntfy, description: "Traefik on ab does not route"}]
   - name: ntfy
     group: path

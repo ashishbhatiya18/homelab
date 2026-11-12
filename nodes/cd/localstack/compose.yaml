@@ -1,28 +1,4 @@
 services:
-  watchtower:
-    image: nickfedor/watchtower
-    container_name: watchtower
-    restart: always
-    environment:
-      # Watchtower reads a secret's value from the file it names.
-      - WATCHTOWER_HTTP_API_TOKEN=/run/secrets/watchtower_http_api_token
-      - WATCHTOWER_UPDATE_ON_START=true
-      - WATCHTOWER_POLL_INTERVAL=300
-      - WATCHTOWER_HTTP_API_METRICS=true
-      # Detect new images but never apply them; updates are done with
-      # `home stack update` / `home upgrade` (backup first, auto-rollback).
-      - WATCHTOWER_MONITOR_ONLY=true
-    secrets:
-      - watchtower_http_api_token
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-        - internal_bridge
-    labels:
-      - com.centurylinklabs.watchtower.enable=false
-      - traefik.enable=true
-      - traefik.http.routers.watchtower.rule=Host(`watchtower.citrusdental.in`)
-      - traefik.http.services.watchtower.loadbalancer.port=8080
   # Heartbeat (nodes/heartbeat.sh, copied here by the bundle): every 5 min it
   # pings Healthchecks.io — when pings stop (node, Docker, or the home's
   # internet/power down) Healthchecks.io alerts the fallback ntfy topic on
@@ -31,7 +7,7 @@ services:
   # curl_user can't read dietpi's secret files): HC_PING_URL=https://hc-ping.com/<uuid>,
   #   NTFY_TOKEN=tk_… (write-only token for homelab*; unset on cd)
   heartbeat:
-    image: curlimages/curl:latest
+    image: curlimages/curl:latest@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
     container_name: heartbeat
     restart: always
     env_file: /home/dietpi/localstack/secrets/localstack.env
@@ -51,6 +27,3 @@ services:
 networks:
   internal_bridge:
     external: true
-secrets:
-  watchtower_http_api_token:
-    file: /home/dietpi/localstack/secrets/localstack/watchtower_http_api_token

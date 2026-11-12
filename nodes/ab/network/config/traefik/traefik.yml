@@ -63,6 +63,8 @@ entryPoints:
 #    address: :6379
 providers:
   docker:
+    # Read-only Docker API through socket-proxy (network stack), not the socket.
+    endpoint: tcp://socket-proxy:2375
     exposedByDefault: false
     network: internal_bridge
   file:

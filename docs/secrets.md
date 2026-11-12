@@ -16,7 +16,7 @@ reference them by absolute path from their `compose.yaml`.
   A secret file doesn't show up in `docker inspect` or `docker compose config`;
   environment variables do.
 - **Use the stack's env file only when the app can't read a file** (gatus,
-  watchtower's notification URL, apps that don't support `*_FILE` yet). Write
+  apps that don't support `*_FILE` yet). Write
   values single-quoted: compose expands `$VAR` and cuts ` #…` in unquoted values.
 - **Plain configuration is not a secret.** Time zones, URLs, CORS lists and
   feature flags go in the stack's compose `environment:`, in git.

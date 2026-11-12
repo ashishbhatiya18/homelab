@@ -4,8 +4,8 @@
 ## Stacks
 | Stack | Services |
 |---|---|
-| `network` | traefik, tailscale, dnsdist + blocky (DNS for the LAN and Tailscale at 10.10.10.12; the router hands it out) |
-| `localstack` | dockerproxy, watchtower, arcane |
+| `network` | traefik, socket-proxy, tailscale, dnsdist + blocky (DNS for the LAN and Tailscale at 10.10.10.12; the router hands it out) |
+| `localstack` | heartbeat |
 | `citrusdental` | api, peripheral, cloudflared |
 
 ---
@@ -110,10 +110,6 @@ cp /path/to/token.json       secrets/peripheral/gauth/token.json
 ### 3c — Localstack stack secrets
 
 ```sh
-# Watchtower HTTP API token (metrics at watchtower.citrusdental.in)
-mkdir -p secrets/localstack && chmod 700 secrets/localstack
-openssl rand -hex 32 > secrets/localstack/watchtower_http_api_token
-
 # Heartbeat: the Healthchecks.io ping URL (an env file; see nodes/cd/localstack)
 printf "HC_PING_URL='%s'\n" "https://hc-ping.com/<uuid>" > secrets/localstack.env
 ```
@@ -124,7 +120,6 @@ printf "HC_PING_URL='%s'\n" "https://hc-ping.com/<uuid>" > secrets/localstack.en
 chmod 600 secrets/citrusdental/cloudflare_tunnel_token \
           secrets/network/ts_auth_key \
           secrets/network/cf_dns_api_token \
-          secrets/localstack/watchtower_http_api_token \
           secrets/localstack.env \
           secrets/api/* \
           secrets/peripheral/google_api_key \
@@ -143,7 +138,6 @@ The full secrets layout:
     cloudflare_tunnel_token
   localstack.env
   localstack/
-    watchtower_http_api_token
   monitor.env
   api/
     secret_key
@@ -213,7 +207,6 @@ cloudflare        Up        cloudflare/cloudflared:latest
 api               Up        ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
 peripheral        Up        ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
 dockerproxy       Up        ghcr.io/tecnativa/docker-socket-proxy:latest
-watchtower        Up        nickfedor/watchtower
 arcane            Up        ghcr.io/getarcaneapp/arcane-headless:latest
 ```
 
