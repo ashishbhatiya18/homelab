@@ -47,7 +47,7 @@ home deploy <node> --rollback                    # previous release
 home jobs                                        # the background deploy job does this every 15 min
 ```
 
-(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode) are built by their own workflows. Third-party images are pinned `tag@sha256:…`; Dependabot (`.github/dependabot.yml`, daily) opens PRs to bump them and Gatus nags every 12h while any are open. Own `ghcr.io/ashishbhatiya18/*` images stay on tags and update with `home stack update`. Traefik reads Docker through `socket-proxy` (read-only API) in each network stack, never the socket.
+(`home` names the nodes `dietpi-l` = ab and `dietpi` = cd.) Images are never built on a node: stacks use `image:` only; custom images (kopia, claudecode) are built by their own workflows. Third-party images are pinned `tag@sha256:…`; Dependabot (`.github/dependabot.yml`, daily) opens PRs to bump them and Gatus nags every 12h while any are open. Own `ghcr.io/ashishbhatiya18/*` images stay on tags and update with `home stack update`, except nikview: pinned, and re-pinned by its CI through `image-bump.yml` (a `repository_dispatch`), so a push to nikview's main is live on cd within minutes. Traefik reads Docker through `socket-proxy` (read-only API) in each network stack, never the socket.
 
 On a node, by hand: `~/localstack/stacks/node.sh start|stop|restart|status [stack…]`. Each node's `/home/dietpi/localstack/` holds exactly: `stacks/` (deployed files, with `.release`), `releases/` (extracted bundles), `data/` (state) and `secrets/`.
 

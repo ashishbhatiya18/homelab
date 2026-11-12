@@ -7,6 +7,7 @@
 | `build-claudecode.yml`, `build-kopia.yml` | push to `main` touching the image's directory | build the custom images `ghcr.io/ashishbhatiya18/{claudecode,kopia}` (nodes never build images) |
 | `home-cli.yml` | changes to `home-cli/**`; a `home-cli-vX.Y.Z` tag | vet + tests; on a tag, publish the macOS binaries to GHCR and update `Formula/home.rb` in the Homebrew tap |
 | `down-cli.yml` | changes to `down-cli/**`; a `down-cli-vX.Y.Z` tag | tests; on a tag, publish the macOS formula and the Linux release binaries |
+| `image-bump.yml` | `repository_dispatch` `image-published` from an app repo's CI (nikview) | re-pin every stack running that image to `image:tag@digest`, commit to `main`, start `node-bundles.yml` for its node; `home-deploy` rolls it out |
 | `dependabot-release.yml` | a merged Dependabot PR | if it changed `home-cli/` or `down-cli/`: tag that CLI's next patch version and start its release workflow (formula in the tap updated) |
 
 Cloudflare (tunnels, routes, DNS) is not deployed by CI: it is declared in

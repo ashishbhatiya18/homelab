@@ -1,0 +1,69 @@
+# image-bump: an app repo's CI, after pushing an image, sends a
+# repository_dispatch here (event type image-published, payload image, tag,
+# digest). Every stack running that image is re-pinned to
+# image:tag@digest, committed to main, and its node's bundle is published —
+# the home-deploy job then rolls it out (health check, automatic rollback).
+#
+# The sender needs a token that can write to this repository (nikview's CI uses
+# the HOMELAB_DISPATCH_TOKEN secret). A commit pushed with GITHUB_TOKEN starts
+# no workflows, so node-bundles is started with workflow_dispatch.
+name: image-bump
+
+on:
+  repository_dispatch:
+    types: [image-published]
+
+# One bump at a time, in arrival order.
+# shortcut: a delayed older build arriving after a newer one would re-pin the
+# older image; fine for one app pushing to main, compare build times if that grows.
+concurrency:
+  group: image-bump
+  cancel-in-progress: false
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # commit the new pin
+      actions: write  # start node-bundles
+    env:
+      IMAGE: ${{ github.event.client_payload.image }}
+      TAG: ${{ github.event.client_payload.tag }}
+      DIGEST: ${{ github.event.client_payload.digest }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Pin the image and publish the bundle
+        run: |
+          set -euo pipefail
+          # The payload comes from outside this repo: accept only own images and
+          # well-formed tags and digests.
+          [[ $IMAGE =~ ^ghcr\.io/ashishbhatiya18/[a-z0-9._-]+$ ]] || { echo "refusing image '$IMAGE'" >&2; exit 1; }
+          [[ $TAG =~ ^[A-Za-z0-9._-]{1,128}$ ]] || { echo "refusing tag '$TAG'" >&2; exit 1; }
+          [[ $DIGEST =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "refusing digest '$DIGEST'" >&2; exit 1; }
+
+          re="${IMAGE//./\\.}"
+          files=$(grep -lE "^[[:space:]]*image: ${re}(:|@)" nodes/*/*/compose.yaml || true)
+          [ -n "$files" ] || { echo "no stack runs $IMAGE" >&2; exit 1; }
+          for f in $files; do
+            sed -i -E "s#^([[:space:]]*image: )${re}(:[^@[:space:]]+)?(@sha256:[0-9a-f]{64})?[[:space:]]*\$#\1${IMAGE}:${TAG}@${DIGEST}#" "$f"
+          done
+          if git diff --quiet; then
+            echo "$IMAGE is already pinned to $TAG@$DIGEST."
+            exit 0
+          fi
+          git diff
+
+          git config user.name "image-bump"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -qam "${IMAGE##*/}: pin $TAG" -m "$DIGEST"
+          # main may have moved while this ran.
+          for _ in 1 2 3; do git push origin HEAD:main && break; git pull -q --rebase origin main; done
+
+          nodes=$(cut -d/ -f2 <<< "$files" | sort -u)
+          node=$([ "$(wc -l <<< "$nodes")" -gt 1 ] && echo both || echo "$nodes")
+          gh workflow run node-bundles.yml --ref main -f node="$node"
+          echo "Pinned $IMAGE:$TAG@$DIGEST in $(xargs <<< "$files"); publishing node $node." >> "$GITHUB_STEP_SUMMARY"
