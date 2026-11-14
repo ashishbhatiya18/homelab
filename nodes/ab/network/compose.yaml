@@ -78,6 +78,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     command: tunnel --no-autoupdate run
     # The token is a secret file, owned by cloudflared's user (65532); `home
@@ -104,6 +107,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # dietpi, which owns secrets/network/authelia and data/authelia; never root.
     user: "1000:1000"

@@ -14,6 +14,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # dietpi, which owns data/gatus; never root. ICMP checks still work: as
     # non-root Gatus pings over unprivileged ICMP sockets, which Docker allows

@@ -13,6 +13,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     env_file: /home/dietpi/localstack/secrets/localstack.env
     environment:

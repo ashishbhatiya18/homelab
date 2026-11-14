@@ -99,6 +99,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     networks:
       - internal_bridge

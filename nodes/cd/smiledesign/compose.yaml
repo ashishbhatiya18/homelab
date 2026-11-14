@@ -6,6 +6,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     platform: linux/arm64
     restart: always
     env_file:
@@ -27,6 +30,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     networks:
       - internal_bridge
