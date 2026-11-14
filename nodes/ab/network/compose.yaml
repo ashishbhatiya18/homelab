@@ -61,9 +61,11 @@ services:
     hostname: ab-node
     restart: always
     network_mode: host
+    # tun is loaded at boot (/etc/modules-load.d/tun.conf), so no SYS_MODULE.
     cap_add:
       - NET_ADMIN
-      - SYS_MODULE
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - tailscale_state:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun
