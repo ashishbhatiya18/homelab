@@ -1,0 +1,48 @@
+# Anchor (github.com/zhfahim/anchor): notes at notes.ab18.in, public through the
+# tunnel. Sign-in only through Authelia (OIDC client `anchor`, public + PKCE so
+# the mobile app can use it too: `home auth client`); Anchor's own email and
+# password sign-up and sign-in are off. The first user to sign in is admin.
+# Anchor only supports Postgres; it runs its own, embedded in data/anchor.
+services:
+  anchor:
+    image: ghcr.io/zhfahim/anchor:0.18.0@sha256:434f8b2bc72e32d7027fa0259e565d7f3930cc2eca49f0c5b0b90befb5a45a77
+    container_name: anchor
+    restart: always
+    # Root inside (supervisord, and the embedded Postgres switching users), so
+    # only what that needs; Anchor has no non-root mode.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /home/dietpi/localstack/data/anchor:/data
+    # PG_PASSWORD (the embedded Postgres, loopback only): Anchor reads no
+    # *_FILE settings (docs/secrets.md). JWT_SECRET is generated into /data.
+    env_file: /home/dietpi/localstack/secrets/anchor.env
+    environment:
+      APP_URL: https://notes.ab18.in
+      CORS_ORIGINS: https://notes.ab18.in
+      OIDC_ENABLED: "true"
+      OIDC_PROVIDER_NAME: Authelia
+      OIDC_ISSUER_URL: https://id.ab18.in
+      OIDC_CLIENT_ID: anchor
+      DISABLE_INTERNAL_AUTH: "true"
+    networks:
+      - network-layer
+    # Authelia over the LAN, not through the Cloudflare tunnel.
+    extra_hosts:
+      - id.ab18.in=10.10.10.11
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.notes.rule=Host(`notes.ab18.in`)
+      - traefik.http.services.notes.loadbalancer.server.port=3000
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
