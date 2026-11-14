@@ -107,9 +107,7 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
+    # Not read_only: its startup checks fail on a read-only root filesystem.
     restart: always
     # dietpi, which owns secrets/network/authelia and data/authelia; never root.
     user: "1000:1000"
