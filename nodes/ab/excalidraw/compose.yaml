@@ -2,6 +2,20 @@ services:
   excalidraw:
     image: excalidraw/excalidraw:latest@sha256:f7ee194addd607bf831d2af0f0a34463dd4225e426cf35199ef0b12a803398e9
     container_name: excalidraw
+    # nginx: root master that switches its workers to nginx; just that.
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx
+      - /var/run
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
     restart: always
     stdin_open: true
     healthcheck:
