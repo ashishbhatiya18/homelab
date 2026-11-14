@@ -20,7 +20,9 @@ services:
     entrypoint: ["sh", "-c", "while true; do sh /heartbeat.sh; sleep 300; done"]
     volumes:
       - ./heartbeat.sh:/heartbeat.sh:ro
-      - /:/host:ro
+      # One file on the root filesystem is enough for `df /host`; mounting all
+      # of / would let it read every secret (uid 1000 owns them).
+      - /etc/hostname:/host:ro
     networks:
       - network-layer
   # otel:

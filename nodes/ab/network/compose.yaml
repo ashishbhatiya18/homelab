@@ -11,8 +11,8 @@ services:
       - 443:443
       - 443:443/udp
     volumes:
-      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml
-      - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml
+      - ./config/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./config/traefik/traefik_dynamic.yml:/etc/traefik/traefik_dynamic.yaml:ro
       - /home/dietpi/localstack/data/traefik/acme.json:/etc/acme/acme.json
     environment:
       - CF_DNS_API_TOKEN_FILE=/run/secrets/cf_dns_api_token

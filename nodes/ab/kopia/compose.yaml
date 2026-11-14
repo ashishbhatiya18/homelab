@@ -19,7 +19,10 @@ services:
       - /home/dietpi/localstack/data/kopia/config:/app/config
       - /home/dietpi/localstack/data/kopia/cache:/app/cache
       - /home/dietpi/localstack/data/kopia/rclone:/app/rclone
-      - /home/dietpi/localstack:/data-ab
+      # Backups only read; the pre-snapshot dumps are its one writable folder.
+      # A restore into place needs a one-off read-write override.
+      - /home/dietpi/localstack:/data-ab:ro
+      - /home/dietpi/localstack/data/pg_dumps:/data-ab/data/pg_dumps
       - ./scripts/pre-snapshot.sh:/scripts/pre-snapshot.sh:ro
     labels:
       - traefik.enable=true
