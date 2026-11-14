@@ -1,20 +1,31 @@
 services:
   syncthing:
-    image: lscr.io/linuxserver/syncthing:v2.1.7-ls236@sha256:e02e82c1d1f04085b2d9179c2ab1c8367835fdda64e875bd12dfe502061cf302
+    # Official image as dietpi; init/start.sh seeds config.xml and copies the
+    # device identity from secrets/, then runs the image's entrypoint.
+    image: syncthing/syncthing:2.1.7@sha256:2b71da7c0d0a91a6ae5285ad079226fecc0a365d08b27720e1f7037b018f7546
     container_name: syncthing
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/start.sh"]
     hostname: sync.ab18.in
     networks:
       - network-layer
     restart: always
     environment:
-      PUID: "1000"
-      PGID: "1000"
       TZ: Asia/Kolkata
+      STHOMEDIR: /config
+      STGUIADDRESS: 0.0.0.0:8384
     volumes:
       - /home/dietpi/localstack/data/syncthing:/config
       - ./config.xml.template:/seed/config.xml:ro
       - /home/dietpi/localstack/secrets/syncthing:/secrets:ro
-      - ./init/symlink-secrets.sh:/custom-cont-init.d/01-symlink-secrets.sh:ro
+      - ./init/start.sh:/start.sh:ro
       - /home/dietpi/music:/music
       - /home/dietpi/movies:/movies
     labels:
