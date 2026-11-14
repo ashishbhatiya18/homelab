@@ -44,6 +44,8 @@ apply_policy() {
     --add-ignore="data/kopia/tmp" \
     --add-ignore="data/kopia/repository" \
     --add-ignore="data/pg_data" \
+    --add-ignore="data/pg_data18" \
+    --add-ignore="data/pg_upgrade" \
     --add-ignore="data/redis_data" \
     --add-ignore="data/ollama_models/models/blobs" \
     --add-ignore="data/ollama_models/cache" \

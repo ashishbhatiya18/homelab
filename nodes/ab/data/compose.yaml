@@ -1,11 +1,15 @@
 services:
   postgresql:
-    image: ghcr.io/immich-app/postgres:14-vectorchord0.4.3-pgvectors0.2.0@sha256:bcf63357191b76a916ae5eb93464d65c07511da41e3bf7a8416db519b40b1c23
+    # Postgres 18 (moved from 14 by dump and restore, 2026-11-14; data/pg_data
+    # holds the 14 cluster as a rollback). Major upgrades are by hand:
+    # Dependabot ignores this image.
+    image: ghcr.io/immich-app/postgres:18-vectorchord0.5.3@sha256:828081a755d3911a2d94f0a2be9f98570c07d52cf080fd310a9d6e4b83b73aa5
     container_name: postgres
     hostname: postgres
     restart: always
     volumes:
-      - /home/dietpi/localstack/data/pg_data:/var/lib/postgresql/data
+      # 18+ keeps its cluster in /var/lib/postgresql/18/docker.
+      - /home/dietpi/localstack/data/pg_data18:/var/lib/postgresql
     # The password only matters when the data directory is first initialized.
     environment:
       DB_USERNAME: immich
