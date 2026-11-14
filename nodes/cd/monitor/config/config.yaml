@@ -108,7 +108,6 @@ endpoints:
   - {name: term (claudecode), group: ab, url: "https://term.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
   - {name: draw (excalidraw), group: ab, url: "https://draw.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
   - {name: pdf (bentopdf), group: ab, url: "https://pdf.ab18.in/", interval: 5m, conditions: ["[STATUS] == 401"], alerts: [{type: ntfy}]}
-  - {name: notes (anchor), group: ab, url: "https://notes.ab18.in/api/health", interval: 2m, conditions: ["[STATUS] == 200"], alerts: [{type: ntfy}]}
 
   # ── services on cd (same node, internal_bridge) ──
   - name: lan dns (dnsdist)

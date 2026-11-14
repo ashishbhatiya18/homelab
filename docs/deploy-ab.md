@@ -11,7 +11,6 @@
 | `localstack` | heartbeat | `localstack/hc_ping_url` |
 | `vaultwarden` | vaultwarden | `vaultwarden/{admin_token,database_url,authelia_client_secret}` |
 | `treasuredash` | treasuredash | `treasuredash.env` |
-| `anchor` | anchor | `anchor.env` |
 | `syncthing` | syncthing | `syncthing/` (its identity; config gitignored) |
 | `homeautomation`, `filebrowser`, `media`, `bentopdf`, `excalidraw`, `codeserver`, `claudecode`, `ntfy` | | — |
 
@@ -31,7 +30,6 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 | `pdf.ab18.in` | bentopdf |
 | `photos.ab18.in` | immich-server |
 | `vault.ab18.in` | vaultwarden (Cloudflare cache bypass active) |
-| `notes.ab18.in` | anchor (sign-in only via Authelia OIDC) |
 
 **Internal only (Tailscale → Traefik, not in tunnel):**
 
@@ -197,20 +195,6 @@ in your own terminal, then put the secret it prints in place with
 echo "DATABASE_URL='postgres://treasuredash:<password>@postgres:5432/treasuredash?search_path=treasuredash&sslmode=disable'" > treasuredash.env
 ```
 
-### 3h — Anchor
-
-The password of Anchor's embedded Postgres (loopback only inside its container;
-Anchor reads no `*_FILE` settings). Its OIDC client `anchor` is public (PKCE,
-for the mobile app too), so there is no client secret:
-
-```sh
-echo "PG_PASSWORD='$(openssl rand -hex 24)'" > anchor.env
-home auth client add anchor --name Anchor --public --pkce --policy two_factor \
-  --redirect https://notes.ab18.in/api/auth/oidc/callback --redirect anchor://oidc/callback   # on the Mac
-```
-
-The first user to sign in becomes Anchor's admin.
-
 ### Complete secrets layout
 
 ```
@@ -223,7 +207,7 @@ The first user to sign in becomes Anchor's admin.
   network/cloudflared_tunnel_token (owned by 65532)
   network/authelia/               (home auth)
   syncthing/                      (Syncthing's identity: cert, key, device id)
-  treasuredash.env                anchor.env
+  treasuredash.env
   vaultwarden/admin_token         vaultwarden/database_url
   vaultwarden/authelia_client_secret
 ```
