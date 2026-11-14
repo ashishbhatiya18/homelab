@@ -9,6 +9,10 @@ services:
     # Pinned; nikview's CI re-pins it after each build (.github/workflows/image-bump.yml).
     image: ghcr.io/ashishbhatiya18/nikview.com:sha-29d9f11@sha256:ac6cd35aab5854f3cdfe42aa784d74a9ee034decb3150bdfebbbe384efebf7d4
     container_name: nikview
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     read_only: true
     environment:
@@ -37,6 +41,10 @@ services:
     image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     command: tunnel --no-autoupdate run
     container_name: nikview-cloudflare
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     networks:
       - internal_bridge

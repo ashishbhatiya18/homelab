@@ -8,6 +8,10 @@ services:
   heartbeat:
     image: curlimages/curl:latest@sha256:3fb7e13e5d179a845c97d78204f3f1064d1907037f26a3ebf91710571151fd93
     container_name: heartbeat
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     user: "1000:1000"
     environment:

@@ -2,6 +2,10 @@ services:
   api:
     image: ghcr.io/ashishbhatiya18/smile-design-backend:latest
     container_name: smiledesign-be
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     platform: linux/arm64
     restart: always
     env_file:
@@ -19,6 +23,10 @@ services:
     command: tunnel --no-autoupdate run
     image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     container_name: smiledesign-cloudflare
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     networks:
       - internal_bridge

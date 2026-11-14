@@ -10,6 +10,10 @@ services:
   treasuredash:
     image: ghcr.io/ashishbhatiya18/treasure-dash:latest
     container_name: treasuredash
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     user: "1000:1000"
     read_only: true

@@ -74,6 +74,10 @@ services:
   cloudflared:
     image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     container_name: cloudflared
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     command: tunnel --no-autoupdate run
     # The token is a secret file, owned by cloudflared's user (65532); `home
@@ -96,6 +100,10 @@ services:
   authelia:
     image: authelia/authelia:4.39.28@sha256:bd97cff4fcbf715b5ff1f9ae286afbe6033afce385302520b0368122d43a6f54
     container_name: authelia
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     # dietpi, which owns secrets/network/authelia and data/authelia; never root.
     user: "1000:1000"

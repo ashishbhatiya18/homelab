@@ -2,6 +2,10 @@ services:
   api:
     image: ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
     container_name: api
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     # The image runs as 1000 (dietpi) already; kept here so an older image
     # can't come back as root. /app is root-owned and read-only: the api writes
@@ -63,6 +67,10 @@ services:
   peripheral:
     image: ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
     container_name: peripheral
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     # The image runs as 1000 (dietpi), which owns secrets/peripheral: it
     # rewrites gauth/token.json when Google refreshes it.
@@ -87,6 +95,10 @@ services:
     command: tunnel --no-autoupdate run
     image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     container_name: cloudflare
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     networks:
       - internal_bridge

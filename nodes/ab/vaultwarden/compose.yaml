@@ -2,6 +2,10 @@ services:
   vaultwarden:
     image: vaultwarden/server:1.37.5@sha256:4fe17f415f90087377d37c755e0ea3cf189dcc6794e49cdd2a9adbb4937d9e1f
     container_name: vaultwarden
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     restart: always
     # dietpi, which owns data/vaultwarden_data and config/config.json; never root.
     user: "1000:1000"
