@@ -1,18 +1,28 @@
 services:
   codeserver:
-    image: lscr.io/linuxserver/code-server:4.145.2-ls376@sha256:29f84131fa023c006fcfea9afbf0a5f9959c1a0532cf865d8dc8dae69e3c4a17
+    # Official image as dietpi, with the paths and flags the linuxserver image
+    # used. scripts/start.sh installs Claude Code into /config/.local if missing.
+    image: codercom/code-server:4.145.2@sha256:09565f9e07f5624554e295e8bab0e2fec4a7c533eb3cff459ed6596a4d3d7c1c
     container_name: codeserver
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/start.sh"]
     restart: always
     environment:
-      - PUID=1000
-      - PGID=1000
       - TZ=Asia/Kolkata
-      - DEFAULT_WORKSPACE=/repos
+      - HOME=/config
+      - PATH=/config/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     volumes:
       - /home/dietpi/localstack/data/codeserver_config:/config
       - /home/dietpi/localstack/data/codeserver_claude:/config/.claude
       - /home/dietpi/repos:/repos
-      - ./scripts/init-claude-code.sh:/custom-cont-init.d/init-claude-code.sh:ro
+      - ./scripts/start.sh:/start.sh:ro
     networks:
       - network-layer
     labels:
