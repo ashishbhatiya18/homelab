@@ -5,6 +5,18 @@ services:
     # Dependabot ignores this image.
     image: ghcr.io/immich-app/postgres:18-vectorchord0.5.3@sha256:828081a755d3911a2d94f0a2be9f98570c07d52cf080fd310a9d6e4b83b73aa5
     container_name: postgres
+    # Root only to start: the entrypoint reads the dietpi-owned secret, fixes
+    # ownership and drops to the database user. Just what that needs.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
     hostname: postgres
     restart: always
     volumes:
@@ -32,6 +44,18 @@ services:
   redis:
     image: redis:alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
     container_name: redis
+    # Root only to start: the entrypoint reads the dietpi-owned secret, fixes
+    # ownership and drops to the database user. Just what that needs.
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETUID
+      - SETGID
+      - DAC_OVERRIDE
+      - FOWNER
+    security_opt:
+      - no-new-privileges:true
     restart: always
     # The config secret holds `requirepass <password>`, so the password is in
     # neither the command line nor the environment. Immich (redis:6379 on
