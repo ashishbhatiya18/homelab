@@ -1,7 +1,17 @@
 services:
   jellyfin:
-    image: lscr.io/linuxserver/jellyfin:12.4ubu2604-ls58@sha256:b7eabe1f098f4e850bfd63d6721369117195410a471db1a41748ab768b81a639
+    # Official image as dietpi from the first process; the directories are the
+    # ones the linuxserver image used, so its config and library are used as is.
+    image: jellyfin/jellyfin:12.4.20261026-211555@sha256:fea863d0cd9ec445985d9c75fc6ed64e38a1d2766cf0c250a33d553f4fc1b771
     container_name: jellyfin
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
     networks:
       - network-layer
     restart: always
@@ -10,15 +20,15 @@ services:
       - traefik.http.routers.jelly.rule=Host(`jelly.ab18.in`)
       - traefik.http.services.jelly.loadbalancer.server.port=8096
     environment:
-      PUID: "1000"
-      PGID: "1000"
       TZ: Asia/Kolkata
-      UMASK_SET: "022"
+      JELLYFIN_CONFIG_DIR: /config
+      JELLYFIN_DATA_DIR: /config/data
+      JELLYFIN_LOG_DIR: /config/log
+      JELLYFIN_CACHE_DIR: /config/cache
     volumes:
       - /home/dietpi/movies:/data/movies
       - /home/dietpi/music:/data/music:ro
       - /home/dietpi/localstack/data/jellyfin_data/config:/config
-      - /home/dietpi/localstack/data/jellyfin_data/cache:/cache
 networks:
   network-layer:
     name: internal_bridge
