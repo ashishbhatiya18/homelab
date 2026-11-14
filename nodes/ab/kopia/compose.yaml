@@ -3,6 +3,14 @@ services:
     # Built by .github/workflows/build-kopia.yml from this directory.
     image: ghcr.io/ashishbhatiya18/kopia:latest
     container_name: kopia
+    # Root, but only able to read everything (to back it up) and write its own
+    # root-owned files: no DAC_OVERRIDE, CHOWN or SETUID.
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_READ_SEARCH
+    security_opt:
+      - no-new-privileges:true
     # Snapshot source identity (root@ab:/data-ab); entrypoint.sh pins it.
     hostname: ab
     restart: always
