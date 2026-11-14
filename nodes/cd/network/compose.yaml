@@ -65,9 +65,11 @@ services:
     hostname: cd-node
     restart: always
     network_mode: host
+    # tun is loaded at boot (/etc/modules-load.d/tun.conf), so no SYS_MODULE.
     cap_add:
       - NET_ADMIN
-      - SYS_MODULE
+    security_opt:
+      - no-new-privileges:true
     volumes:
       - tailscale_state:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun
@@ -91,9 +93,18 @@ services:
     container_name: dnsdist
     restart: always
     network_mode: host
+    # Root only to bind :53 on the host; dnsdist then drops to pdns.
     user: root
+    command: ["--uid", "pdns", "--gid", "pdns"]
+    read_only: true
+    cap_drop:
+      - ALL
     cap_add:
       - NET_BIND_SERVICE
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
     labels:
       - com.centurylinklabs.watchtower.enable=false
     volumes:
