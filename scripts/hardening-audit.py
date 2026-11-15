@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Container hardening audit: every service in the given compose files must
 drop all capabilities, set no-new-privileges, run as an explicit non-root
-user, and stay off the host (no privileged mode, host network, Docker socket
-or host /). An exception is a label on the service that says why:
+user with a read-only root filesystem, and stay off the host (no privileged
+mode, host network, Docker socket or host /). An exception is a label on the
+service that says why:
 
     hardening.root=<why>         runs as root (user unset, root or 0)
     hardening.host-access=<why>  privileged, host network, docker.sock or /
     hardening.caps=<why>         does not drop all capabilities
-
-A writable root filesystem is reported, never failed.
+    hardening.writable=<why>     writable root filesystem
 
     scripts/hardening-audit.py nodes/*/*/compose.yaml
 
@@ -45,12 +45,12 @@ def config(path, stub):
 
 
 def audit(name, svc):
-    """(failures, notes) for one service."""
+    """The failures of one service; empty when it passes."""
     labels = svc.get("labels") or {}
     if isinstance(labels, list):
         labels = dict(l.split("=", 1) if "=" in l else (l, "") for l in labels)
     waived = lambda k: bool(labels.get(f"hardening.{k}", "").strip())
-    fail, note = [], []
+    fail = []
 
     if "ALL" not in [c.upper().removeprefix("CAP_") for c in svc.get("cap_drop") or []] and not waived("caps"):
         fail.append("does not drop all capabilities")
@@ -75,9 +75,9 @@ def audit(name, svc):
     if host and not waived("host-access"):
         fail.append("host access: " + ", ".join(host))
 
-    if not svc.get("read_only"):
-        note.append("writable root filesystem")
-    return fail, note
+    if not svc.get("read_only") and not waived("writable"):
+        fail.append("writable root filesystem")
+    return fail
 
 
 def main(paths):
@@ -91,13 +91,11 @@ def main(paths):
                 failing += 1
                 continue
             for name, svc in sorted(services.items()):
-                fail, note = audit(name, svc)
+                fail = audit(name, svc)
                 where = f"{path.split('/')[1]}/{path.split('/')[2]}/{name}" if path.startswith("nodes/") else f"{path}:{name}"
                 if fail:
                     failing += 1
                     print(f"✗ {where}: " + "; ".join(fail))
-                elif note:
-                    print(f"· {where}: " + "; ".join(note))
                 else:
                     print(f"✓ {where}")
     print(f"\n{failing} failing service(s)")

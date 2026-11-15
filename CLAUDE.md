@@ -71,10 +71,10 @@ Every service starts from this baseline, and `scripts/hardening-audit.py` (CI, e
     user: "1000:1000"          # explicit, even when the image already runs non-root
     cap_drop: [ALL]            # cap_add only what the process needs
     security_opt: [no-new-privileges:true]
-    read_only: true            # plus tmpfs: [/tmp]; reported, not enforced
+    read_only: true            # plus tmpfs for the paths it really writes (/tmp)
 ```
 
-No `privileged`, host network, Docker socket or host `/` mount. An exception is a label on the service that says why: `hardening.root=<why>` (runs as root: Postgres, Redis, Kopia, dnsdist, excalidraw, socket-proxy, Tailscale), `hardening.host-access=<why>` (dnsdist's and Tailscale's host network, socket-proxy's read-only socket) or `hardening.caps=<why>`. Run it locally with `python3 scripts/hardening-audit.py nodes/*/*/compose.yaml`.
+No `privileged`, host network, Docker socket or host `/` mount. An exception is a label on the service that says why: `hardening.root=<why>` (runs as root: Postgres, Redis, Kopia, dnsdist, excalidraw, socket-proxy, Tailscale), `hardening.host-access=<why>` (dnsdist's and Tailscale's host network, socket-proxy's read-only socket), `hardening.caps=<why>` or `hardening.writable=<why>` (none today: every service is read-only). Run it locally with `python3 scripts/hardening-audit.py nodes/*/*/compose.yaml`.
 
 ## CI checks
 
