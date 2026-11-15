@@ -64,3 +64,35 @@ func TestMissingSecrets(t *testing.T) {
 		t.Error("no missing secrets should be no error")
 	}
 }
+
+func TestServicesMounting(t *testing.T) {
+	// The shape `docker compose config --format json` prints (trimmed).
+	cfg := []byte(`{"services": {
+		"dnsdist":  {"volumes": [{"type": "bind", "source": "/s/network/config/dnsdist/dnsdist.conf", "target": "/etc/dnsdist/dnsdist.conf"}]},
+		"authelia": {"volumes": [{"type": "bind", "source": "/s/network/config/authelia/assets", "target": "/config/assets"},
+		                         {"type": "volume", "source": "data", "target": "/data"}]},
+		"traefik":  {"volumes": [{"type": "bind", "source": "/home/dietpi/localstack/data/traefik/acme.json", "target": "/etc/acme/acme.json"}]},
+		"blocky":   {}
+	}}`)
+	for _, c := range []struct {
+		files []string
+		want  string
+	}{
+		{[]string{"config/dnsdist/dnsdist.conf"}, "dnsdist"},       // a mounted file
+		{[]string{"config/authelia/assets/logo.png"}, "authelia"},  // a file in a mounted folder
+		{[]string{"compose.yaml", "config/blocky/config.yml"}, ""}, // mounted by nobody
+		{[]string{"config/dnsdist/dnsdist.conf", "config/authelia/assets/x"}, "authelia,dnsdist"},
+		{[]string{"config/dnsdist/dnsdist.conf.bak"}, ""}, // a prefix is not a match
+	} {
+		got, err := servicesMounting(cfg, "/s/network", c.files)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Join(got, ",") != c.want {
+			t.Errorf("%v: got %v, want %q", c.files, got, c.want)
+		}
+	}
+	if _, err := servicesMounting([]byte("not json"), "/s/x", []string{"a"}); err == nil {
+		t.Error("invalid config must be an error")
+	}
+}

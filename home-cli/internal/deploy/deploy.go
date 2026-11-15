@@ -21,6 +21,7 @@ package deploy
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -149,12 +150,15 @@ func (d *Deployer) Latest(ctx context.Context, n homecfg.Node, tag string) (stri
 // Plan is what deploying one release to one node would change.
 type Plan struct {
 	Node    homecfg.Node
-	From    Release    // deployed now (zero on a first deploy)
-	To      Release    // Revision, Digest, Image of the new release
-	Changed []string   // stacks to start, in the node's start order
-	Phases  [][]string // Changed grouped into start phases (from node.sh phases)
-	Removed []string   // stacks gone from the release; left running
-	Files   []string   // node-level files that change (node.sh, node.conf)
+	From    Release  // deployed now (zero on a first deploy)
+	To      Release  // Revision, Digest, Image of the new release
+	Changed []string // stacks to start, in the node's start order
+	// ChangedFiles: per changed stack, its files (relative paths) that are new
+	// or differ; services bind-mounting one are restarted after the start.
+	ChangedFiles map[string][]string
+	Phases       [][]string // Changed grouped into start phases (from node.sh phases)
+	Removed      []string   // stacks gone from the release; left running
+	Files        []string   // node-level files that change (node.sh, node.conf)
 	// Recreate starts every stack with fresh containers (node.sh recreate),
 	// not only the changed ones.
 	Recreate bool
@@ -188,6 +192,13 @@ for d in "$new"/*/; do
   # Changed: new, or any difference other than files only present on the node.
   if [ ! -d "$live/$s" ] || { diff -rq "$live/$s" "$d" 2>/dev/null || true; } | grep -qv "^Only in $live/$s"; then
     echo "changed=$s"
+    # Its files that are new or differ: services that bind-mount one are
+    # restarted, since compose up only recreates on compose changes.
+    if [ -d "$live/$s" ]; then
+      (cd "$d" && find . -type f) | while IFS= read -r f; do
+        cmp -s "$d/$f" "$live/$s/$f" || echo "cfile=$s ${f#./}"
+      done
+    fi
   fi
 done
 for d in "$live"/*/; do
@@ -223,7 +234,7 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 	if err != nil {
 		return nil, fmt.Errorf("preparing release on %s: %w", n.Name, err)
 	}
-	plan := &Plan{Node: n, From: from, To: Release{Digest: digest, Image: n.Bundle}, Recreate: recreate}
+	plan := &Plan{Node: n, From: from, To: Release{Digest: digest, Image: n.Bundle}, Recreate: recreate, ChangedFiles: map[string][]string{}}
 	changed := map[string]bool{}
 	var phases [][]string
 	var missing []string
@@ -236,6 +247,10 @@ func (d *Deployer) Prepare(ctx context.Context, n homecfg.Node, digest string, r
 			plan.To.Revision = v
 		case "changed":
 			changed[v] = true
+		case "cfile":
+			if st, f, ok := strings.Cut(v, " "); ok {
+				plan.ChangedFiles[st] = append(plan.ChangedFiles[st], f)
+			}
 		case "removed":
 			plan.Removed = append(plan.Removed, v)
 		case "file":
@@ -346,11 +361,19 @@ func (d *Deployer) sync(ctx context.Context, n homecfg.Node, to, from Release) e
 }
 
 // start starts one phase's stacks with a single node.sh call (which runs
-// them in parallel) and waits until all of them are healthy.
-func (d *Deployer) start(ctx context.Context, n homecfg.Node, names []string, recreate bool) error {
+// them in parallel), restarts the services whose mounted files changed and
+// waits until all of them are healthy.
+func (d *Deployer) start(ctx context.Context, n homecfg.Node, names []string, recreate bool, files map[string][]string) error {
 	dir := pathsOf(n).live
 	if err := d.SM.StartMany(ctx, n.Name, dir, names, recreate, d.Out); err != nil {
 		return err
+	}
+	if !recreate { // recreate already gave every container a fresh start
+		for _, name := range names {
+			if err := d.restartMounting(ctx, n, dir, name, files[name]); err != nil {
+				return fmt.Errorf("%s: %w", name, err)
+			}
+		}
 	}
 	errs := make([]error, len(names))
 	var wg sync.WaitGroup
@@ -398,7 +421,7 @@ func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
 			d.Logf("%s: starting in parallel: %s", n.Name, strings.Join(phase, ", "))
 		}
 		started = append(started, phase)
-		if err := d.start(ctx, n, phase, p.Recreate); err != nil {
+		if err := d.start(ctx, n, phase, p.Recreate, p.ChangedFiles); err != nil {
 			return d.rollback(ctx, p, started, fmt.Errorf("%s: %w", n.Name, err))
 		}
 	}
@@ -426,7 +449,7 @@ func (d *Deployer) rollback(ctx context.Context, p *Plan, started [][]string, ca
 	}
 	var errs []string
 	for _, phase := range started {
-		if err := d.start(ctx, n, phase, false); err != nil {
+		if err := d.start(ctx, n, phase, false, p.ChangedFiles); err != nil { // the same files changed back
 			errs = append(errs, err.Error())
 		}
 	}
@@ -450,4 +473,64 @@ docker image prune -f --filter label=homelab.bundle=true >/dev/null 2>&1 || true
 	if err := d.R.Run(ctx, n.Name, script, nil, nil); err != nil {
 		d.Logf("%s: pruning old releases: %v", n.Name, err)
 	}
+}
+
+// restartMounting restarts the services of a stack that bind-mount one of
+// files (relative to the stack directory): compose up leaves them running on
+// the old content, since their compose definition is unchanged.
+func (d *Deployer) restartMounting(ctx context.Context, n homecfg.Node, dir, name string, files []string) error {
+	if len(files) == 0 {
+		return nil
+	}
+	node := remote.Quote(dir + "/node.sh")
+	cfg, err := d.R.Output(ctx, n.Name, "bash "+node+" compose "+remote.Quote(name)+" config --format json")
+	if err != nil {
+		return fmt.Errorf("reading compose config: %w", err)
+	}
+	svcs, err := servicesMounting([]byte(cfg), dir+"/"+name, files)
+	if err != nil || len(svcs) == 0 {
+		return err
+	}
+	d.Logf("%s: restarting %s (mounted files changed)", n.Name, strings.Join(svcs, ", "))
+	cmd := "bash " + node + " compose " + remote.Quote(name) + " restart"
+	for _, s := range svcs {
+		cmd += " " + remote.Quote(s)
+	}
+	return d.R.Run(ctx, n.Name, cmd, nil, d.Out)
+}
+
+// servicesMounting returns, sorted, the services in a `docker compose config
+// --format json` document with a bind mount of one of files (paths relative
+// to stackDir) or of a directory holding one.
+func servicesMounting(cfg []byte, stackDir string, files []string) ([]string, error) {
+	var doc struct {
+		Services map[string]struct {
+			Volumes []struct {
+				Type   string `json:"type"`
+				Source string `json:"source"`
+			} `json:"volumes"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(cfg, &doc); err != nil {
+		return nil, fmt.Errorf("parsing compose config: %w", err)
+	}
+	var out []string
+	for name, svc := range doc.Services {
+	vols:
+		for _, v := range svc.Volumes {
+			if v.Type != "bind" || v.Source == "" {
+				continue
+			}
+			src := strings.TrimSuffix(v.Source, "/")
+			for _, f := range files {
+				abs := stackDir + "/" + f
+				if abs == src || strings.HasPrefix(abs, src+"/") {
+					out = append(out, name)
+					break vols
+				}
+			}
+		}
+	}
+	sort.Strings(out)
+	return out, nil
 }
