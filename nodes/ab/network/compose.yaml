@@ -128,7 +128,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
-    # Not read_only: its startup checks fail on a read-only root filesystem.
+    # Read-only except /app/.healthcheck.env, which it writes at every start
+    # (its startup checks fail without it).
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # dietpi, which owns secrets/network/authelia and data/authelia; never root.
     user: "1000:1000"
@@ -139,6 +143,7 @@ services:
       - ./config/authelia/assets:/config/assets:ro
       - /home/dietpi/localstack/secrets/network/authelia:/secrets:ro
       - /home/dietpi/localstack/data/authelia:/data
+      - /home/dietpi/localstack/data/authelia/.healthcheck.env:/app/.healthcheck.env
     environment:
       - X_AUTHELIA_CONFIG=/config/configuration.yml,/secrets/clients.yml
       - X_AUTHELIA_CONFIG_FILTERS=template
