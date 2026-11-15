@@ -8,7 +8,8 @@ if [ -n "${PG_PASSWORD_FILE:-}" ]; then
 fi
 mkdir -p "$DUMP_DIR"
 
-for db in ab18 citrusdental photos treasuredash; do
+# citrusdental, photos, treasuredash and nikview are backed up by `home br`.
+for db in ab18; do
   PGPASSWORD="$PG_PASSWORD" pg_dump \
     -h postgres \
     -U postgres \
