@@ -59,6 +59,9 @@ services:
       - FOWNER
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # The config secret holds `requirepass <password>`, so the password is in
     # neither the command line nor the environment. Immich (redis:6379 on

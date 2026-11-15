@@ -14,6 +14,9 @@ services:
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     cap_drop:
       - ALL
     volumes:
@@ -51,6 +54,9 @@ services:
     user: "1000:1000"
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     cap_drop:
       - ALL
     volumes:

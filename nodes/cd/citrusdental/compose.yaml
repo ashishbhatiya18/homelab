@@ -6,6 +6,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # The image runs as 1000 (dietpi) already; kept here so an older image
     # can't come back as root. /app is root-owned and read-only: the api writes
@@ -71,6 +74,9 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # The image runs as 1000 (dietpi), which owns secrets/peripheral: it
     # rewrites gauth/token.json when Google refreshes it.
