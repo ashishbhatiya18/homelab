@@ -160,7 +160,7 @@ func printPlan(p *deploy.Plan) {
 		fmt.Println("  node files:       " + strings.Join(p.Files, ", "))
 	}
 	for _, s := range p.Removed {
-		fmt.Printf("  removed:          %s (keeps running; `node.sh down %s` on the node removes it)\n", s, s)
+		fmt.Printf("  removed:          %s (stopped and removed; its volumes and data/ stay)\n", s)
 	}
 	if p.Empty() {
 		fmt.Println("  no stack changes (only records the new release)")

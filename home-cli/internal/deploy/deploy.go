@@ -157,7 +157,7 @@ type Plan struct {
 	// or differ; services bind-mounting one are restarted after the start.
 	ChangedFiles map[string][]string
 	Phases       [][]string // Changed grouped into start phases (from node.sh phases)
-	Removed      []string   // stacks gone from the release; left running
+	Removed      []string   // stacks gone from the release; stopped and removed (node.sh down)
 	Files        []string   // node-level files that change (node.sh, node.conf)
 	// Recreate starts every stack with fresh containers (node.sh recreate),
 	// not only the changed ones.
@@ -403,6 +403,18 @@ func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
 	if err := d.sync(ctx, n, to, p.From); err != nil {
 		return fmt.Errorf("syncing release: %w", err)
 	}
+	// Stacks the release dropped go first: a renamed stack may reuse their
+	// container names. Volumes and data/ stay; a rollback starts them again.
+	if len(p.Removed) > 0 {
+		d.Logf("%s: stopping removed stacks: %s", n.Name, strings.Join(p.Removed, ", "))
+		cmd := "bash " + remote.Quote(pathsOf(n).live+"/node.sh") + " down"
+		for _, s := range p.Removed {
+			cmd += " " + remote.Quote(s)
+		}
+		if err := d.R.Run(ctx, n.Name, cmd, nil, d.Out); err != nil {
+			return d.rollback(ctx, p, nil, fmt.Errorf("%s: stopping removed stacks: %w", n.Name, err))
+		}
+	}
 	var started [][]string
 	for _, phase := range p.Phases {
 		for _, s := range phase {
@@ -425,9 +437,6 @@ func (d *Deployer) Apply(ctx context.Context, p *Plan) error {
 			return d.rollback(ctx, p, started, fmt.Errorf("%s: %w", n.Name, err))
 		}
 	}
-	for _, s := range p.Removed {
-		d.Logf("%s: stack %s is no longer in the release; its containers keep running (node.sh down %s removes them)", n.Name, s, s)
-	}
 	d.prune(ctx, n, to)
 	d.Logf("%s: %s deployed ✓", n.Name, to.Short())
 	return nil
@@ -448,6 +457,11 @@ func (d *Deployer) rollback(ctx context.Context, p *Plan, started [][]string, ca
 		return fmt.Errorf("%w — AND rollback failed: %v", cause, err)
 	}
 	var errs []string
+	if len(p.Removed) > 0 { // stopped by this deploy; the previous release has them
+		if err := d.start(ctx, n, p.Removed, false, nil); err != nil {
+			errs = append(errs, err.Error())
+		}
+	}
 	for _, phase := range started {
 		if err := d.start(ctx, n, phase, false, p.ChangedFiles); err != nil { // the same files changed back
 			errs = append(errs, err.Error())

@@ -78,9 +78,10 @@ Set `bundle:` on the node in config.yaml and `stacks_dir` to e.g.
 
 Releases are extracted to `releases/<digest>/` next to `stacks_dir` (the
 newest five are kept) and `stacks_dir/.release` records what is deployed. Changed files are
-rewritten in place, so single-file bind mounts see them; files a release drops
-are deleted; files that never came from a release are left alone. A stack
-removed from the bundle keeps running until `node.sh down <stack>`.
+rewritten in place, and the services that bind-mount one are restarted so they
+read it; files a release drops are deleted; files that never came from a
+release are left alone. A stack removed from the bundle is stopped and removed
+(`node.sh down`; its volumes and `data/` stay), and a rollback starts it again.
 
 **Private images**: `home registry login ghcr.io` saves a read-only token in
 the macOS Keychain so private images are checked too.
