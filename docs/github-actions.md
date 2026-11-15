@@ -2,7 +2,7 @@
 
 | Workflow | Trigger | What it does |
 |---|---|---|
-| `validate.yml` | every push to `main` and every PR | `docker compose config --quiet` on changed compose files (with stub env files); `shellcheck nodes/node.sh` |
+| `validate.yml` | every push to `main` and every PR | `docker compose config --quiet` on changed compose files (with stub env files); `shellcheck nodes/node.sh`; the container hardening audit (`scripts/hardening-audit.py`) on every compose file |
 | `node-bundles.yml` | push to `main` touching `nodes/**` or the bundle Dockerfile; by hand | validates **every** compose file of each changed node, then publishes `ghcr.io/ashishbhatiya18/node-<node>` (`:latest`, `:<sha>`) |
 | `build-claudecode.yml`, `build-kopia.yml` | push to `main` touching the image's directory | build the custom images `ghcr.io/ashishbhatiya18/{claudecode,kopia}` (nodes never build images) |
 | `home-cli.yml` | changes to `home-cli/**`; a `home-cli-vX.Y.Z` tag | vet + tests; on a tag, publish the macOS binaries to GHCR and update `Formula/home.rb` in the Homebrew tap |

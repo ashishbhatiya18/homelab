@@ -33,6 +33,7 @@ services:
       - /home/dietpi/localstack/data/pg_dumps:/data-ab/data/pg_dumps
       - ./scripts/pre-snapshot.sh:/scripts/pre-snapshot.sh:ro
     labels:
+      - hardening.root=reads every file to back it up; only DAC_READ_SEARCH
       - traefik.enable=true
       - traefik.http.routers.kopia.rule=Host(`backup.ab18.in`)
       - traefik.http.services.kopia.loadbalancer.server.port=51515

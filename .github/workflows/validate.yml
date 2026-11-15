@@ -46,6 +46,17 @@ jobs:
         if: steps.changed.outputs.any == 'false'
         run: echo "No compose.yaml files changed, nothing to validate."
 
+  hardening:
+    name: Container hardening audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Every stack, not only changed ones: a label or image default can't
+      # drift unnoticed. Exceptions are hardening.* labels with a reason.
+      - name: Audit every stack
+        run: python3 scripts/hardening-audit.py nodes/*/*/compose.yaml
+
   scripts:
     name: Lint shell scripts
     runs-on: ubuntu-latest

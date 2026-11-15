@@ -25,6 +25,7 @@ services:
     networks:
       - network-layer
     labels:
+      - hardening.root=nginx master switches its workers to nginx; only CHOWN, SETUID, SETGID
       - traefik.enable=true
       - traefik.http.routers.draw.rule=Host(`draw.ab18.in`)
       - traefik.http.routers.draw.middlewares=auth

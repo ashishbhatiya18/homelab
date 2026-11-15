@@ -4,6 +4,7 @@ services:
     # -simple: the self-hosted build, every tool without the marketing pages.
     image: bentopdfteam/bentopdf-simple:v2.8.11@sha256:3bbab98791694b77bc70ab03bf1b2ea89e568a75ef172c27d95cbdbdf810038f
     container_name: bentopdf
+    user: "101:101"
     networks:
       - network-layer
     restart: always

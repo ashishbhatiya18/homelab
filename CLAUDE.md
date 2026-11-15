@@ -63,11 +63,25 @@ home route add|set|remove <host>   # edit the files and apply in one step
 
 Cloudflare Pages projects, cache rules and Tailscale settings (split DNS, auth keys) are managed in their dashboards.
 
+## Container hardening
+
+Every service starts from this baseline, and `scripts/hardening-audit.py` (CI, every push) fails a stack that drops any of it:
+
+```yaml
+    user: "1000:1000"          # explicit, even when the image already runs non-root
+    cap_drop: [ALL]            # cap_add only what the process needs
+    security_opt: [no-new-privileges:true]
+    read_only: true            # plus tmpfs: [/tmp]; reported, not enforced
+```
+
+No `privileged`, host network, Docker socket or host `/` mount. An exception is a label on the service that says why: `hardening.root=<why>` (runs as root: Postgres, Redis, Kopia, dnsdist, excalidraw, socket-proxy, Tailscale), `hardening.host-access=<why>` (dnsdist's and Tailscale's host network, socket-proxy's read-only socket) or `hardening.caps=<why>`. Run it locally with `python3 scripts/hardening-audit.py nodes/*/*/compose.yaml`.
+
 ## CI checks
 
 `.github/workflows/validate.yml` runs on every push/PR:
 - **Compose validation**: runs `docker compose config --quiet` on any changed `compose.yaml`. Stub env files are generated automatically so missing secrets don't block validation.
 - **Shell lint**: `shellcheck nodes/node.sh`
+- **Hardening audit**: `scripts/hardening-audit.py` on every compose file (see "Container hardening")
 
 `node-bundles.yml` validates all compose files of a node again before publishing its bundle, so an invalid stack never reaches a node.
 
