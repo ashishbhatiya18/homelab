@@ -22,6 +22,7 @@ import (
 //     container: postgres
 //     user: postgres
 //     database: mydb
+//     drill_image: ghcr.io/…   # optional, see newPgSource
 type dockerExec struct {
 	Container string `yaml:"container"`
 	User      string `yaml:"user"`
@@ -39,7 +40,7 @@ func init() {
 			return nil, errors.New("host, container and database are required")
 		}
 		x.host = c.Host
-		return &pgSource{base: base{Common: c, restoreDefault: true}, x: x}, nil
+		return newPgSource(c, n, x)
 	})
 }
 

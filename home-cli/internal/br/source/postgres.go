@@ -16,6 +16,8 @@ import (
 	"strings"
 	"time"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/ashishbhatiya18/home/internal/br/manifest"
 )
 
@@ -33,7 +35,29 @@ type pgExec interface {
 // pgSource is the shared implementation behind every Postgres source type.
 type pgSource struct {
 	base
-	x pgExec
+	x          pgExec
+	drillImage string
+}
+
+// newPgSource wraps a Postgres exec. drill_image (optional) is the image restore
+// drills and local restores run instead of postgres:<major>, for databases
+// that need extensions the stock image lacks (Immich's VectorChord).
+func newPgSource(c Common, n *yaml.Node, x pgExec) (Source, error) {
+	var o struct {
+		DrillImage string `yaml:"drill_image"`
+	}
+	if err := n.Decode(&o); err != nil {
+		return nil, err
+	}
+	return &pgSource{base: base{Common: c, restoreDefault: true}, x: x, drillImage: o.DrillImage}, nil
+}
+
+// Image is the container image for a throwaway server of this major version.
+func (p *pgSource) Image(major int) string {
+	if p.drillImage != "" {
+		return p.drillImage
+	}
+	return fmt.Sprintf("postgres:%d", major)
 }
 
 const dumpFile = "database.dump"
@@ -428,9 +452,12 @@ func (p *pgSource) Verify(ctx context.Context, env *Env, dir string, a manifest.
 		majors = append(majors, m)
 	}
 	sort.Ints(majors)
+	if p.drillImage != "" { // one image, one major version
+		majors = []int{int(origin)}
+	}
 	var results []string
 	for _, m := range majors {
-		res, err := drill(ctx, env, dir, a, m)
+		res, err := drill(ctx, env, dir, a, m, p.Image(m))
 		if err != nil {
 			return "", fmt.Errorf("postgres %d: %w", m, err)
 		}
@@ -439,7 +466,7 @@ func (p *pgSource) Verify(ctx context.Context, env *Env, dir string, a manifest.
 	return strings.Join(results, "; "), nil
 }
 
-func drill(ctx context.Context, env *Env, dir string, a manifest.Artifact, major int) (string, error) {
+func drill(ctx context.Context, env *Env, dir string, a manifest.Artifact, major int, image string) (string, error) {
 	cli := env.ContainerCLI
 	name := fmt.Sprintf("hbr-drill-%d-%d", major, time.Now().UnixNano())
 	run := func(stdin io.Reader, args ...string) (string, error) {
@@ -451,7 +478,7 @@ func drill(ctx context.Context, env *Env, dir string, a manifest.Artifact, major
 		}
 		return out.String(), nil
 	}
-	if _, err := run(nil, "run", "-d", "--rm", "--name", name, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", fmt.Sprintf("postgres:%d", major)); err != nil {
+	if _, err := run(nil, "run", "-d", "--rm", "--name", name, "-e", "POSTGRES_HOST_AUTH_METHOD=trust", image); err != nil {
 		return "", err
 	}
 	defer exec.Command(cli, "rm", "-f", name).Run()

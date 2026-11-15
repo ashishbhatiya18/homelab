@@ -37,7 +37,7 @@ func init() {
 		if _, hasPw := u.User.Password(); hasPw {
 			return nil, errors.New("do not put the password in the url; `hbr setup` stores it in the Keychain")
 		}
-		return &pgSource{base: base{Common: c, restoreDefault: true}, x: x}, nil
+		return newPgSource(c, n, x)
 	})
 }
 

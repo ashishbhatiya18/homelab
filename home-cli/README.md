@@ -180,6 +180,10 @@ server of the same or any newer version, and restore drills prove it.
 | `home br restore <app> --snapshot "1 month ago" --to postgres://admin@newhost/db --create` | restore into any Postgres |
 | `home br restore <app> --local` | restore into a new local container to browse |
 
+A database that needs extensions the stock `postgres` image lacks (Immich's
+VectorChord, for example) sets `drill_image:` on its source; drills and
+`--local` restores run that image instead of `postgres:<version>`.
+
 Configure `pre_update_hooks` (setup offers this) to take a fresh backup before
 a stack's images are updated. See [docs/RESTORE.md](docs/RESTORE.md) for
 restoring without `home`, e.g. after losing your Mac.

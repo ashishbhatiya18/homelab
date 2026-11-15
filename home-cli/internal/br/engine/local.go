@@ -43,8 +43,12 @@ func (e *Engine) restoreLocal(ctx context.Context, app string, b store.Backup, d
 		db = app
 	}
 	name := fmt.Sprintf("hbr-%s-%s", app, b.Time.Local().Format("20060102-1504"))
+	image := fmt.Sprintf("postgres:%d", major)
+	if s, ok := byName[a.Source].(interface{ Image(int) string }); ok {
+		image = s.Image(major) // a source's drill_image, when it needs extensions
+	}
 
-	fmt.Printf("\nPlan: start postgres:%d in %s as %q on 127.0.0.1 and restore into database %q\n", major, cli, name, db)
+	fmt.Printf("\nPlan: start %s in %s as %q on 127.0.0.1 and restore into database %q\n", image, cli, name, db)
 	if o.DryRun {
 		if _, err := exec.LookPath(cli); err != nil {
 			return fmt.Errorf("%s not found (set verify.container_cli to docker or podman)", cli)
@@ -74,7 +78,7 @@ func (e *Engine) restoreLocal(ctx context.Context, app string, b store.Backup, d
 		"-e", "POSTGRES_PASSWORD="+pw, "-e", "POSTGRES_DB="+db,
 		"-p", fmt.Sprintf("127.0.0.1:%d:5432", port),
 		"--label", "hbr.app="+app,
-		fmt.Sprintf("postgres:%d", major)); err != nil {
+		image); err != nil {
 		return err
 	}
 	cleanup := true
@@ -83,7 +87,7 @@ func (e *Engine) restoreLocal(ctx context.Context, app string, b store.Backup, d
 			exec.Command(cli, "rm", "-f", name).Run()
 		}
 	}()
-	e.Log.Printf("waiting for postgres:%d to start …", major)
+	e.Log.Printf("waiting for %s to start …", image)
 	deadline := time.Now().Add(2 * time.Minute)
 	for stable := 0; stable < 2; {
 		if time.Now().After(deadline) {
