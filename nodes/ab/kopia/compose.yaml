@@ -11,6 +11,11 @@ services:
       - DAC_READ_SEARCH
     security_opt:
       - no-new-privileges:true
+    # Read-only: per-run rclone certificates in /tmp, logs on the cache volume.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /root/.cache
     # Snapshot source identity (root@ab:/data-ab); entrypoint.sh pins it.
     hostname: ab
     restart: always
@@ -43,6 +48,7 @@ services:
     environment:
       - KOPIA_CONFIG_PATH=/app/config/repository.config
       - KOPIA_CACHE_DIRECTORY=/app/cache
+      - KOPIA_LOG_DIR=/app/cache/logs
       - RCLONE_CONFIG=/app/rclone/rclone.conf
       - KOPIA_RCLONE_PATH=cd:/home/dietpi/backup
       # Secrets are files (docs/secrets.md); entrypoint.sh and

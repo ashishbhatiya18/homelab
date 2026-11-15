@@ -73,6 +73,12 @@ services:
       - NET_ADMIN
     security_opt:
       - no-new-privileges:true
+    # Read-only: sockets in /tmp and /run/tailscale, the iptables lock in /run;
+    # state is the tailscale_state volume.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /run
     volumes:
       - tailscale_state:/var/lib/tailscale
       - /dev/net/tun:/dev/net/tun

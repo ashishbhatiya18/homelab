@@ -6,6 +6,11 @@ services:
       - ALL
     security_opt:
       - no-new-privileges:true
+    # Read-only: builds go to /config/.esphome (PLATFORMIO_CORE_DIR below);
+    # anything else that wants $HOME lands in the /tmp tmpfs.
+    read_only: true
+    tmpfs:
+      - /tmp
     restart: always
     # dietpi, which owns data/esphome; never root. The image supports it: the
     # PlatformIO toolchains and build output stay under /config.
@@ -17,6 +22,8 @@ services:
       - /etc/localtime:/etc/localtime:ro
     environment:
       ESPHOME_DASHBOARD_USE_PING: "true"
+      PLATFORMIO_CORE_DIR: /config/.esphome/platformio
+      HOME: /tmp
     labels:
       - traefik.enable=true
       - traefik.http.routers.esphome.rule=Host(`esphome.ab18.in`)

@@ -17,6 +17,13 @@ services:
       - FOWNER
     security_opt:
       - no-new-privileges:true
+    # Read-only: the entrypoint regenerates postgresql.conf into /etc/postgresql
+    # at every start; the socket lives in /run/postgresql.
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /etc/postgresql:uid=999,gid=999
+      - /run/postgresql:uid=999,gid=999
     hostname: postgres
     restart: always
     volumes:
