@@ -1,4 +1,19 @@
 version: 2
+# Logged-in registry access for the image checks: anonymous ones get rate
+# limited (429) on Docker Hub and ghcr.io. Read-only tokens, stored as
+# Dependabot secrets in the repo settings.
+registries:
+  dockerhub:
+    type: docker-registry
+    url: registry.hub.docker.com
+    username: ab18
+    password: ${{secrets.DOCKERHUB_TOKEN}}
+  ghcr:
+    type: docker-registry
+    url: ghcr.io
+    username: ashishbhatiya18
+    password: ${{secrets.GHCR_TOKEN}}
+
 updates:
   - package-ecosystem: gomod
     directory: /home-cli
@@ -29,6 +44,7 @@ updates:
   # tags without a digest are left alone by Dependabot.
   - package-ecosystem: docker-compose
     directories: ["/nodes/*/*"]
+    registries: [dockerhub, ghcr]
     schedule:
       interval: daily
     ignore:
