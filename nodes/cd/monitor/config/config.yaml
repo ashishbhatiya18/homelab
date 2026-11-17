@@ -47,19 +47,19 @@ alerting:
 # listed there resolves publicly and goes through the Cloudflare tunnel.
 endpoints:
   # ── updates: image pins, Go modules and Actions are bumped by Dependabot PRs
-  # (.github/dependabot.yml) ──
-  # Fails while any Dependabot PR is open; reminds every 12h until they're merged
+  # (.github/dependabot.yml), Immich by immich-bump.yml; all labelled dependencies ──
+  # Fails while any such PR is open; reminds every 12h until they're merged
   # or closed. Public repo: GitHub's unauthenticated search API (10/min) is enough.
   - name: dependabot prs
     group: updates
-    url: "https://api.github.com/search/issues?q=repo:ashishbhatiya18/homelab+is:pr+is:open+author:app/dependabot"
+    url: "https://api.github.com/search/issues?q=repo:ashishbhatiya18/homelab+is:pr+is:open+label:dependencies"
     interval: 1h
     conditions: ["[BODY].total_count == 0"]
     alerts:
       - type: ntfy
         failure-threshold: 1
         minimum-reminder-interval: 12h
-        description: "Dependabot has open update PRs: https://github.com/ashishbhatiya18/homelab/pulls"
+        description: "Update PRs are open: https://github.com/ashishbhatiya18/homelab/pulls"
   # ── path: ntfy's own delivery path → alerts via ntfy.sh ──
   - name: ab host
     group: path

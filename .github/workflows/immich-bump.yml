@@ -1,0 +1,62 @@
+# immich-bump: Dependabot leaves Immich alone (listing the tags of its images
+# pages through thousands of per-commit tags and gets rate limited). Once a
+# day this asks GitHub for Immich's latest release and, when it is newer than
+# what nodes/ab/immich runs, opens one PR pinning server and machine learning
+# to it (they must run the same version). Labelled dependencies, so Gatus
+# reminds about it like a Dependabot PR.
+#
+# Needs "Allow GitHub Actions to create and approve pull requests" (Settings →
+# Actions → General). A PR opened with GITHUB_TOKEN starts no workflows;
+# node-bundles validates the stack when it is merged.
+name: immich-bump
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write      # push the PR branch
+      pull-requests: write # open the PR
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FILE: nodes/ab/immich/compose.yaml
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Open a PR for a newer Immich release
+        run: |
+          set -euo pipefail
+          latest=$(gh api repos/immich-app/immich/releases/latest -q .tag_name)
+          [[ $latest =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "refusing release tag '$latest'" >&2; exit 1; }
+          current=$(grep -oE 'immich-server:v[0-9]+\.[0-9]+\.[0-9]+' "$FILE" | cut -d: -f2)
+          if [ "$(printf '%s\n' "$current" "$latest" | sort -V | tail -1)" = "$current" ]; then
+            echo "Immich $current is the latest release." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          branch="immich/$latest"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "A PR for $latest is already open ($branch)." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          for img in immich-server immich-machine-learning; do
+            digest=$(docker buildx imagetools inspect "ghcr.io/immich-app/$img:$latest" --format '{{json .Manifest}}' | jq -r .digest)
+            [[ $digest =~ ^sha256:[0-9a-f]{64}$ ]] || { echo "no digest for $img:$latest" >&2; exit 1; }
+            sed -i -E "s#(image: ghcr\.io/immich-app/$img:)v[0-9.]+@sha256:[0-9a-f]{64}#\1$latest@$digest#" "$FILE"
+          done
+          [ "$(grep -c ":$latest@" "$FILE")" = 2 ] || { echo "did not re-pin both images" >&2; git diff; exit 1; }
+          git diff
+
+          git config user.name "immich-bump"
+          git config user.email "actions@users.noreply.github.com"
+          git switch -qc "$branch"
+          git commit -qam "immich: $current → $latest"
+          git push -q origin "$branch"
+          gh pr create --head "$branch" --label dependencies \
+            --title "immich: $current → $latest" \
+            --body "Server and machine learning to [$latest](https://github.com/immich-app/immich/releases/tag/$latest). Read the release notes for breaking changes before merging; the home-deploy job rolls it out on ab after the merge."
+          echo "Opened the PR for Immich $latest." >> "$GITHUB_STEP_SUMMARY"

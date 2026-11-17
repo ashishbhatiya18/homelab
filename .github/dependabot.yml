@@ -53,10 +53,11 @@ updates:
       - dependency-name: "ashishbhatiya18/*"
       # Immich's Postgres follows Immich's release notes, not semver.
       - dependency-name: "immich-app/postgres"
+      # Immich's images have thousands of per-commit tags: listing them took 11
+      # of the run's 13 minutes and got rate limited. immich-bump.yml opens the
+      # PR from Immich's GitHub releases instead.
+      - dependency-name: "immich-app/immich-*"
     groups:
-      # Server and machine learning must run the same Immich version.
-      immich:
-        patterns: ["immich-app/immich-*"]
       # Every other image: one PR per image, bumping it in all the stacks
       # that use it (cloudflared in four, Traefik and Tailscale in two).
       images:
