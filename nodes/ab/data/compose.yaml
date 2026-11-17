@@ -50,7 +50,7 @@ services:
       - traefik.tcp.routers.pg.tls.certresolver=myresolver
     shm_size: 128mb
   redis:
-    image: redis:alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
+    image: redis:8.10.3-alpine@sha256:7958cfbb9d152f87dadfbc89f1b0b15938f0b81ff8982feb327476f4911935c3
     container_name: redis
     labels:
       - hardening.root=the entrypoint reads the dietpi-owned secret and fixes ownership, then runs as the database user

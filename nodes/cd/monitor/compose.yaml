@@ -8,7 +8,7 @@
 # State: /home/dietpi/localstack/data/gatus (check history), owned by dietpi.
 services:
   gatus:
-    image: twinproduction/gatus:latest@sha256:9ee527bcb8f4a35890b4d4ce786fc8ea2c046cb052492ac78f52fd77c7adb0af
+    image: twinproduction/gatus:v5.38.0@sha256:085ed63da963728965d00a3c78aa6167e3bf135218485b893201758e079e8415
     container_name: gatus
     cap_drop:
       - ALL

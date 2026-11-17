@@ -59,7 +59,7 @@ services:
     networks:
       - socket
   tailscale:
-    image: tailscale/tailscale:latest@sha256:ed6480b33c6eb67c9cbd203ed42b9fb57e361986725b6856def71b7a3d9e276c
+    image: tailscale/tailscale:v1.104.4@sha256:ed6480b33c6eb67c9cbd203ed42b9fb57e361986725b6856def71b7a3d9e276c
     container_name: tailscale
     hostname: ab-node
     restart: always
@@ -98,7 +98,7 @@ services:
       - com.centurylinklabs.watchtower.enable=false
 
   cloudflared:
-    image: cloudflare/cloudflared:latest@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
     container_name: cloudflared
     user: "65532:65532"
     cap_drop:
