@@ -57,3 +57,8 @@ updates:
       # Server and machine learning must run the same Immich version.
       immich:
         patterns: ["immich-app/immich-*"]
+      # Every other image: one PR per image, bumping it in all the stacks
+      # that use it (cloudflared in four, Traefik and Tailscale in two).
+      images:
+        group-by: dependency-name
+        patterns: ["*"]
