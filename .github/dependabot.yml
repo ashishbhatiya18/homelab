@@ -61,6 +61,10 @@ updates:
       # of the run's 13 minutes and got rate limited. immich-bump.yml opens the
       # PR from Immich's GitHub releases instead.
       - dependency-name: "immich-app/immich-*"
+      # Its images also carry HAProxy-version tags (3.4, lts…) that look newer
+      # than its own releases (v0.x).
+      - dependency-name: "tecnativa/docker-socket-proxy"
+        versions: [">= 1.0"]
     groups:
       # Every other image: one PR per image, bumping it in all the stacks
       # that use it (cloudflared in four, Traefik and Tailscale in two).
