@@ -40,7 +40,8 @@ services:
   # brute force, CVE probes), shares them with CrowdSec's community blocklist
   # and notifies ntfy. Report-only for now: no bouncer enforces its decisions.
   # State: data/crowdsec/ (Docker creates it, root-owned). `docker exec crowdsec
-  # cscli alerts list` / `cscli decisions list` show what it found.
+  # cscli alerts list` / `cscli decisions list` show what it found; cd's agent
+  # sends its alerts here (`cscli machines list`).
   crowdsec:
     image: crowdsecurity/crowdsec:v1.8.2@sha256:65b74942f7e7ed5c60fde4ac15fc4ba715904c398c8b16dd451f4907d90347d4
     container_name: crowdsec
@@ -83,6 +84,13 @@ services:
     labels:
       - hardening.root=the image's default config is root-only; runs without other capabilities
       - hardening.caps=SETUID and SETGID, to start its notification plugins
+      # Its API for cd's agent (and later the bouncers): LAN and Tailscale only
+      # (no tunnel route); agents and bouncers authenticate themselves.
+      - traefik.enable=true
+      - traefik.http.routers.crowdsec.rule=Host(`crowdsec.ab18.in`)
+      - traefik.http.routers.crowdsec.middlewares=crowdsec-lan
+      - traefik.http.middlewares.crowdsec-lan.ipallowlist.sourcerange=10.10.10.0/24,100.64.0.0/10
+      - traefik.http.services.crowdsec.loadbalancer.server.port=8080
   # Read-only Docker API for Traefik (containers, events, version) and CrowdSec
   # (container logs, info): neither holds the socket itself. Only they share
   # its network.
