@@ -7,16 +7,19 @@
 tunnel: cd-localstack
 id: ba49b407-186d-48f3-8caa-3599fcc25a65
 node: dietpi
-stack: citrusdental
-container: cloudflare
-secret: /home/dietpi/localstack/secrets/citrusdental/cloudflare_tunnel_token
+stack: network
+container: cloudflared
+secret: /home/dietpi/localstack/secrets/network/cloudflared_tunnel_token
+# cd's only tunnel: every route reaches Traefik over HTTP/2.
 originRequest:
   http2Origin: true
-  noTLSVerify: false
+defaults:
+  service: https://traefik:443
+  originRequest:
+    httpHostHeader: '{host}'
+    originServerName: '{host}'
 ingress:
-  - hostname: api.citrusdental.in
-    service: https://traefik:443
-    originRequest:
-      httpHostHeader: api.citrusdental.in
-      originServerName: api.citrusdental.in
+  - api.citrusdental.in
+  - api.nikview.com
+  - smiledesign-be.citrusdental.in
   - service: http_status:404

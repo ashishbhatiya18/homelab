@@ -10,8 +10,7 @@ node: dietpi
 stack: nikview
 container: nikview-cloudflare
 secret: /home/dietpi/localstack/secrets/nikview/cloudflare_tunnel_token
+# Its hostnames moved to cd-localstack; delete with `home tunnel delete nikview.com`
+# once its connector is gone.
 ingress:
-  # Nikview API (nodes/cd/nikview), called by the web app at nikview.com.
-  - hostname: api.nikview.com
-    service: http://nikview:8080
   - service: http_status:404

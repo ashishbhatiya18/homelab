@@ -40,6 +40,31 @@ services:
 
   # Read-only Docker API for Traefik (containers, events, version): Traefik
   # never holds the socket itself. Only Traefik shares its network.
+  # The node's Cloudflare tunnel (cd-localstack, cloud/tunnels/cd-localstack.yaml):
+  # every public hostname on cd → Traefik. The token is a secret file owned by
+  # cloudflared's user (65532); `home tunnel token cd-localstack --install` writes it.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.0@sha256:b94b96edf2c9c4360f8879c8580cfaa99077f19c849ec595ca2f711b27d4f344
+    container_name: cloudflared
+    user: "65532:65532"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: always
+    command: tunnel --no-autoupdate run
+    environment:
+      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflared_tunnel_token
+    secrets:
+      - cloudflared_tunnel_token
+    networks:
+      internal_bridge:
+        # Fixed so Traefik can trust exactly this hop's X-Forwarded-For
+        # (the real client IP from Cloudflare); see traefik.yml.
+        ipv4_address: 11.11.11.251
   socket-proxy:
     image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
     container_name: socket-proxy
@@ -57,6 +82,7 @@ services:
       - no-new-privileges:true
     environment:
       - CONTAINERS=1
+      - INFO=1 # CrowdSec's docker log source checks /info first
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -170,3 +196,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/network/cf_dns_api_token
   ts_auth_key:
     file: /home/dietpi/localstack/secrets/network/ts_auth_key
+  cloudflared_tunnel_token:
+    file: /home/dietpi/localstack/secrets/network/cloudflared_tunnel_token

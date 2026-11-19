@@ -1,7 +1,6 @@
 # Nikview (github.com/ashishbhatiya18/nikview.com): the admin apps for Costa È Bella and Citrus Dental.
 # The web app is static on Cloudflare Pages (nikview.com) and calls
-# api.nikview.com directly, which the nikview.com tunnel (this stack's cloudflared, on
-# internal_bridge) routes here. Data lives in node ab's shared Postgres (database nikview),
+# api.nikview.com directly: cd's tunnel (network stack) → Traefik → here. Data lives in node ab's shared Postgres (database nikview),
 # set up once with deploy/shared-postgres-bootstrap.sql in the nikview repo.
 # CLI: docker exec nikview nikview tenant list
 services:
@@ -37,6 +36,10 @@ services:
       - internal_bridge
     extra_hosts:
       - "pg.ab18.in:10.10.10.11"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.nikview.rule=Host(`api.nikview.com`)
+      - traefik.http.services.nikview.loadbalancer.server.port=8080
   # The nikview.com tunnel (cloud/tunnels/nikview.com.yaml): api.nikview.com → nikview:8080.
   cloudflared:
     image: cloudflare/cloudflared:2026.11.0@sha256:b94b96edf2c9c4360f8879c8580cfaa99077f19c849ec595ca2f711b27d4f344

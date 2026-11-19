@@ -1,6 +1,10 @@
 entryPoints:
   websecure:
     address: :443
+    forwardedHeaders:
+      trustedIPs:
+        # cloudflared (fixed IP in compose.yaml): tunnel traffic comes from it
+        - 11.11.11.251/32
     http3:
       advertisedPort: 443
     asDefault: true
@@ -9,6 +13,10 @@ entryPoints:
         certResolver: myresolver
   web:
     address: :80
+    forwardedHeaders:
+      trustedIPs:
+        # cloudflared (fixed IP in compose.yaml): tunnel traffic comes from it
+        - 11.11.11.251/32
     http:
       redirections:
         entryPoint:
@@ -31,6 +39,8 @@ api:
   dashboard: true
 log:
   level: INFO
+# To stdout: CrowdSec reads it through socket-proxy.
+accesslog: {}
 
 certificatesResolvers:
   myresolver:
