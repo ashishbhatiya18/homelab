@@ -38,8 +38,6 @@ services:
     secrets:
       - cf_dns_api_token
 
-  # Read-only Docker API for Traefik (containers, events, version): Traefik
-  # never holds the socket itself. Only Traefik shares its network.
   # The node's Cloudflare tunnel (cd-localstack, cloud/tunnels/cd-localstack.yaml):
   # every public hostname on cd → Traefik. The token is a secret file owned by
   # cloudflared's user (65532); `home tunnel token cd-localstack --install` writes it.
@@ -65,6 +63,53 @@ services:
         # Fixed so Traefik can trust exactly this hop's X-Forwarded-For
         # (the real client IP from Cloudflare); see traefik.yml.
         ipv4_address: 11.11.11.251
+  # CrowdSec agent: reads Traefik's log through socket-proxy and sends alerts to
+  # ab's CrowdSec (crowdsec.ab18.in, machine cd), which decides, notifies ntfy
+  # and later feeds the bouncers. No local API, so no notification plugins.
+  # State: data/crowdsec/ (Docker creates it, root-owned).
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.8.2@sha256:65b74942f7e7ed5c60fde4ac15fc4ba715904c398c8b16dd451f4907d90347d4
+    container_name: crowdsec
+    restart: always
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/bin/bash", "-c", "export AGENT_PASSWORD=$(cat /run/secrets/agent_password) && exec /bin/bash /docker_start.sh"]
+    environment:
+      - DISABLE_LOCAL_API=true
+      - LOCAL_API_URL=https://crowdsec.ab18.in
+      - AGENT_USERNAME=cd
+      - COLLECTIONS=crowdsecurity/traefik
+      # Hub upgrades would write through the image's read-only data links;
+      # scenarios and parsers update with the image (Dependabot) instead.
+      - NO_HUB_UPGRADE=true
+    volumes:
+      - /home/dietpi/localstack/data/crowdsec/config:/etc/crowdsec
+      - /home/dietpi/localstack/data/crowdsec/data:/var/lib/crowdsec/data
+      - ./config/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - ./config/crowdsec/whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/homelab-whitelist.yaml:ro
+    secrets:
+      - source: crowdsec_agent_password
+        target: agent_password
+    extra_hosts:
+      - "crowdsec.ab18.in:10.10.10.11"
+    healthcheck:
+      test: ["CMD", "cscli", "lapi", "status"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+    networks:
+      - socket          # logs, through socket-proxy
+      - internal_bridge # ab's CrowdSec, the hub
+    labels:
+      - hardening.root=the image's default config is root-only; runs without capabilities
+  # Read-only Docker API for Traefik (containers, events, version) and CrowdSec
+  # (container logs, info): neither holds the socket itself. Only they share
+  # its network.
   socket-proxy:
     image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
     container_name: socket-proxy
@@ -184,7 +229,7 @@ volumes:
   tailscale_state:
 
 networks:
-  # Traefik ↔ socket-proxy only; internal: no route out.
+  # Traefik and CrowdSec ↔ socket-proxy only; internal: no route out.
   socket:
     internal: true
   internal_bridge:
@@ -198,3 +243,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/network/ts_auth_key
   cloudflared_tunnel_token:
     file: /home/dietpi/localstack/secrets/network/cloudflared_tunnel_token
+  crowdsec_agent_password:
+    file: /home/dietpi/localstack/secrets/network/crowdsec_agent_password

@@ -1,0 +1,7 @@
+# Logs cd's agent reads: Traefik's stdout, through socket-proxy's read-only
+# Docker API (new lines only, from when CrowdSec starts).
+source: docker
+container_name: [traefik]
+docker_host: tcp://socket-proxy:2375
+labels:
+  type: traefik

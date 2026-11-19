@@ -1,0 +1,11 @@
+# Never acted on: the LAN, Tailscale and the Docker networks. (CrowdSec's own
+# whitelist already skips private ranges such as 10.0.0.0/8.)
+name: homelab/whitelist
+description: LAN, Tailscale and Docker networks
+whitelist:
+  reason: own networks
+  cidr:
+    - 10.10.10.0/24
+    - 11.11.11.0/24
+    - 100.64.0.0/10
+    - fd7a:115c:a1e0::/48

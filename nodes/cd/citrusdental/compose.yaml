@@ -97,25 +97,6 @@ services:
       - /home/dietpi/localstack/secrets/peripheral/gauth/credentials.json:/app/credentials.json
     networks:
       - internal_bridge
-  cloudflared:
-    command: tunnel --no-autoupdate run
-    image: cloudflare/cloudflared:2026.11.0@sha256:b94b96edf2c9c4360f8879c8580cfaa99077f19c849ec595ca2f711b27d4f344
-    container_name: cloudflare
-    user: "65532:65532"
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-    restart: always
-    networks:
-      - internal_bridge
-    environment:
-      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
-    secrets:
-      - cloudflare_tunnel_token
 
 networks:
   internal_bridge:
@@ -132,5 +113,3 @@ secrets:
     file: /home/dietpi/localstack/secrets/peripheral/slack_access_token
   peripheral_google_api_key:
     file: /home/dietpi/localstack/secrets/peripheral/google_api_key
-  cloudflare_tunnel_token:
-    file: /home/dietpi/localstack/secrets/citrusdental/cloudflare_tunnel_token

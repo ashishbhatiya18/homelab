@@ -4,9 +4,9 @@
 ## Stacks
 | Stack | Services |
 |---|---|
-| `network` | traefik, socket-proxy, tailscale, dnsdist + blocky (DNS for the LAN and Tailscale at 10.10.10.12; the router hands it out) |
+| `network` | traefik, cloudflared (cd's only tunnel, cd-localstack: every public hostname → Traefik), crowdsec (agent: Traefik's log → ab's CrowdSec), socket-proxy, tailscale, dnsdist + blocky (DNS for the LAN and Tailscale at 10.10.10.12; the router hands it out) |
 | `localstack` | heartbeat |
-| `citrusdental` | api, peripheral, cloudflared |
+| `citrusdental` | api, peripheral |
 
 ---
 
@@ -81,6 +81,20 @@ echo "tskey-auth-XXXX" > secrets/network/ts_auth_key
 echo "your-cf-dns-api-token" > secrets/network/cf_dns_api_token
 ```
 
+The tunnel token: from the Mac, `home tunnel token cd-localstack --install`
+writes it to `network/cloudflared_tunnel_token`, owned by cloudflared's user
+(`sudo chown 65532:65532 network/cloudflared_tunnel_token`).
+
+CrowdSec's agent logs in to ab's CrowdSec as machine `cd`. Generate its
+password here (root-owned: CrowdSec runs as root) and register it on ab,
+without printing it:
+
+```sh
+sudo sh -c 'umask 077; head -c 32 /dev/urandom | base64 | tr -d "=+/\n" > secrets/network/crowdsec_agent_password'
+sudo cat secrets/network/crowdsec_agent_password | ssh dietpi@10.10.10.11 \
+  'docker exec -i crowdsec sh -c "cscli machines add cd --password \"\$(cat)\" -f /dev/null --force"'
+```
+
 ### 3b — Citrusdental stack secrets
 
 One secret file per value (`docs/secrets.md`); the api and peripheral read
@@ -90,8 +104,6 @@ each one through `X_FILE`. Their plain configuration is in the compose file.
 mkdir -p secrets/citrusdental secrets/api secrets/peripheral/gauth
 chmod 700 secrets/citrusdental secrets/api secrets/peripheral
 
-# Cloudflare tunnel token (`home tunnel token cd-localstack --install` writes it)
-echo "eyJhXXXX..." > secrets/citrusdental/cloudflare_tunnel_token
 
 # api: JWT signing key, Postgres URL, OpenAI key
 openssl rand -base64 48 > secrets/api/secret_key
@@ -117,8 +129,7 @@ printf "HC_PING_URL='%s'\n" "https://hc-ping.com/<uuid>" > secrets/localstack.en
 ### 3d — Set permissions
 
 ```sh
-chmod 600 secrets/citrusdental/cloudflare_tunnel_token \
-          secrets/network/ts_auth_key \
+chmod 600 secrets/network/ts_auth_key \
           secrets/network/cf_dns_api_token \
           secrets/localstack.env \
           secrets/api/* \
@@ -134,8 +145,8 @@ The full secrets layout:
   network/
     ts_auth_key
     cf_dns_api_token
-  citrusdental/
-    cloudflare_tunnel_token
+    cloudflared_tunnel_token  (owned by 65532)
+    crowdsec_agent_password   (owned by root)
   localstack.env
   localstack/
   monitor.env
@@ -203,7 +214,8 @@ traefik           Up        traefik:3.6.10
 tailscale         Up        tailscale/tailscale:latest
 dnsdist           Up        powerdns/dnsdist-19
 blocky            Up (healthy) spx01/blocky:v0.35.0
-cloudflare        Up        cloudflare/cloudflared:latest
+cloudflared       Up        cloudflare/cloudflared:<version>
+crowdsec          Up (healthy) crowdsecurity/crowdsec:<version>
 api               Up        ghcr.io/ashishbhatiya18/citrusdental-admin-api:rewrite
 peripheral        Up        ghcr.io/ashishbhatiya18/citrusdental-admin-peripheral:rewrite
 dockerproxy       Up        ghcr.io/tecnativa/docker-socket-proxy:latest

@@ -40,28 +40,6 @@ services:
       - traefik.enable=true
       - traefik.http.routers.nikview.rule=Host(`api.nikview.com`)
       - traefik.http.services.nikview.loadbalancer.server.port=8080
-  # The nikview.com tunnel (cloud/tunnels/nikview.com.yaml): api.nikview.com → nikview:8080.
-  cloudflared:
-    image: cloudflare/cloudflared:2026.11.0@sha256:b94b96edf2c9c4360f8879c8580cfaa99077f19c849ec595ca2f711b27d4f344
-    command: tunnel --no-autoupdate run
-    container_name: nikview-cloudflare
-    user: "65532:65532"
-    cap_drop:
-      - ALL
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-    tmpfs:
-      - /tmp
-    restart: always
-    networks:
-      - internal_bridge
-    # The token is a secret file, owned by cloudflared's user (65532), mode
-    # 600; `home tunnel token nikview.com --install` writes it.
-    environment:
-      - TUNNEL_TOKEN_FILE=/run/secrets/cloudflare_tunnel_token
-    secrets:
-      - cloudflare_tunnel_token
 
 networks:
   internal_bridge:
@@ -74,5 +52,3 @@ secrets:
     file: /home/dietpi/localstack/secrets/nikview/db_owner_password
   menu_publish_hook_costaebella:
     file: /home/dietpi/localstack/secrets/nikview/menu_publish_hook_costaebella
-  cloudflare_tunnel_token:
-    file: /home/dietpi/localstack/secrets/nikview/cloudflare_tunnel_token
