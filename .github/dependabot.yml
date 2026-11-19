@@ -47,6 +47,10 @@ updates:
     registries: [dockerhub, ghcr]
     schedule:
       interval: daily
+    # New releases wait a day before a PR (pulled or hot-fixed releases skip
+    # it); without this Dependabot's default held them for several days.
+    cooldown:
+      default-days: 1
     ignore:
       # Own images: built by their repos' CI, updated with `home stack update`.
       # Dependabot names images without the registry host.
