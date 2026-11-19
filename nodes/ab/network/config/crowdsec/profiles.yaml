@@ -1,0 +1,12 @@
+# What CrowdSec does with an alert about an IP: a 4h ban decision and an ntfy
+# notification. Nothing enforces decisions yet (no bouncer in Traefik), so for
+# now a ban is only reported.
+name: default_ip_remediation
+filters:
+  - Alert.Remediation == true && Alert.GetScope() == "Ip"
+decisions:
+  - type: ban
+    duration: 4h
+notifications:
+  - ntfy
+on_success: break

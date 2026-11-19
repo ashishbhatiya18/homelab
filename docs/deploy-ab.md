@@ -122,6 +122,19 @@ writes it to `network/cloudflared_tunnel_token` (the `secret:` of
 user: `sudo chown 65532:65532 network/cloudflared_tunnel_token`. Ingress rules
 are applied with `home cloud apply` (or `home route add|remove`).
 
+CrowdSec posts to ntfy with its own write-only token for user `publisher`,
+read by CrowdSec as root. ntfy starts after the network stack, so on a new node
+start with an empty file (notifications fail until the token is in) and fill
+it once ntfy runs, then restart CrowdSec:
+
+```sh
+sudo install -m 600 -o root -g root /dev/null network/crowdsec_ntfy_token
+# once ntfy is up:
+docker exec ntfy ntfy token add --label crowdsec publisher | grep -oE 'tk_[A-Za-z0-9]+' \
+  | sudo sh -c 'tr -d "\n" > network/crowdsec_ntfy_token'
+~/localstack/stacks/node.sh compose network restart crowdsec
+```
+
 Authelia (`id.ab18.in`) needs its secrets before the network stack starts. Seed
 them from the Mac (idempotent; it prints the first-login password and the OIDC
 client secrets once):
@@ -205,6 +218,7 @@ echo "DATABASE_URL='postgres://treasuredash:<password>@postgres:5432/treasuredas
   localstack/hc_ping_url
   network/cf_dns_api_token        network/ts_auth_key
   network/cloudflared_tunnel_token (owned by 65532)
+  network/crowdsec_ntfy_token     (owned by root)
   network/authelia/               (home auth)
   syncthing/                      (Syncthing's identity: cert, key, device id)
   treasuredash.env

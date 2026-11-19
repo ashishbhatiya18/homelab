@@ -1,0 +1,6 @@
+# Merged over the image's config.yaml. Notification plugins run as CrowdSec's
+# own user: as nobody, CrowdSec (root without DAC_OVERRIDE) could not connect
+# to their socket.
+plugin_config:
+  user: root
+  group: root

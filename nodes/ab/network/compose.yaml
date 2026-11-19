@@ -35,8 +35,57 @@ services:
       - com.centurylinklabs.watchtower.enable=false
     secrets:
       - cf_dns_api_token
-  # Read-only Docker API for Traefik (containers, events, version): Traefik
-  # never holds the socket itself. Only Traefik shares its network.
+  # CrowdSec: reads Traefik's, Authelia's and Vaultwarden's logs through
+  # socket-proxy (config/crowdsec/acquis.yaml), detects attacks (scanners,
+  # brute force, CVE probes), shares them with CrowdSec's community blocklist
+  # and notifies ntfy. Report-only for now: no bouncer enforces its decisions.
+  # State: data/crowdsec/ (Docker creates it, root-owned). `docker exec crowdsec
+  # cscli alerts list` / `cscli decisions list` show what it found.
+  crowdsec:
+    image: crowdsecurity/crowdsec:v1.8.2@sha256:65b74942f7e7ed5c60fde4ac15fc4ba715904c398c8b16dd451f4907d90347d4
+    container_name: crowdsec
+    restart: always
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    cap_add:
+      - SETUID
+      - SETGID
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/bin/bash", "-c", "export NTFY_TOKEN=$(cat /run/secrets/ntfy_token) && exec /bin/bash /docker_start.sh"]
+    environment:
+      - COLLECTIONS=crowdsecurity/traefik LePresidente/authelia Dominic-Wagner/vaultwarden
+      # Hub upgrades would write through the image's read-only data links;
+      # scenarios and parsers update with the image (Dependabot) instead.
+      - NO_HUB_UPGRADE=true
+    volumes:
+      - /home/dietpi/localstack/data/crowdsec/config:/etc/crowdsec
+      - /home/dietpi/localstack/data/crowdsec/data:/var/lib/crowdsec/data
+      - ./config/crowdsec/config.yaml.local:/etc/crowdsec/config.yaml.local:ro
+      - ./config/crowdsec/acquis.yaml:/etc/crowdsec/acquis.yaml:ro
+      - ./config/crowdsec/profiles.yaml:/etc/crowdsec/profiles.yaml:ro
+      - ./config/crowdsec/whitelist.yaml:/etc/crowdsec/parsers/s02-enrich/homelab-whitelist.yaml:ro
+      - ./config/crowdsec/notifications/ntfy.yaml:/etc/crowdsec/notifications/ntfy.yaml:ro
+    secrets:
+      - source: crowdsec_ntfy_token
+        target: ntfy_token
+    healthcheck:
+      test: ["CMD", "cscli", "lapi", "status"]
+      interval: 30s
+      timeout: 10s
+      start_period: 120s
+    networks:
+      - socket        # logs, through socket-proxy
+      - network-layer # the hub, CrowdSec's central API, ntfy
+    labels:
+      - hardening.root=the image's default config is root-only; runs without other capabilities
+      - hardening.caps=SETUID and SETGID, to start its notification plugins
+  # Read-only Docker API for Traefik (containers, events, version) and CrowdSec
+  # (container logs, info): neither holds the socket itself. Only they share
+  # its network.
   socket-proxy:
     image: tecnativa/docker-socket-proxy:v0.5.0@sha256:1f5038b54f06c3e18422902cf00ba21803d1c97805aae032e5e6673d532d3459
     container_name: socket-proxy
@@ -54,6 +103,7 @@ services:
       - no-new-privileges:true
     environment:
       - CONTAINERS=1
+      - INFO=1 # CrowdSec's docker log source checks /info first
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
@@ -177,7 +227,7 @@ volumes:
   tailscale_state:
 
 networks:
-  # Traefik ↔ socket-proxy only; internal: no route out.
+  # Traefik and CrowdSec ↔ socket-proxy only; internal: no route out.
   socket:
     internal: true
   network-layer:
@@ -191,3 +241,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/network/ts_auth_key
   cloudflared_tunnel_token:
     file: /home/dietpi/localstack/secrets/network/cloudflared_tunnel_token
+  crowdsec_ntfy_token:
+    file: /home/dietpi/localstack/secrets/network/crowdsec_ntfy_token

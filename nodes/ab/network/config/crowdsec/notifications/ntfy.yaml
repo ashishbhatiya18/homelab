@@ -1,0 +1,15 @@
+# Posts each decision to ntfy on ab (topic homelab-status) with CrowdSec's
+# write-only token for user publisher (NTFY_TOKEN, from a Docker secret).
+type: http
+name: ntfy
+log_level: info
+format: |
+  {{range . -}}{{$alert := .}}{{range .Decisions -}}
+  {{.Value}} ({{$alert.Source.Cn}}, {{$alert.Source.AsName}}): {{.Scenario}}, {{.Type}} {{.Duration}}
+  {{end}}{{end}}
+url: http://ntfy/homelab-status
+method: POST
+headers:
+  Authorization: Bearer ${NTFY_TOKEN}
+  Title: CrowdSec on ab
+  Tags: shield

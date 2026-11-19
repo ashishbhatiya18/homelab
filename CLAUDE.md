@@ -17,7 +17,7 @@ Directory layout:
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (heartbeat), excalidraw, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
+**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale + crowdsec: attack detection from Traefik's, Authelia's and Vaultwarden's logs, report-only, alerts via ntfy), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (heartbeat), excalidraw, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + tailscale + dnsdist → blocky: DNS for the LAN and Tailscale at 10.10.10.12), localstack (heartbeat), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, nikview (api.nikview.com via its own tunnel), smiledesign.
 
@@ -74,7 +74,7 @@ Every service starts from this baseline, and `scripts/hardening-audit.py` (CI, e
     read_only: true            # plus tmpfs for the paths it really writes (/tmp)
 ```
 
-No `privileged`, host network, Docker socket or host `/` mount. An exception is a label on the service that says why: `hardening.root=<why>` (runs as root: Postgres, Redis, Kopia, dnsdist, excalidraw, socket-proxy, Tailscale), `hardening.host-access=<why>` (dnsdist's and Tailscale's host network, socket-proxy's read-only socket), `hardening.caps=<why>` or `hardening.writable=<why>` (none today: every service is read-only). Run it locally with `python3 scripts/hardening-audit.py nodes/*/*/compose.yaml`.
+No `privileged`, host network, Docker socket or host `/` mount. An exception is a label on the service that says why: `hardening.root=<why>` (runs as root: Postgres, Redis, Kopia, dnsdist, excalidraw, socket-proxy, Tailscale, CrowdSec), `hardening.host-access=<why>` (dnsdist's and Tailscale's host network, socket-proxy's read-only socket), `hardening.caps=<why>` (Tailscale's NET_ADMIN, CrowdSec's SETUID/SETGID for its notification plugins) or `hardening.writable=<why>` (none today: every service is read-only). Run it locally with `python3 scripts/hardening-audit.py nodes/*/*/compose.yaml`.
 
 ## CI checks
 
