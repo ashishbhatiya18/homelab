@@ -6,7 +6,7 @@
 services:
   nikview:
     # Pinned; nikview's CI re-pins it after each build (.github/workflows/image-bump.yml).
-    image: ghcr.io/ashishbhatiya18/nikview.com:sha-29d9f11@sha256:ac6cd35aab5854f3cdfe42aa784d74a9ee034decb3150bdfebbbe384efebf7d4
+    image: ghcr.io/ashishbhatiya18/nikview.com:sha-fdb5b1a@sha256:17f8e72de34c8313d43b9f90691e53fd4172a582f7f7fd1ca9d6c493b4860e10
     container_name: nikview
     user: "1000:1000"
     cap_drop:
