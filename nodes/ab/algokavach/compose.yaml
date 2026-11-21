@@ -19,7 +19,7 @@ services:
       DATABASE_PASSWORD_FILE: /run/secrets/db_password
       MASTER_KEY_FILE: /run/secrets/master_key
       GOOGLE_CLIENT_ID: 814968473657-7b574enut0cl61euidma94lariu15s8d.apps.googleusercontent.com
-      APP_ORIGIN: https://algokavach.pages.dev,https://algokavach.ab18.in
+      APP_ORIGIN: https://algo-kavach.pages.dev,https://algokavach.ab18.in
       ALLOWED_EMAILS: ashishbhatiya18@gmail.com
     secrets:
       - db_password
