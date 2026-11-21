@@ -81,6 +81,15 @@ func (m *Manager) compose(ctx context.Context, n, dir, name string, out io.Write
 
 // List returns the node's stacks with their containers.
 func (m *Manager) List(ctx context.Context, n string, dir string, st *node.Status) ([]Stack, error) {
+	var ctrs []node.Container
+	if st != nil {
+		ctrs = st.Containers
+	}
+	return m.ListContainers(ctx, n, dir, ctrs)
+}
+
+// ListContainers returns the node's stacks with the given containers.
+func (m *Manager) ListContainers(ctx context.Context, n string, dir string, containers []node.Container) ([]Stack, error) {
 	out, err := m.R.Output(ctx, n, fmt.Sprintf(`if [ -f %[2]s ]; then bash %[2]s list; else for d in %[1]s/*/; do [ -f "$d/compose.yaml" ] && basename "$d"; done; fi`, remote.Quote(dir), remote.Quote(nodeScript(dir))))
 	if err != nil {
 		return nil, err
@@ -88,7 +97,7 @@ func (m *Manager) List(ctx context.Context, n string, dir string, st *node.Statu
 	var stacks []Stack
 	for _, name := range strings.Fields(out) {
 		s := Stack{Node: n, Name: name, Dir: dir}
-		for _, c := range st.Containers {
+		for _, c := range containers {
 			if c.Project == name {
 				s.Containers = append(s.Containers, c)
 			}

@@ -924,7 +924,7 @@ func (a *app) upgrade(ctx context.Context, args []string) error {
 	if err != nil {
 		return err
 	}
-	reports := check.Run(ctx, a.cfg, a.r, true, true)
+	reports := check.RunNodes(ctx, nodes, a.r, true, true)
 	byNode := map[string]check.NodeReport{}
 	for _, r := range reports {
 		byNode[r.Node] = r

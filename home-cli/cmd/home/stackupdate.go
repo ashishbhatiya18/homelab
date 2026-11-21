@@ -83,7 +83,7 @@ func (a *app) updateAllStacks(ctx context.Context, target string, yes, dry bool)
 		return err
 	}
 	byNode := map[string]check.NodeReport{}
-	for _, r := range check.Run(ctx, a.cfg, a.r, false, true) {
+	for _, r := range check.RunNodes(ctx, nodes, a.r, false, true) {
 		byNode[r.Node] = r
 	}
 	fmt.Println("Stacks with newer images:")

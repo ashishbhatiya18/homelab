@@ -104,6 +104,28 @@ func (c *Client) Status(ctx context.Context) (*Status, error) {
 	return s, nil
 }
 
+// Containers lists all containers on the host.
+func (c *Client) Containers(ctx context.Context) ([]Container, error) {
+	out, err := c.R.Output(ctx, c.Name, "docker ps -a --format '{{.Names}}|{{.Image}}|{{.State}}|{{.Status}}|{{.Label \"com.docker.compose.project\"}}'")
+	if err != nil {
+		return nil, err
+	}
+	return parseContainers(out), nil
+}
+
+func parseContainers(out string) []Container {
+	var ctrs []Container
+	sc := bufio.NewScanner(strings.NewReader(out))
+	for sc.Scan() {
+		f := strings.SplitN(sc.Text(), "|", 5)
+		if len(f) == 5 {
+			ctrs = append(ctrs, Container{Name: f[0], Image: f[1], State: f[2], Status: f[3], Project: f[4]})
+		}
+	}
+	sort.Slice(ctrs, func(i, j int) bool { return ctrs[i].Name < ctrs[j].Name })
+	return ctrs
+}
+
 // Problems lists containers that are running but unhealthy or restarting.
 func (s *Status) Problems() []string {
 	var p []string

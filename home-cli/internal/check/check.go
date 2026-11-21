@@ -68,9 +68,15 @@ func (r NodeReport) Items(diskWarn int) []string {
 // Run gathers a report for every node. refresh updates package lists first
 // (needed for accurate apt/DietPi counts); stacks enables image checks.
 func Run(ctx context.Context, cfg *homecfg.Config, r *remote.Runner, refresh, stacks bool) []NodeReport {
-	reports := make([]NodeReport, len(cfg.Nodes))
+	return RunNodes(ctx, cfg.Nodes, r, refresh, stacks)
+}
+
+// RunNodes gathers a report for the specified nodes. Per node, the OS/package
+// refresh and Docker stack checks execute in parallel.
+func RunNodes(ctx context.Context, nodes []homecfg.Node, r *remote.Runner, refresh, stacks bool) []NodeReport {
+	reports := make([]NodeReport, len(nodes))
 	var wg sync.WaitGroup
-	for i, n := range cfg.Nodes {
+	for i, n := range nodes {
 		wg.Add(1)
 		go func(i int, n homecfg.Node) {
 			defer wg.Done()
@@ -81,34 +87,65 @@ func Run(ctx context.Context, cfg *homecfg.Config, r *remote.Runner, refresh, st
 				reports[i] = rep
 				return
 			}
-			if refresh {
-				if err := c.Refresh(ctx); err != nil {
-					rep.CheckErrs = append(rep.CheckErrs, "refresh: "+err.Error())
-				}
+
+			var nodeWg sync.WaitGroup
+			var mu sync.Mutex
+			addErr := func(msg string) {
+				mu.Lock()
+				rep.CheckErrs = append(rep.CheckErrs, msg)
+				mu.Unlock()
 			}
-			st, err := c.Status(ctx)
-			if err != nil {
-				rep.Err = err
-				reports[i] = rep
-				return
-			}
-			rep.Status = st
-			if stacks {
-				m := &stack.Manager{R: r, Logf: func(string, ...any) {}, Creds: Creds}
-				list, err := m.List(ctx, n.Name, n.StacksDir, st)
-				if err != nil {
-					rep.CheckErrs = append(rep.CheckErrs, "stacks: "+err.Error())
-				}
-				for name, ups := range m.CheckUpdates(ctx, list) {
-					for _, u := range ups {
-						if u.Err != nil {
-							rep.CheckErrs = append(rep.CheckErrs, fmt.Sprintf("%s: %v", u.Image, u.Err))
-							continue
-						}
-						rep.Updates[name] = append(rep.Updates[name], u)
+
+			// OS track: refresh package lists and collect host status
+			nodeWg.Add(1)
+			go func() {
+				defer nodeWg.Done()
+				if refresh {
+					if err := c.Refresh(ctx); err != nil {
+						addErr("refresh: " + err.Error())
 					}
 				}
+				st, err := c.Status(ctx)
+				mu.Lock()
+				if err != nil {
+					rep.Err = err
+				} else {
+					rep.Status = st
+				}
+				mu.Unlock()
+			}()
+
+			// Stacks track: inspect containers and check image updates in parallel
+			if stacks {
+				nodeWg.Add(1)
+				go func() {
+					defer nodeWg.Done()
+					ctrs, err := c.Containers(ctx)
+					if err != nil {
+						addErr("containers: " + err.Error())
+						return
+					}
+					m := &stack.Manager{R: r, Logf: func(string, ...any) {}, Creds: Creds}
+					list, err := m.ListContainers(ctx, n.Name, n.StacksDir, ctrs)
+					if err != nil {
+						addErr("stacks: " + err.Error())
+					}
+					upsMap := m.CheckUpdates(ctx, list)
+					mu.Lock()
+					for name, ups := range upsMap {
+						for _, u := range ups {
+							if u.Err != nil {
+								rep.CheckErrs = append(rep.CheckErrs, fmt.Sprintf("%s: %v", u.Image, u.Err))
+								continue
+							}
+							rep.Updates[name] = append(rep.Updates[name], u)
+						}
+					}
+					mu.Unlock()
+				}()
 			}
+
+			nodeWg.Wait()
 			reports[i] = rep
 		}(i, n)
 	}
