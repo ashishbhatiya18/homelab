@@ -1,0 +1,44 @@
+# Algokavach (github.com/ashishbhatiya18/algo-kavach): Delta Exchange strategy marketplace & runner.
+# The web app is static on Cloudflare Pages (algokavach.pages.dev / algokavach.ab18.in) and calls
+# api.algokavach.ab18.in directly: cd's tunnel (network stack) → Traefik → here.
+# Data lives in node ab's shared Postgres (database algokavach).
+services:
+  algokavach:
+    image: ghcr.io/ashishbhatiya18/algo-kavach:latest
+    container_name: algokavach
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    restart: always
+    read_only: true
+    environment:
+      PORT: "8080"
+      DATABASE_URL: postgres://algokavach@pg.ab18.in:443/algokavach?sslmode=require
+      DATABASE_PASSWORD_FILE: /run/secrets/db_password
+      MASTER_KEY_FILE: /run/secrets/master_key
+      GOOGLE_CLIENT_ID: 814968473657-7b574enut0cl61euidma94lariu15s8d.apps.googleusercontent.com
+      APP_ORIGIN: https://algokavach.pages.dev,https://algokavach.ab18.in
+      ALLOWED_EMAILS: ashishbhatiya18@gmail.com
+    secrets:
+      - db_password
+      - master_key
+    networks:
+      - internal_bridge
+    extra_hosts:
+      - "pg.ab18.in:10.10.10.11"
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.algokavach.rule=Host(`api.algokavach.ab18.in`)
+      - traefik.http.services.algokavach.loadbalancer.server.port=8080
+
+networks:
+  internal_bridge:
+    external: true
+
+secrets:
+  db_password:
+    file: /home/dietpi/localstack/secrets/algokavach/db_password
+  master_key:
+    file: /home/dietpi/localstack/secrets/algokavach/master_key
