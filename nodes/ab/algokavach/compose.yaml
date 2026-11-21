@@ -30,7 +30,7 @@ services:
     labels:
       - traefik.enable=true
       - traefik.docker.network=internal_bridge
-      - traefik.http.routers.algokavach.rule=Host(`api.algokavach.ab18.in`)
+      - traefik.http.routers.algokavach.rule=Host(`algokavach.ab18.in`)
       - traefik.http.services.algokavach.loadbalancer.server.port=8080
 
 networks:
