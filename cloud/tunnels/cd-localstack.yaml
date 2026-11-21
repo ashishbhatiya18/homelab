@@ -19,7 +19,6 @@ defaults:
     httpHostHeader: '{host}'
     originServerName: '{host}'
 ingress:
-  - api.algokavach.ab18.in
   - api.citrusdental.in
   - api.nikview.com
   - smiledesign-be.citrusdental.in

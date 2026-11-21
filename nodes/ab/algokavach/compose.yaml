@@ -1,7 +1,7 @@
 # Algokavach (github.com/ashishbhatiya18/algo-kavach): Delta Exchange strategy marketplace & runner.
 # The web app is static on Cloudflare Pages (algokavach.pages.dev / algokavach.ab18.in) and calls
-# api.algokavach.ab18.in directly: cd's tunnel (network stack) → Traefik → here.
-# Data lives in node ab's shared Postgres (database algokavach).
+# api.algokavach.ab18.in directly: ab's tunnel (network stack) → Traefik → here.
+# Data lives in node ab's local Postgres (database algokavach) on data-layer.
 services:
   algokavach:
     image: ghcr.io/ashishbhatiya18/algo-kavach:latest
@@ -15,7 +15,7 @@ services:
     read_only: true
     environment:
       PORT: "8080"
-      DATABASE_URL: postgres://algokavach@pg.ab18.in:443/algokavach?sslmode=require
+      DATABASE_URL: postgres://algokavach@postgres:5432/algokavach?sslmode=disable
       DATABASE_PASSWORD_FILE: /run/secrets/db_password
       MASTER_KEY_FILE: /run/secrets/master_key
       GOOGLE_CLIENT_ID: 814968473657-7b574enut0cl61euidma94lariu15s8d.apps.googleusercontent.com
@@ -25,16 +25,19 @@ services:
       - db_password
       - master_key
     networks:
-      - internal_bridge
-    extra_hosts:
-      - "pg.ab18.in:10.10.10.11"
+      - network-layer
+      - data-layer
     labels:
       - traefik.enable=true
+      - traefik.docker.network=internal_bridge
       - traefik.http.routers.algokavach.rule=Host(`api.algokavach.ab18.in`)
       - traefik.http.services.algokavach.loadbalancer.server.port=8080
 
 networks:
-  internal_bridge:
+  network-layer:
+    name: internal_bridge
+    external: true
+  data-layer:
     external: true
 
 secrets:
