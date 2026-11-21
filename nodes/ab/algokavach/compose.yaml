@@ -4,7 +4,7 @@
 # Data lives in node ab's local Postgres (database algokavach) on data-layer.
 services:
   algokavach:
-    image: ghcr.io/ashishbhatiya18/algo-kavach:latest
+    image: ghcr.io/ashishbhatiya18/algo-kavach:sha-e22c1ea@sha256:cba2f2078157d8e7f5782ccb6fec636acd7a4063c19305d9a7eff201e3fb5504
     container_name: algokavach
     user: "1000:1000"
     cap_drop:
