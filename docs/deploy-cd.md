@@ -32,6 +32,35 @@ sudo usermod -aG docker dietpi
 
 ---
 
+### Host settings (Docker and time sync)
+
+Set these before the first deploy; nothing in the bundle manages them. Node cd already runs mode 4;
+its Docker still logs to journald (switch it the same way at a quiet moment).
+
+`/etc/docker/daemon.json`:
+```json
+{
+    "data-root": "/mnt/dietpi_userdata/docker-data",
+    "log-driver": "local",
+    "live-restore": true,
+    "log-level": "warn",
+    "debug": false,
+    "metrics-addr": "0.0.0.0:9323"
+}
+```
+```sh
+sudo dockerd --validate --config-file /etc/docker/daemon.json && sudo systemctl restart docker
+sudo /boot/dietpi/func/dietpi-set_software ntpd-mode 4   # continuous time sync (CONFIG_NTP_MODE=4)
+```
+Why (22 Nov 2026, node ab): with `CONFIG_NTP_MODE=3` DietPi restarted time sync hourly at :17, the clock
+jumped back, journald rotated its files, and dockerd crashed with SIGBUS while reading container logs from
+the journal (`log-driver: journald`); systemd restarted Docker and every container with it (postgres
+included). Mode 4 stops the jumps, `local` logging takes the journal out of Docker's path, and
+`live-restore` keeps containers running if dockerd restarts anyway. A changed log driver applies only to
+recreated containers: `~/localstack/stacks/node.sh recreate`.
+
+---
+
 ## Phase 1 — Registry access
 
 Each node runs from its **bundle** (`ghcr.io/ashishbhatiya18/node-cd`), published by
