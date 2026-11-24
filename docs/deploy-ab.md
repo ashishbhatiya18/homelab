@@ -12,7 +12,7 @@
 | `vaultwarden` | vaultwarden | `vaultwarden/{admin_token,database_url,authelia_client_secret}` |
 | `treasuredash` | treasuredash | `treasuredash.env` |
 | `syncthing` | syncthing | `syncthing/` (its identity; config gitignored) |
-| `homeautomation`, `filebrowser`, `media`, `bentopdf`, `excalidraw`, `codeserver`, `claudecode`, `ntfy` | | — |
+| `homeautomation`, `filebrowser`, `media`, `bentopdf`, `excalidraw`, `rustpad`, `codeserver`, `claudecode`, `ntfy` | | — |
 
 Paths are relative to `/home/dietpi/localstack/secrets/`; the layout and its
 rules are in [secrets.md](secrets.md).
@@ -27,6 +27,7 @@ Tunnel name: `ab18-localstack` · Public ingress is declared in `cloud/tunnels/a
 |---|---|
 | `id.ab18.in` | authelia (passkey login, OIDC) |
 | `draw.ab18.in` | excalidraw |
+| `pad.ab18.in` | rustpad |
 | `pdf.ab18.in` | bentopdf |
 | `photos.ab18.in` | immich-server |
 | `vault.ab18.in` | vaultwarden (Cloudflare cache bypass active) |
@@ -277,6 +278,7 @@ filebrowser
 jellyfin
 bentopdf
 excalidraw
+rustpad
 ```
 
 ---

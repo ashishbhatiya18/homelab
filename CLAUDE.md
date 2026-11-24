@@ -17,7 +17,7 @@ Directory layout:
 
 ## Nodes and stacks
 
-**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale + crowdsec: attack detection from Traefik's, Authelia's and Vaultwarden's logs and cd's agent, report-only, alerts via ntfy; its API at crowdsec.ab18.in, LAN/Tailscale only), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (heartbeat), excalidraw, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
+**Node ab** (amd64, primary): network (traefik + cloudflared + authelia + tailscale + crowdsec: attack detection from Traefik's, Authelia's and Vaultwarden's logs and cd's agent, report-only, alerts via ntfy; its API at crowdsec.ab18.in, LAN/Tailscale only), data (postgres + redis), immich, kopia, vaultwarden, media (jellyfin), filebrowser, homeautomation (esphome), syncthing, localstack (heartbeat), excalidraw, rustpad, bentopdf, claudecode, codeserver, treasuredash, ntfy (push notifications, public at ntfy.ab18.in with its own token auth). Outside the stacks, the `down` CLI is installed natively in `/usr/local/bin` (`down-cli/install.sh`).
 
 **Node cd** (ARM, Raspberry Pi 4): network (traefik + cloudflared: cd's only tunnel, every public hostname through Traefik + tailscale + dnsdist → blocky: DNS for the LAN and Tailscale at 10.10.10.12 + crowdsec agent reporting to ab's), localstack (heartbeat), monitor (gatus: health checks for both nodes, alerts via ntfy), citrusdental, nikview (api.nikview.com), smiledesign.
 

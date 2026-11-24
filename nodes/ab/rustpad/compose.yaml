@@ -1,0 +1,32 @@
+services:
+  rustpad:
+    # No version tags upstream (only latest): pinned by digest alone.
+    image: ekzhang/rustpad@sha256:536b63883b2661f31de580df438427f2b799f9284bf9f908708ea3b5d231b585
+    container_name: rustpad
+    user: "1000:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: always
+    networks:
+      - network-layer
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.pad.rule=Host(`pad.ab18.in`)
+      - traefik.http.services.pad.loadbalancer.server.port=3030
+      - traefik.http.routers.pad.service=pad
+    environment:
+      EXPIRY_DAYS: "30"
+      SQLITE_URI: /data/db.sqlite
+      RUST_LOG: info
+    volumes:
+      - /home/dietpi/localstack/data/rustpad_data:/data
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
