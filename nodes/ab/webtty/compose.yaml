@@ -1,0 +1,51 @@
+services:
+  webtty:
+    # Built by .github/workflows/build-webtty.yml from this directory
+    # (FROM scratch static Rust binary connecting via SSH to a locked-down
+    # host user on node ab). Canary deployment at term2.ab18.in.
+    image: ghcr.io/ashishbhatiya18/webtty:latest
+    container_name: webtty
+    restart: always
+    user: "1000:1000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - TZ=Asia/Kolkata
+      - PORT=7681
+      # internal_bridge gateway reaches host ab without host network access
+      - SSH_HOST=11.11.11.1
+      - SSH_PORT=22
+      - SSH_USER=webtty
+      - SSH_KEY_FILE=/run/secrets/ssh_key
+      # Set from: ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+      # Until pinned here, set SSH_ALLOW_INSECURE_HOST_KEY=true only for initial test.
+      - SSH_HOST_FINGERPRINT=SHA256:6phaXUCF+/EWCF1Uz3YkFPjXn7svW6smdGs0sJSSGiA
+      - SSH_ALLOW_INSECURE_HOST_KEY=false
+      - WORKSPACE_ROOT=/home/dietpi/repos
+      - MAX_CONCURRENT_SESSIONS=8
+      - MAX_WS_PAYLOAD_BYTES=65536
+      - ALLOW_FILE_WRITE=false
+      - ALLOW_OAUTH_RELAY=true
+    secrets:
+      - ssh_key
+    networks:
+      - network-layer
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.term2.rule=Host(`term2.ab18.in`)
+      - traefik.http.routers.term2.middlewares=auth
+      - traefik.http.services.term2.loadbalancer.server.port=7681
+
+networks:
+  network-layer:
+    name: internal_bridge
+    external: true
+
+secrets:
+  ssh_key:
+    file: /home/dietpi/localstack/secrets/webtty/ssh_key

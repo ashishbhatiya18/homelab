@@ -1,0 +1,49 @@
+# Builds nodes/ab/webtty into ghcr.io/ashishbhatiya18/webtty so node ab
+# only pulls the prebuilt FROM scratch image.
+name: Build webtty
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - nodes/ab/webtty/**
+      - "!nodes/ab/webtty/compose.yaml"
+      - "!nodes/ab/webtty/README.md"
+      - "!nodes/ab/webtty/scripts/**"
+      - .github/workflows/build-webtty.yml
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/ashishbhatiya18/webtty
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: nodes/ab/webtty
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:latest
+            ${{ env.IMAGE }}:${{ github.sha }}
+          cache-from: type=gha,scope=webtty
+          cache-to: type=gha,mode=max,scope=webtty

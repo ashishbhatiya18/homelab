@@ -27,6 +27,7 @@ ingress:
   - photos.ab18.in
   - vault.ab18.in
   - term.ab18.in
+  - term2.ab18.in
   - ntfy.ab18.in
   - algokavach.ab18.in
   - service: http_status:404

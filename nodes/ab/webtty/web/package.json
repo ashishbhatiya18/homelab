@@ -1,0 +1,27 @@
+{
+  "name": "webtty-ui",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build"
+  },
+  "dependencies": {
+    "@xterm/addon-clipboard": "0.2.0",
+    "@xterm/addon-fit": "0.11.0",
+    "@xterm/addon-search": "0.16.0",
+    "@xterm/addon-serialize": "0.14.0",
+    "@xterm/addon-unicode11": "0.9.0",
+    "@xterm/addon-web-links": "0.12.0",
+    "@xterm/addon-webgl": "0.19.0",
+    "@xterm/xterm": "6.0.0",
+    "diff2html": "3.4.52",
+    "highlight.js": "11.11.1",
+    "preact": "10.26.4"
+  },
+  "devDependencies": {
+    "typescript": "5.8.2",
+    "vite": "6.2.2"
+  }
+}
