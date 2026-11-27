@@ -28,10 +28,22 @@ services:
       PASSKEY_RP_ID: nikview.com
       # Costa È Bella website's Cloudflare Pages deploy hook: nikview rebuilds the site after menu changes.
       MENU_PUBLISH_HOOK_COSTAEBELLA_FILE: /run/secrets/menu_publish_hook_costaebella
+      # Citrus Dental (nikview.com/citrusdental). Inert until the business is switched on; api.citrusdental.in keeps
+      # going to the old API until cutover day (its Traefik router lives in nodes/cd/citrusdental).
+      DOCUMENT_SECRET_CITRUSDENTAL_FILE: /run/secrets/document_secret_citrusdental # the old API's SECRET_KEY: links already sent keep working
+      LEGACY_DOCUMENT_HOSTS: api.citrusdental.in=citrusdental # old document and portal addresses, once routed here
+      SMTP_HOST: peripheral # the citrusdental stack's mail relay, as the old API uses it
+      SMTP_PORT: "1025"
+      SENDER_EMAIL: noreply@citrusdental.in
+      PERIPHERAL_URL_CITRUSDENTAL: http://peripheral:8080 # Slack, Google Calendar and Contacts, Google reviews
+      FILES_DIR_CITRUSDENTAL: /clinic/citrusdental # Syncthing'd clinic folder, read only
     secrets:
       - db_app_password
       - db_owner_password
       - menu_publish_hook_costaebella
+      - document_secret_citrusdental
+    volumes:
+      - /home/dietpi/localstack/data/cdstack_data:/clinic/citrusdental:ro
     networks:
       - internal_bridge
     extra_hosts:
@@ -52,3 +64,5 @@ secrets:
     file: /home/dietpi/localstack/secrets/nikview/db_owner_password
   menu_publish_hook_costaebella:
     file: /home/dietpi/localstack/secrets/nikview/menu_publish_hook_costaebella
+  document_secret_citrusdental:
+    file: /home/dietpi/localstack/secrets/api/secret_key # shared with nodes/cd/citrusdental's api (same key, never copied)
