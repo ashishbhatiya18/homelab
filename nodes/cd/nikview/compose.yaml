@@ -50,7 +50,7 @@ services:
       - "pg.ab18.in:10.10.10.11"
     labels:
       - traefik.enable=true
-      - traefik.http.routers.nikview.rule=Host(`api.nikview.com`)
+      - traefik.http.routers.nikview.rule=Host(`api.nikview.com`) || Host(`api.citrusdental.in`) # api.citrusdental.in: Citrus Dental's old document, portal and website addresses (LEGACY_DOCUMENT_HOSTS)
       - traefik.http.services.nikview.loadbalancer.server.port=8080
 
 networks:

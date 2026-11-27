@@ -61,7 +61,9 @@ services:
     extra_hosts:
       - "pg.ab18.in:10.10.10.11"
     labels:
-      - traefik.enable=true
+      # Cutover (Citrus Dental moved to Nikview): api.citrusdental.in is served by nodes/cd/nikview now; this API
+      # keeps running, unrouted, for a month as a read-only fallback. peripheral (below) is still used by Nikview.
+      - traefik.enable=false
       - traefik.http.routers.api.rule=Host(`api.citrusdental.in`)
       - traefik.http.routers.api.middlewares=api-ratelimit
       - traefik.http.middlewares.api-ratelimit.ratelimit.average=60
