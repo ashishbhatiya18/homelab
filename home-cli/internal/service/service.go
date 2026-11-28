@@ -2,7 +2,7 @@
 // their lifecycle is `brew services` (like `cloudflared service install`).
 //
 // Homebrew allows one service per formula, so every job is a small companion
-// formula in the tap (home-backup, home-check, home-cleanup, home-deploy)
+// formula in the tap (home-backup, home-check, home-cleanup, home-deploy, home-videos)
 // whose service runs `home jobs run <job> --if-due` on its own interval and
 // writes its own log under $(brew --prefix)/var/log/home-<job>.log.
 package service
@@ -19,7 +19,7 @@ import (
 const tap = "ashishbhatiya18/tap/"
 
 // Jobs are the background jobs, in the order they are listed.
-var Jobs = []string{"backup", "check", "cleanup", "deploy"}
+var Jobs = []string{"backup", "check", "cleanup", "deploy", "videos"}
 
 // Formula is the companion formula (and brew service) of a job.
 func Formula(job string) string { return "home-" + job }
@@ -108,7 +108,7 @@ func valid(job string) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("unknown job %q (have: backup, check, cleanup, deploy)", job)
+	return fmt.Errorf("unknown job %q (have: backup, check, cleanup, deploy, videos)", job)
 }
 
 // removeLegacy unloads the single `home` service of versions before 0.5,

@@ -27,7 +27,7 @@ uses it whenever the `ssh:` address doesn't answer — off the LAN.
 ```console
 brew install ashishbhatiya18/tap/home
 home              # first run starts the interactive setup
-home install      # background jobs as brew services: backup, check, cleanup, deploy
+home install      # background jobs as brew services: backup, check, cleanup, deploy, videos
 ```
 
 ## Nodes and stacks
@@ -189,6 +189,43 @@ Configure `pre_update_hooks` (setup offers this) to take a fresh backup before
 a stack's images are updated. See [docs/RESTORE.md](docs/RESTORE.md) for
 restoring without `home`, e.g. after losing your Mac.
 
+## Immich videos — `home immich`
+
+Immich keeps every original as uploaded, and phone video is large (iPhone HEVC
+is ~10 Mbps). `home immich compress` (and the daily `home-videos` job) shrinks
+each untreated video on the Mac, where x265 is fast, typically by 70–80%:
+
+1. fetch the original over SSH and check it against Immich's checksum;
+2. skip it when already small (`min_mbps`), already treated, or not a video;
+3. re-encode with x265 (`crf`, `preset`; HDR, bit depth, audio, date,
+   location and camera kept; Live Photo clips and external libraries skipped);
+4. confirm the result: full decode without errors, same length, video and
+   audio present, and at least `min_saving` smaller — otherwise keep the original;
+5. swap it in on the node (upload checked by size, original checked unchanged);
+   the original waits in `originals_dir` for `keep_days` (`restore.tsv` maps
+   each back to its path), and the run pauses while the disk has under
+   `min_free_gb` free;
+6. update Immich: new file size, and a touched asset row so clients re-sync.
+
+Immich's checksum stays the original's, because phones dedupe their backups by
+it; a new one would make them upload the original again. Every video is tried
+once (`~/.local/state/home/immich-videos.json`); `home immich status` lists
+what was treated, skipped and failed. Re-encoding is lossy: back up the
+originals first if the server holds the only copy.
+
+```yaml
+immich:                     # in config.yaml; ffmpeg needed (brew install ffmpeg)
+  db_node: ab               # node running Immich's Postgres container
+  db_container: immich_postgres   # defaults: Immich's docker-compose.yml
+  db_user: postgres
+  db_name: immich
+  files_node: ab            # node holding the files (default db_node)
+  files_dir: /srv/immich    # host directory Immich mounts as /data
+  # originals_dir: <files_dir>/../immich-originals   keep_days: 7
+  # run_at: "02:00"   crf: 26   preset: medium
+  # min_mbps: 4   min_saving: 0.3   min_free_gb: 20
+```
+
 ## Notifications
 
 Background jobs run as Homebrew services, one per job — `home install`
@@ -203,6 +240,7 @@ now, and `brew services list` shows them like any other service. Each logs to
 | `home-check` | 15 min | **Node check** once a day after `checks.daily_at`: one summary — `ab: 13 apt updates · cd: reboot required · stack updates: network` — or "all nodes healthy" |
 | `home-cleanup` | 1 h | **Pruning** once a day: what is re-created on demand — dangling/unused images, build cache, apt cache and rollback images older than 30 days. Never logs or the journal |
 | `home-deploy` | 5 min | **Deploys** a new bundle to nodes that already run one, with the same health check and rollback as `home deploy`; notifies on every deploy and failure (a release waiting for `home secret migrate` once). A node's first deploy is always manual |
+| `home-videos` | 1 h | **Immich videos** once a day after `immich.run_at`, only while the Mac is charging: re-encodes every untreated video (see below). Unplugging stops it, even mid-encode (that video is retried), and it resumes within the hour once plugged in again; notifies what a finished run saved and anything that failed |
 
 (Homebrew allows one service per formula, so each job is a small companion
 formula in the tap that runs `home jobs run <job> --if-due`.)

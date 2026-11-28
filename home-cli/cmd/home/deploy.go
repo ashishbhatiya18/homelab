@@ -312,7 +312,7 @@ func (a *app) jobsCmd(ctx context.Context, args []string) error {
 	if len(args) >= 2 && args[0] == "run" {
 		ifDue := len(args) == 3 && args[2] == "--if-due"
 		if len(args) > 3 || (len(args) == 3 && !ifDue) {
-			return errors.New("usage: home jobs run <backup|check|cleanup|deploy> [--if-due]")
+			return errors.New("usage: home jobs run <backup|check|cleanup|deploy|videos> [--if-due]")
 		}
 		var err error
 		switch args[1] {
@@ -332,8 +332,10 @@ func (a *app) jobsCmd(ctx context.Context, args []string) error {
 			err = a.cleanupJob(ctx, !ifDue)
 		case "deploy":
 			err = a.deployJob(ctx) // every run: deploys only when a new bundle exists
+		case "videos":
+			err = a.videosJob(ctx, !ifDue)
 		default:
-			return fmt.Errorf("unknown job %q (backup, check, cleanup, deploy)", args[1])
+			return fmt.Errorf("unknown job %q (backup, check, cleanup, deploy, videos)", args[1])
 		}
 		if err != nil && ifDue {
 			log.Printf("%s: %v", args[1], err)
@@ -341,7 +343,7 @@ func (a *app) jobsCmd(ctx context.Context, args []string) error {
 		return err
 	}
 	if len(args) != 0 {
-		return errors.New("usage: home jobs | home jobs run <backup|check|cleanup|deploy> [--if-due]")
+		return errors.New("usage: home jobs | home jobs run <backup|check|cleanup|deploy|videos> [--if-due]")
 	}
 	st := loadJobs()
 	last := func(name string) string {
@@ -356,12 +358,14 @@ func (a *app) jobsCmd(ctx context.Context, args []string) error {
 		"check":   "daily after " + a.cfg.Checks.DailyAt,
 		"cleanup": "daily after " + a.cfg.Checks.DailyAt,
 		"deploy":  "every 5 min, when a new bundle exists",
+		"videos":  "daily after immich.run_at, on AC power (needs immich: in config.yaml)",
 	}
 	lastRun := map[string]string{
 		"backup":  "see `home br status`",
 		"check":   "-",
 		"cleanup": last("cleanup"),
 		"deploy":  last("deploy"),
+		"videos":  last("videos"),
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 2, 2, ' ', 0)
 	fmt.Fprintln(w, "JOB\tBREW SERVICE\tSTATE\tSCHEDULE\tLAST RUN")

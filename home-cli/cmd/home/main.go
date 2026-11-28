@@ -133,9 +133,14 @@ Authelia (users and OIDC clients on the node; auth: in config.yaml):
 Backups:
   home br …                         encrypted Postgres backups (see ` + "`home br help`" + `)
 
-Background jobs (each its own brew service: home-backup, home-check, home-cleanup, home-deploy):
+Immich videos (immich: in config.yaml; needs ffmpeg):
+  home immich compress [--dry-run] [--limit N]   re-encode untreated videos (x265) on this Mac, verify,
+                                             replace the originals in place, update Immich
+  home immich status                         treated, skipped and failed videos, space saved
+
+Background jobs (each its own brew service: home-backup, home-check, home-cleanup, home-deploy, home-videos):
   home jobs                         every job: service state, schedule, last run
-  home jobs run <job>               run one now (backup, check, cleanup, deploy)
+  home jobs run <job>               run one now (backup, check, cleanup, deploy, videos)
   home install [job…]               install and start the services (all by default)
   home uninstall [job…]             stop them
 
@@ -331,6 +336,8 @@ func run(ctx context.Context, cmd string, args []string) error {
 		return a.dnsCmd(ctx, args)
 	case "auth":
 		return a.authCmd(ctx, args)
+	case "immich":
+		return a.immichCmd(ctx, args)
 	case "secret":
 		return a.secretCmd(ctx, args)
 	}

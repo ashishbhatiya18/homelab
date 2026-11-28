@@ -38,10 +38,71 @@ type Config struct {
 	Cloudflare *Cloudflare `yaml:"cloudflare,omitempty"`
 	// Auth locates the Authelia instance `home auth` manages.
 	Auth *Auth `yaml:"auth,omitempty"`
+	// Immich enables the daily video job (`home immich`); nil disables it.
+	Immich *Immich `yaml:"immich,omitempty"`
 }
 
 // Auth is where Authelia runs. Only Node is required; the rest default to the
 // layout of a node's stacks_dir (…/secrets/network/authelia, …/data/authelia).
+// Immich locates an Immich server whose videos `home immich compress`
+// re-encodes in place. Defaults follow Immich's own docker-compose.yml.
+type Immich struct {
+	// DBNode runs the Postgres container (DBContainer, DBUser, DBName).
+	DBNode      string `yaml:"db_node"`
+	DBContainer string `yaml:"db_container,omitempty"` // immich_postgres
+	DBUser      string `yaml:"db_user,omitempty"`      // postgres
+	DBName      string `yaml:"db_name,omitempty"`      // immich
+	// FilesNode holds FilesDir, the host directory Immich mounts as /data.
+	FilesNode string `yaml:"files_node,omitempty"` // db_node
+	FilesDir  string `yaml:"files_dir"`
+	// Replaced originals wait in OriginalsDir (same filesystem as FilesDir)
+	// for KeepDays before they are deleted; 0 deletes them at once.
+	OriginalsDir string `yaml:"originals_dir,omitempty"` // <files_dir>/../immich-originals
+	KeepDays     *int   `yaml:"keep_days,omitempty"`     // 7
+	RunAt        string `yaml:"run_at,omitempty"`        // 02:00, daily (catches up after sleep)
+	CRF          int    `yaml:"crf,omitempty"`           // 26
+	Preset       string `yaml:"preset,omitempty"`        // medium
+	// Videos under MinMbps, or whose re-encode saves less than MinSaving,
+	// are left alone; the run stops while FilesDir has under MinFreeGB free.
+	MinMbps   float64 `yaml:"min_mbps,omitempty"`    // 4
+	MinSaving float64 `yaml:"min_saving,omitempty"`  // 0.3
+	MinFreeGB int     `yaml:"min_free_gb,omitempty"` // 20
+}
+
+// Resolved fills in the defaults.
+func (m Immich) Resolved() Immich {
+	str := func(v *string, d string) {
+		if *v == "" {
+			*v = d
+		}
+	}
+	str(&m.DBContainer, "immich_postgres")
+	str(&m.DBUser, "postgres")
+	str(&m.DBName, "immich")
+	str(&m.FilesNode, m.DBNode)
+	m.FilesDir = strings.TrimSuffix(m.FilesDir, "/")
+	str(&m.OriginalsDir, filepath.Dir(m.FilesDir)+"/immich-originals")
+	str(&m.RunAt, "02:00")
+	str(&m.Preset, "medium")
+	if m.KeepDays == nil {
+		d := 7
+		m.KeepDays = &d
+	}
+	if m.CRF == 0 {
+		m.CRF = 26
+	}
+	if m.MinMbps == 0 {
+		m.MinMbps = 4
+	}
+	if m.MinSaving == 0 {
+		m.MinSaving = 0.3
+	}
+	if m.MinFreeGB == 0 {
+		m.MinFreeGB = 20
+	}
+	return m
+}
+
 type Auth struct {
 	Node string `yaml:"node"`
 	// Stack and Service hold the Authelia container (restarted to apply
@@ -171,6 +232,14 @@ func Load(path string) (*Config, error) {
 	for _, o := range c.Upgrade.Order {
 		if !seen[o] {
 			return nil, fmt.Errorf("upgrade.order names unknown node %q", o)
+		}
+	}
+	if m := c.Immich; m != nil {
+		if !seen[m.DBNode] || (m.FilesNode != "" && !seen[m.FilesNode]) {
+			return nil, errors.New("immich: db_node and files_node must name configured nodes")
+		}
+		if !strings.HasPrefix(m.FilesDir, "/") || m.FilesDir == "/" {
+			return nil, errors.New("immich: files_dir must be the absolute host directory Immich mounts as /data")
 		}
 	}
 	if c.Auth != nil && !seen[c.Auth.Node] {

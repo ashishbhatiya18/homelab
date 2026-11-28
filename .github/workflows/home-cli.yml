@@ -138,7 +138,7 @@ jobs:
               <<~EOS
                 Run \`home\` to set up your nodes and \`home br setup\` for backups, then
                 \`home install\` to start the background jobs, one brew service each:
-                home-backup, home-check, home-cleanup, home-deploy (see \`home jobs\`).
+                home-backup, home-check, home-cleanup, home-deploy, home-videos (see \`home jobs\`).
                 Coming from hbr? \`home br\` picks up your hbr settings automatically.
               EOS
             end
@@ -152,8 +152,9 @@ jobs:
           # Homebrew allows one service per formula, so each background job is
           # a companion formula whose service runs `home jobs run <job> --if-due`.
           # They reuse the home archive (downloaded once) and install a launcher.
-          job() { # job <name> <interval seconds> <description>
-            local cls
+          job() { # job <name> <interval seconds> <description> [extra formula dependency]
+            local cls dep=""
+            [ -n "${4:-}" ] && dep="depends_on \"$4\""
             cls="Home$(tr '[:lower:]' '[:upper:]' <<< "${1:0:1}")${1:1}"
             cat > "tap/Formula/home-$1.rb" <<RUBY
           class ${cls} < Formula
@@ -172,6 +173,7 @@ jobs:
             end
 
             depends_on "ashishbhatiya18/tap/home"
+            ${dep}
 
             def install
               (libexec/"home-$1").write <<~SH
@@ -201,6 +203,7 @@ jobs:
           job check 900 "daily node and update check with a notification"
           job cleanup 3600 "daily pruning of unused images and caches on every node"
           job deploy 300 "deploys new node bundles with health checks and rollback"
+          job videos 3600 "daily re-encoding of Immich videos to save disk space" ffmpeg
 
           cd tap
           if [ -z "$(git status --porcelain)" ]; then
